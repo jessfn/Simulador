@@ -1198,7 +1198,7 @@ router.get('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: AuthRe
 router.patch('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nombre_completo, email, telefono, activo } = req.body;
+    const { nombre_completo, email, telefono, activo, password } = req.body;
     const sets: string[] = [];
     const vals: any[]   = [];
     let   idx = 1;
@@ -1206,6 +1206,14 @@ router.patch('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: Auth
     if (email           !== undefined) { sets.push(`email=$${idx++}`);           vals.push(email); }
     if (telefono        !== undefined) { sets.push(`telefono=$${idx++}`);         vals.push(telefono); }
     if (activo          !== undefined) { sets.push(`activo=$${idx++}`);           vals.push(activo); }
+    if (password) {
+      if (typeof password !== 'string' || password.length < 6) {
+        res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+        return;
+      }
+      const passwordHash = await bcrypt.hash(password, 12);
+      sets.push(`password_hash=$${idx++}`); vals.push(passwordHash);
+    }
     if (!sets.length) { res.status(400).json({ error: 'Sin campos para actualizar' }); return; }
     sets.push(`updated_at=NOW()`);
     vals.push(id);

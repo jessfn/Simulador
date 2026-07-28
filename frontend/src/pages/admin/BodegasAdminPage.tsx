@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import {
-  Search, Eye, ShieldAlert, RefreshCw, Warehouse, BarChart3, X, CheckCircle,
+  Search, Eye, EyeOff, ShieldAlert, RefreshCw, Warehouse, BarChart3, X, CheckCircle,
   Weight, Package, Percent, FileText, LayoutGrid, MapPin, Edit3,
   Phone, Calendar, Building2, Save, Loader2, Table2, Navigation2, Trash2, AlertTriangle,
-  Users, Mail
+  Users, Mail, Lock
 } from 'lucide-react';
 import { usePermisosStore } from '../../store/permisos';
 
@@ -153,8 +153,11 @@ export default function BodegasAdminPage() {
   const [usuariosLoad,   setUsuariosLoad]   = useState(false);
   const [usuarioSearch,  setUsuarioSearch]  = useState('');
   const [usuarioModal,   setUsuarioModal]   = useState<UsuarioBodega | null>(null);
-  const [, setEditUsuario]    = useState<Partial<UsuarioBodega> | null>(null);
-  const [, setEditUsuErr]     = useState('');
+  const [editUsuario, setEditUsuario] = useState<Partial<UsuarioBodega> | null>(null);
+  const [editUsuErr, setEditUsuErr]   = useState('');
+  const [editPassword, setEditPassword]     = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [guardandoUsu, setGuardandoUsu]     = useState(false);
   const [deleteUsuario,  setDeleteUsuario]  = useState<UsuarioBodega | null>(null);
   const [deleteUsuLoad,  setDeleteUsuLoad]  = useState(false);
   const debUsuRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -303,6 +306,44 @@ export default function BodegasAdminPage() {
       cargarUsuarios(usuarioSearch);
     } catch (e: any) { showToast(e.message, false); }
     finally { setDeleteUsuLoad(false); }
+  }
+
+  async function guardarUsuario() {
+    if (!usuarioModal || !editUsuario) return;
+    if (editPassword && editPassword.length < 6) {
+      setEditUsuErr('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    setGuardandoUsu(true);
+    setEditUsuErr('');
+    try {
+      const body: Record<string, unknown> = {
+        nombre_completo: editUsuario.nombre_completo,
+        email:           editUsuario.email,
+        telefono:        editUsuario.telefono,
+        activo:          editUsuario.activo,
+      };
+      if (editPassword) body.password = editPassword;
+
+      const r = await fetch(`${BASE}/admin/usuarios-bodega/${usuarioModal.id}`, {
+        method: 'PATCH',
+        headers: { ...HDR(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'No se pudo guardar');
+
+      showToast('Usuario actualizado');
+      setEditPassword('');
+      setShowEditPassword(false);
+      setEditUsuario(null);
+      setUsuarioModal(null);
+      cargarUsuarios(usuarioSearch);
+    } catch (e: any) {
+      setEditUsuErr(e.message);
+    } finally {
+      setGuardandoUsu(false);
+    }
   }
 
   useEffect(() => { cargarBodegas(); }, []);
@@ -1181,12 +1222,12 @@ export default function BodegasAdminPage() {
                   {/* Acciones */}
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
-                      onClick={() => { setUsuarioModal(u); setEditUsuario(null); setEditUsuErr(''); }}
+                      onClick={() => { setUsuarioModal(u); setEditUsuario(null); setEditUsuErr(''); setEditPassword(''); setShowEditPassword(false); }}
                       className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-emerald-50 hover:text-emerald-600 text-gray-400 flex items-center justify-center transition-colors"
                       title="Ver detalles"
                     ><Eye size={14} /></button>
                     <button
-                      onClick={() => { setEditUsuario({ nombre_completo: u.nombre_completo, email: u.email, telefono: u.telefono, activo: u.activo }); setUsuarioModal(u); setEditUsuErr(''); }}
+                      onClick={() => { setEditUsuario({ nombre_completo: u.nombre_completo, email: u.email, telefono: u.telefono, activo: u.activo }); setUsuarioModal(u); setEditUsuErr(''); setEditPassword(''); setShowEditPassword(false); }}
                       className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-indigo-50 hover:text-indigo-600 text-gray-400 flex items-center justify-center transition-colors"
                       title="Editar"
                     ><Edit3 size={14} /></button>
@@ -1205,7 +1246,7 @@ export default function BodegasAdminPage() {
 
       {/* ── MODAL USUARIO BODEGA ── */}
       {usuarioModal && createPortal(
-        <div className="fixed inset-0 flex items-end sm:items-center justify-center sm:p-6" style={{ zIndex: 9999 }} onClick={() => { setUsuarioModal(null); setEditUsuario(null); }}>
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center sm:p-6" style={{ zIndex: 9999 }} onClick={() => { setUsuarioModal(null); setEditUsuario(null); setEditPassword(''); setShowEditPassword(false); setEditUsuErr(''); }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-2xl" />
           <div
             className="relative w-full sm:max-w-lg bg-white rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl max-h-[95dvh] sm:max-h-[88vh] flex flex-col overflow-hidden"
@@ -1236,30 +1277,126 @@ export default function BodegasAdminPage() {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5 flex-shrink-0">
-                <button onClick={() => { setUsuarioModal(null); setEditUsuario(null); }} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"><X size={14} className="text-gray-500" /></button>
+                <button onClick={() => { setUsuarioModal(null); setEditUsuario(null); setEditPassword(''); setShowEditPassword(false); setEditUsuErr(''); }} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"><X size={14} className="text-gray-500" /></button>
               </div>
             </div>
 
             {/* Scroll body */}
             <div className="overflow-y-auto flex-1 px-6 pb-6 space-y-3">
 
-              {/* Datos de contacto */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {[
-                  { icon: <Phone size={13} />, label: 'Teléfono', val: usuarioModal.telefono },
-                  { icon: <Mail size={13} />, label: 'Correo', val: usuarioModal.email },
-                  { icon: <Calendar size={13} />, label: 'Registro', val: usuarioModal.created_at ? new Date(usuarioModal.created_at).toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' }) : '—' },
-                  { icon: <Users size={13} />, label: 'ID', val: `#${String(usuarioModal.id).padStart(6,'0')}` },
-                ].map(({ icon, label, val }) => (
-                  <div key={label} className="bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-emerald-500">{icon}</span>
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+              {editUsuario ? (
+                /* ── MODO EDICIÓN ── */
+                <div className="space-y-3">
+                  {editUsuErr && (
+                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-[12px] font-medium flex items-center gap-1.5">
+                      <AlertTriangle size={13} className="flex-shrink-0" /> {editUsuErr}
                     </div>
-                    <p className="text-[12px] font-semibold text-gray-800 leading-snug break-all">{val || '—'}</p>
+                  )}
+                  <div>
+                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Nombre completo</label>
+                    <input
+                      type="text"
+                      value={editUsuario.nombre_completo || ''}
+                      onChange={e => setEditUsuario(v => ({ ...v, nombre_completo: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400"
+                    />
                   </div>
-                ))}
-              </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Correo</label>
+                      <input
+                        type="email"
+                        value={editUsuario.email || ''}
+                        onChange={e => setEditUsuario(v => ({ ...v, email: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Teléfono</label>
+                      <input
+                        type="tel"
+                        value={editUsuario.telefono || ''}
+                        onChange={e => setEditUsuario(v => ({ ...v, telefono: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Estado activo/inactivo */}
+                  <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+                    <div>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Estado de la cuenta</p>
+                      <p className="text-[12px] font-semibold text-gray-800 mt-0.5">{editUsuario.activo ? 'Activo' : 'Inactivo'}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditUsuario(v => ({ ...v, activo: !v?.activo }))}
+                      className={`w-12 h-7 rounded-full flex items-center px-0.5 transition-colors ${editUsuario.activo ? 'bg-emerald-500 justify-end' : 'bg-gray-300 justify-start'}`}
+                    >
+                      <span className="w-6 h-6 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+
+                  {/* Contraseña — solo en modo edición */}
+                  <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Lock size={13} className="text-emerald-500" />
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Contraseña</p>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mb-2">Por seguridad no se puede ver la contraseña actual. Escribe una nueva para reemplazarla, o deja el campo vacío para no cambiarla.</p>
+                    <div className="relative">
+                      <input
+                        type={showEditPassword ? 'text' : 'password'}
+                        value={editPassword}
+                        onChange={e => setEditPassword(e.target.value)}
+                        placeholder="Nueva contraseña (mín. 6 caracteres)"
+                        className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowEditPassword(s => !s)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        title={showEditPassword ? 'Ocultar' : 'Mostrar'}
+                      >
+                        {showEditPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => { setEditUsuario(null); setEditPassword(''); setShowEditPassword(false); setEditUsuErr(''); }}
+                      className="flex-1 py-2.5 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[13px] transition-all"
+                    >Cancelar</button>
+                    <button
+                      onClick={guardarUsuario}
+                      disabled={guardandoUsu}
+                      className="flex-1 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[13px] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {guardandoUsu ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar cambios
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ── MODO VISTA ── */
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { icon: <Phone size={13} />, label: 'Teléfono', val: usuarioModal.telefono },
+                    { icon: <Mail size={13} />, label: 'Correo', val: usuarioModal.email },
+                    { icon: <Calendar size={13} />, label: 'Registro', val: usuarioModal.created_at ? new Date(usuarioModal.created_at).toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' }) : '—' },
+                    { icon: <Users size={13} />, label: 'ID', val: `#${String(usuarioModal.id).padStart(6,'0')}` },
+                  ].map(({ icon, label, val }) => (
+                    <div key={label} className="bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-emerald-500">{icon}</span>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+                      </div>
+                      <p className="text-[12px] font-semibold text-gray-800 leading-snug break-all">{val || '—'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Bodegas asociadas */}
               <div>
