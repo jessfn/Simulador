@@ -189,63 +189,25 @@ export default function AlertasPage() {
   return (
     <div className="w-full">
 
-      {/* ── Header con volver ── */}
-      <div className="sticky top-0 z-20 w-full bg-gradient-to-br from-[#1A5C38] via-[#1e6b42] to-[#22733f] rounded-b-3xl shadow-[0_4px_20px_rgba(26,92,56,0.2)]">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-3 pb-4">
-          <button onClick={() => navigate(-1)}
-            className="flex items-center gap-0.5 text-green-200/80 text-[13px] font-medium mb-1.5 active:opacity-60 transition-opacity">
-            <ChevronLeft size={16} strokeWidth={2.5} className="-ml-1" /> Volver
-          </button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-[19px] font-black text-white leading-tight">Alertas</h1>
-              {noLeidas > 0 && (
-                <p className="text-[12px] text-green-200/70 mt-0.5">{noLeidas} sin leer</p>
-              )}
-            </div>
-            <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-              {noLeidas > 0 ? <BellRing size={20} className="text-white" /> : <Bell size={20} className="text-white/70" />}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Banner push nativas (si aún no ha respondido) ── */}
-      {pushPermiso === 'default' && (
-        <div className="mx-4 mt-4 mb-2 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-            <Bell size={16} className="text-amber-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-bold text-amber-800">Activa alertas en tu celular</p>
-            <p className="text-[11.5px] text-amber-700 mt-0.5 leading-relaxed">
-              Recibe avisos de plagas cercanas a tu parcela aunque no tengas la app abierta.
-            </p>
-          </div>
-          <button
-            onClick={solicitarPermisoPush}
-            className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11.5px] px-3 py-2
-                       rounded-xl transition-all whitespace-nowrap shrink-0"
-          >
-            Activar
-          </button>
-        </div>
-      )}
-
-      {/* ── Banner sticky verde ── */}
+      {/* ── Header único: volver + título + resumen + acciones ── */}
       <div className="sticky top-0 z-20 w-full bg-gradient-to-br from-[#1A5C38] via-[#1e6b42] to-[#22733f] rounded-b-3xl shadow-[0_8px_30px_rgba(26,92,56,0.25)] overflow-hidden">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
         <div className="absolute -top-8 -left-8 w-40 h-40 rounded-full bg-white/[0.03] pointer-events-none" />
 
-        <div className="relative z-10 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-4 pb-5">
+        <div className="relative z-10 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-3 pb-5">
+          <button onClick={() => navigate(-1)}
+            className="flex items-center gap-0.5 text-green-200/80 text-[13px] font-medium mb-2 active:opacity-60 transition-opacity">
+            <ChevronLeft size={16} strokeWidth={2.5} className="-ml-1" /> Volver
+          </button>
+
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center ring-1 ring-white/20 flex-shrink-0">
-                <BellRing size={19} className="text-white" strokeWidth={2.2} />
+                {noLeidas > 0 ? <BellRing size={19} className="text-white" strokeWidth={2.2} /> : <Bell size={19} className="text-white/70" strokeWidth={2.2} />}
               </div>
               <div>
                 <h1 className="text-[20px] sm:text-[23px] font-black text-white leading-tight tracking-tight">
-                  Notificaciones
+                  Alertas
                 </h1>
                 <p className="text-[12.5px] font-medium text-green-100/70 mt-0.5">
                   {loading ? 'Cargando…' : noLeidas > 0
@@ -294,6 +256,28 @@ export default function AlertasPage() {
           )}
         </div>
       </div>
+
+      {/* ── Banner push nativas (si aún no ha respondido) ── */}
+      {pushPermiso === 'default' && (
+        <div className="mx-4 mt-4 mb-2 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+            <Bell size={16} className="text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold text-amber-800">Activa alertas en tu celular</p>
+            <p className="text-[11.5px] text-amber-700 mt-0.5 leading-relaxed">
+              Recibe avisos de plagas cercanas a tu parcela aunque no tengas la app abierta.
+            </p>
+          </div>
+          <button
+            onClick={solicitarPermisoPush}
+            className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11.5px] px-3 py-2
+                       rounded-xl transition-all whitespace-nowrap shrink-0"
+          >
+            Activar
+          </button>
+        </div>
+      )}
 
       {/* ── Lista ── */}
       <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 pt-5 pb-10 space-y-2.5">
