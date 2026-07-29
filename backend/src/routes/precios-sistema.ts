@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { authMiddleware, soloAdmin, AuthRequest } from '../middleware/auth';
 import { actualizarReferenciasExternas } from '../services/preciosExternos';
 import multer from 'multer';
 import fs from 'fs';
@@ -606,7 +606,7 @@ router.get('/mercado', authMiddleware, async (_req: AuthRequest, res: Response):
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/precios/referencias/externas
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/referencias/externas', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/referencias/externas', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const params = await getParametros();
     const extRef = await obtenerReferenciasExternasActuales();
@@ -654,7 +654,7 @@ router.get('/referencias/externas', authMiddleware, async (req: AuthRequest, res
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/precios/parametros
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/parametros', authMiddleware, async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/parametros', authMiddleware, soloAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const params = await getParametros();
     res.json({ parametros: params });
@@ -667,7 +667,7 @@ router.get('/parametros', authMiddleware, async (_req: AuthRequest, res: Respons
 // ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/precios/parametros
 // ─────────────────────────────────────────────────────────────────────────────
-router.put('/parametros', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/parametros', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (req.user?.rol !== 'admin') {
       res.status(403).json({ error: 'Solo el administrador puede modificar parámetros' });
@@ -707,7 +707,7 @@ router.put('/parametros', authMiddleware, async (req: AuthRequest, res: Response
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/discrepancias/pendientes
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/discrepancias', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/discrepancias', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { prioridad } = req.query;
     const conditions = ["estado = 'pendiente'"];
@@ -733,7 +733,7 @@ router.get('/discrepancias', authMiddleware, async (req: AuthRequest, res: Respo
 // ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/precios/discrepancias/:id/resolver
 // ─────────────────────────────────────────────────────────────────────────────
-router.put('/discrepancias/:id/resolver', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/discrepancias/:id/resolver', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { resolucion, notas } = req.body;

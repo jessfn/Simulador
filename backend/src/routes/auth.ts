@@ -6,6 +6,8 @@ import pool from '../config/database';
 import { RegistroPayload, LoginPayload } from '../types';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { enviarEmailRecuperacion, smtpConfigurado } from '../utils/mailer';
+import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
+import { authLimiter } from '../middleware/rateLimiters';
 
 const router = Router();
 
@@ -39,7 +41,7 @@ function normalizarNombre(nombre: string): string {
 // =============================================
 // POST /api/auth/registro
 // =============================================
-router.post('/registro', async (req: Request, res: Response): Promise<void> => {
+router.post('/registro', authLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, curp, nombre_completo, password, telefono, rol, state_id, municipality_id }: RegistroPayload = req.body;
 
@@ -145,7 +147,7 @@ router.post('/registro', async (req: Request, res: Response): Promise<void> => {
     const secret = process.env.JWT_SECRET;
     if (!secret) throw new Error('FATAL: JWT_SECRET no está definida en las variables de entorno.');
     const token = jwt.sign(
-      { userId: usuario.id, email: usuario.email, rol: usuario.rol },
+      { userId: usuario.id, email: usuario.email, rol: usuario.rol, jti: crypto.randomUUID() },
       secret,
       { expiresIn: '8h' }
     );
@@ -177,7 +179,7 @@ router.post('/registro', async (req: Request, res: Response): Promise<void> => {
 // =============================================
 // POST /api/auth/login
 // =============================================
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
+router.post('/login', authLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password }: LoginPayload = req.body;
 
@@ -199,12 +201,21 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 
     const usuario = result.rows[0];
 
+    // Bloqueo por intentos fallidos
+    const minutosBloqueo = await verificarBloqueo(usuario.id);
+    if (minutosBloqueo !== null) {
+      res.status(429).json({ error: `Demasiados intentos fallidos. Intenta de nuevo en ${minutosBloqueo} minuto(s).` });
+      return;
+    }
+
     // Verificar contraseña
     const passwordValido = await bcrypt.compare(password, usuario.password_hash);
     if (!passwordValido) {
+      await registrarIntentoFallido(usuario.id);
       res.status(401).json({ error: 'Credenciales incorrectas' });
       return;
     }
+    await limpiarIntentosFallidos(usuario.id);
 
     // Generar JWT — P-01: expira en 8h, P-02: sin fallback inseguro
     const secret = process.env.JWT_SECRET;
@@ -217,6 +228,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         estado_asignado:   usuario.estado_asignado  ?? null,
         debe_cambiar_pass: !!usuario.debe_cambiar_pass,
         es_panel_usuario:  !!usuario.es_panel_usuario,
+        jti:               crypto.randomUUID(),
       },
       secret,
       { expiresIn: '8h' }
@@ -251,6 +263,31 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 });
 
 // =============================================
+// POST /api/auth/logout
+// Revoca el token actual server-side (denylist por jti) para que deje de
+// ser aceptado de inmediato, en vez de esperar a su expiración natural.
+// =============================================
+router.post('/logout', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader!.split(' ')[1];
+    const decoded = jwt.decode(token) as { jti?: string; exp?: number } | null;
+
+    if (decoded?.jti) {
+      const expiraEn = decoded.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 8 * 60 * 60 * 1000);
+      await pool.query(
+        'INSERT INTO revoked_tokens (jti, usuario_id, expira_en) VALUES ($1, $2, $3) ON CONFLICT (jti) DO NOTHING',
+        [decoded.jti, req.user!.userId, expiraEn]
+      );
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error en logout:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// =============================================
 // GET /api/auth/perfil
 // =============================================
 router.get('/perfil', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -276,8 +313,16 @@ router.get('/perfil', authMiddleware, async (req: AuthRequest, res: Response): P
 // PATCH /api/auth/perfil — Actualizar datos del usuario
 // Campos aceptados: nombre_completo, telefono, curp, state_id, municipality_id
 // =============================================
+const CAMPOS_PRIVILEGIADOS = ['rol', 'isAdmin', 'es_admin', 'estado_validacion', 'activo', 'es_panel_usuario', 'password_hash', 'debe_cambiar_pass', 'id'];
+
 router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const campoNoPermitido = CAMPOS_PRIVILEGIADOS.find(c => req.body[c] !== undefined);
+    if (campoNoPermitido) {
+      res.status(400).json({ error: `El campo "${campoNoPermitido}" no puede modificarse desde este endpoint.` });
+      return;
+    }
+
     const { nombre_completo, email, telefono, curp, state_id, municipality_id } = req.body;
     const updates: string[] = [];
     const vals: any[] = [];

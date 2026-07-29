@@ -36,6 +36,7 @@ export interface JwtPayload {
   estado_asignado?:   string | null;
   debe_cambiar_pass?: boolean;
   es_panel_usuario?:  boolean;
+  jti?:               string;
 }
 
 export interface Bodega {

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/auth';
 import bodegasRoutes from './routes/bodegas';
 import misBodegasRoutes from './routes/mis-bodegas';
@@ -57,6 +58,18 @@ const ORIGENES_PERMITIDOS = [
 // apuntando a esta API sin levantar el backend localmente.
 const ES_RED_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1|10(\.\d{1,3}){3}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2}|192\.168(\.\d{1,3}){2})(:\d+)?$/;
 
+app.disable('x-powered-by');
+
+// Cabeceras de seguridad HTTP (Hallazgo 7)
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+  res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(cors({
   origin: (origin, cb) => {
     // Sin origin (curl, health checks, apps móviles) → permitir
@@ -66,8 +79,28 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json({ limit: '500mb' }));
-app.use(express.urlencoded({ limit: '500mb', extended: true }));
+
+// Rate limiting global (Hallazgo 1) — mitiga abuso/DoS de capa 7 a nivel de aplicación.
+// Se complementa con limit_req/limit_conn en nginx.
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Intenta de nuevo en un momento.' },
+}));
+
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
+// Errores de parseo de JSON malformado → respuesta genérica, sin stack trace (Hallazgo 6)
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err?.type === 'entity.parse.failed' || err instanceof SyntaxError) {
+    res.status(400).json({ error: 'Cuerpo de la solicitud inválido.' });
+    return;
+  }
+  next(err);
+});
 
 // Archivos estáticos — verificaciones biométricas (avisos de privacidad)
 const UPLOADS_DIR = process.env.NODE_ENV === 'production'
@@ -110,14 +143,29 @@ app.use('/api/productor', productorRoutes);
 app.use('/api/senasica', senasicaRoutes);
 app.use('/api/admin/exportar-bd', exportarBdRoutes);
 
-// Health check
+// Health check — respuesta mínima hacia el público (Hallazgo 8): no revela
+// estado interno de la base de datos ni dependencias.
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', database: 'connected' });
+    res.json({ status: 'ok' });
   } catch {
-    res.status(500).json({ status: 'error', database: 'disconnected' });
+    res.status(503).json({ status: 'error' });
   }
+});
+
+// 404 — cualquier ruta no reconocida
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Recurso no encontrado' });
+});
+
+// Manejador global de errores (Hallazgo 6) — SIEMPRE al final. Nunca expone
+// stack trace ni rutas internas al cliente; el detalle solo va a logs
+// internos del proceso (stdout/PM2).
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Error no controlado:', err);
+  if (res.headersSent) return;
+  res.status(err?.status || 500).json({ error: 'Error interno del servidor' });
 });
 
 // Iniciar servidor

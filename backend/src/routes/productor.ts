@@ -10,6 +10,9 @@ import { notificar } from '../utils/notificacion';
 import { reverseGeocode, canonicalizarEstado } from '../utils/geocode';
 import { consultarPersonaPorCURP } from '../services/saderService';
 import { consultarCURPEnRENAPO } from '../services/renapoService';
+import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
+import { authLimiter } from '../middleware/rateLimiters';
+import crypto from 'crypto';
 
 // Directorio de almacenamiento para verificaciones biométricas
 const UPLOAD_DIR = process.env.NODE_ENV === 'production'
@@ -64,7 +67,7 @@ router.post('/auth/upload-verificacion', uploadVerificacion.single('foto'), (req
 // ─────────────────────────────────────────────
 
 // POST /api/productor/auth/buscar-curp
-router.post('/auth/buscar-curp', async (req, res): Promise<void> => {
+router.post('/auth/buscar-curp', authLimiter, async (req, res): Promise<void> => {
   try {
     const { curp } = req.body;
     if (!curp || curp.length !== 18) {
@@ -100,7 +103,7 @@ router.post('/auth/buscar-curp', async (req, res): Promise<void> => {
 });
 
 // POST /api/productor/auth/activar-cuenta
-router.post('/auth/activar-cuenta', async (req, res): Promise<void> => {
+router.post('/auth/activar-cuenta', authLimiter, async (req, res): Promise<void> => {
   try {
     const { producer_id, pin } = req.body;
 
@@ -160,9 +163,9 @@ router.post('/auth/activar-cuenta', async (req, res): Promise<void> => {
         throw new Error('FATAL: JWT_SECRET no definida en variables de entorno. El servidor no puede arrancar sin esta variable.');
       }
       const token = jwt.sign(
-        { userId: u.rows[0].id, rol: 'productor', producer_id },
+        { userId: u.rows[0].id, rol: 'productor', producer_id, jti: crypto.randomUUID() },
         secret,
-        { expiresIn: '30d' }
+        { expiresIn: '7d' }
       );
 
       const p0 = producer.rows[0];
@@ -192,7 +195,7 @@ router.post('/auth/activar-cuenta', async (req, res): Promise<void> => {
 
 // POST /api/productor/auth/login-pin
 // Login con CURP + PIN (para productores)
-router.post('/auth/login-pin', async (req, res): Promise<void> => {
+router.post('/auth/login-pin', authLimiter, async (req, res): Promise<void> => {
   try {
     const { curp, pin } = req.body;
     if (!curp || !pin) {
@@ -209,26 +212,39 @@ router.post('/auth/login-pin', async (req, res): Promise<void> => {
       [curp]
     );
 
+    // Mensaje genérico: no revelar si la CURP existe, está inactiva o el PIN
+    // es incorrecto — evita que un atacante enumere CURPs válidas.
+    const MSG_GENERICO = { error: 'CURP o NIP incorrectos.' };
+
     if (!rows.length) {
-      res.status(401).json({ error: 'CURP no registrada o cuenta inactiva' });
+      res.status(401).json(MSG_GENERICO);
       return;
     }
 
     const user = rows[0];
-    const pinValido = await bcrypt.compare(pin, user.password_hash);
-    if (!pinValido) {
-      res.status(401).json({ error: 'PIN incorrecto' });
+
+    const minutosBloqueo = await verificarBloqueo(user.user_id);
+    if (minutosBloqueo !== null) {
+      res.status(429).json({ error: `Demasiados intentos fallidos. Intenta de nuevo en ${minutosBloqueo} minuto(s).` });
       return;
     }
+
+    const pinValido = await bcrypt.compare(pin, user.password_hash);
+    if (!pinValido) {
+      await registrarIntentoFallido(user.user_id);
+      res.status(401).json(MSG_GENERICO);
+      return;
+    }
+    await limpiarIntentosFallidos(user.user_id);
 
     const secret = process.env.JWT_SECRET;
     if (!secret) {
       throw new Error('FATAL: JWT_SECRET no definida en variables de entorno. El servidor no puede arrancar sin esta variable.');
     }
     const token = jwt.sign(
-      { userId: user.user_id, rol: 'productor', producer_id: user.producer_id },
+      { userId: user.user_id, rol: 'productor', producer_id: user.producer_id, jti: crypto.randomUUID() },
       secret,
-      { expiresIn: '30d' }
+      { expiresIn: '7d' }
     );
 
     // nombre_completo preferido desde usuarios (puede incluir ediciones del perfil);
@@ -283,7 +299,7 @@ router.get('/geo/reverse', async (req, res): Promise<void> => {
 // POST /api/productor/auth/consultar-curp
 // Verifica la CURP contra el padrón de SADER/RENAPO y precarga los datos.
 // El chequeo de BD y la llamada a SADER corren en PARALELO para mayor velocidad.
-router.post('/auth/consultar-curp', async (req, res): Promise<void> => {
+router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void> => {
   const { curp } = req.body;
 
   const CURP_RE = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
@@ -630,7 +646,7 @@ async function crearUP(client: any, producerId: number, up: any): Promise<number
 // POST /api/productor/auth/registro-nuevo
 // Registro con datos del padrón SADER — la cuenta queda ACTIVA automáticamente.
 // Acepta un array `ups` (múltiples parcelas) o los campos de una sola UP (compatibilidad).
-router.post('/auth/registro-nuevo', async (req, res): Promise<void> => {
+router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void> => {
   try {
     const {
       curp, nombres, apellido_paterno, apellido_materno, genero,
@@ -1272,8 +1288,16 @@ router.get('/mis-solicitudes', authMiddleware, async (req: AuthRequest, res: Res
 });
 
 // PATCH /api/productor/perfil
+const CAMPOS_PRIVILEGIADOS_PERFIL = ['rol', 'isAdmin', 'es_admin', 'estado_validacion', 'activo', 'es_panel_usuario', 'password_hash', 'pin_texto', 'producer_id', 'usuario_id', 'id'];
+
 router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const campoNoPermitido = CAMPOS_PRIVILEGIADOS_PERFIL.find(c => req.body[c] !== undefined);
+    if (campoNoPermitido) {
+      res.status(400).json({ error: `El campo "${campoNoPermitido}" no puede modificarse desde este endpoint.` });
+      return;
+    }
+
     const { telefono, programas_beneficiario, correo } = req.body;
     const userId = req.user!.userId;
     const producerId = await getProducerId(userId);

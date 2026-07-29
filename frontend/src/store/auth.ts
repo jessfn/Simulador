@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 interface User {
   userId:             number;
   email:              string;
@@ -34,6 +36,15 @@ export const useAuthStore = create<AuthState>()(
         set({ token, user, isAuthenticated: true });
       },
       logout: () => {
+        const token = localStorage.getItem('simac_token');
+        if (token) {
+          // Revoca el token en el servidor (denylist) para que deje de ser
+          // válido de inmediato, en vez de esperar a su expiración natural.
+          fetch(`${BASE}/auth/logout`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => {});
+        }
         localStorage.removeItem('simac_token');
         set({ token: null, user: null, isAuthenticated: false });
       },
