@@ -90,8 +90,8 @@ app.use(rateLimit({
   message: { error: 'Demasiadas solicitudes. Intenta de nuevo en un momento.' },
 }));
 
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ limit: '5mb', extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Errores de parseo de JSON malformado → respuesta genérica, sin stack trace (Hallazgo 6)
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
