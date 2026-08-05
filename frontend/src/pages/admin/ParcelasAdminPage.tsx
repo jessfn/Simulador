@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from 'react-leaflet';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -68,6 +68,20 @@ function FlyToController({ target }: { target:[number,number]|null }) {
   useEffect(()=>{ if(target) map.flyTo(target,15,{animate:true,duration:1.0}); },[target]);
   return null;
 }
+
+// Reporta límites y zoom actuales del mapa para renderizar solo lo visible
+// en vez de las ~9,500 parcelas de golpe (lo que trababa el navegador).
+function ViewportTracker({ onChange }: { onChange:(bounds:L.LatLngBounds, zoom:number)=>void }) {
+  const map = useMapEvents({
+    moveend: () => onChange(map.getBounds(), map.getZoom()),
+    zoomend: () => onChange(map.getBounds(), map.getZoom()),
+  });
+  useEffect(()=>{ onChange(map.getBounds(), map.getZoom()); }, []);
+  return null;
+}
+
+const MAX_MARCADORES_VISIBLES = 500;
+const ZOOM_MIN_POLIGONOS = 10;
 
 function fmtHa(n:number):string {
   if(n>=1_000_000) return `${(n/1_000_000).toFixed(1)}M`;
@@ -187,6 +201,11 @@ export default function ParcelasAdminPage() {
   const [eliminando,       setEliminando]       = useState(false);
   const [toast,            setToast]            = useState<{msg:string;tipo:'ok'|'err'}|null>(null);
   const toastTimer = useRef<number|null>(null);
+  const [mapBounds, setMapBounds] = useState<L.LatLngBounds|null>(null);
+  const [mapZoom,   setMapZoom]   = useState(6);
+  const onViewportChange = useCallback((bounds:L.LatLngBounds, zoom:number)=>{
+    setMapBounds(bounds); setMapZoom(zoom);
+  },[]);
 
   function showToast(msg:string, tipo:'ok'|'err') {
     setToast({msg,tipo});
@@ -207,6 +226,25 @@ export default function ParcelasAdminPage() {
     return true;
   }),[parcelas,filtroEstado,filtroMunicipio]);
 
+  // Solo se renderizan en el mapa las parcelas dentro del área visible
+  // actual (viewport), con un tope duro — antes se dibujaban las ~9,500 de
+  // golpe sin importar zoom/posición, lo que trababa el navegador.
+  const enViewport = useMemo(()=>{
+    if(!mapBounds) return filtradas;
+    return filtradas.filter(p=>
+      p.centroid_lat!=null && p.centroid_lng!=null &&
+      mapBounds.contains([p.centroid_lat,p.centroid_lng])
+    );
+  },[filtradas,mapBounds]);
+
+  const visiblesMapa = useMemo(()=>{
+    if(enViewport.length<=MAX_MARCADORES_VISIBLES) return enViewport;
+    const paso = Math.ceil(enViewport.length/MAX_MARCADORES_VISIBLES);
+    return enViewport.filter((_,i)=>i%paso===0);
+  },[enViewport]);
+
+  const hayRecorte = enViewport.length>visiblesMapa.length;
+
   const filtradasLista = useMemo(()=>{
     if(!filtroLista.trim()) return parcelas;
     const q=filtroLista.toLowerCase();
@@ -215,6 +253,16 @@ export default function ParcelasAdminPage() {
       return nombre.includes(q)||(p.curp?.toLowerCase().includes(q))||(p.correo?.toLowerCase().includes(q))||String(p.up_id).includes(q)||(p.up_name?.toLowerCase().includes(q));
     });
   },[parcelas,filtroLista]);
+
+  // Paginación de la tabla — antes se montaban hasta ~9,500 <tr> de golpe.
+  const FILAS_POR_PAGINA = 100;
+  const [paginaLista, setPaginaLista] = useState(1);
+  useEffect(()=>{ setPaginaLista(1); },[filtroLista,parcelas]);
+  const totalPaginasLista = Math.max(1, Math.ceil(filtradasLista.length/FILAS_POR_PAGINA));
+  const filtradasListaPagina = useMemo(()=>{
+    const inicio=(paginaLista-1)*FILAS_POR_PAGINA;
+    return filtradasLista.slice(inicio, inicio+FILAS_POR_PAGINA);
+  },[filtradasLista,paginaLista]);
 
   const municipiosDisponibles = useMemo(()=>{
     const base=filtroEstado?municipiosMapa.filter(m=>m.state_name===filtroEstado):municipiosMapa;
@@ -424,11 +472,17 @@ export default function ParcelasAdminPage() {
                 </div>
               </div>
             )}
-            <MapContainer center={[24.8083,-107.3941]} zoom={6} style={{height:'100%',width:'100%'}} zoomControl>
+            {hayRecorte && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-sm shadow-lg rounded-full px-4 py-1.5 text-[11px] font-semibold text-gray-600 border border-gray-100">
+                Mostrando {visiblesMapa.length.toLocaleString('es-MX')} de {enViewport.length.toLocaleString('es-MX')} en esta área — acércate para ver el resto
+              </div>
+            )}
+            <MapContainer center={[24.8083,-107.3941]} zoom={6} style={{height:'100%',width:'100%'}} zoomControl preferCanvas>
               <FlyToController target={flyTarget}/>
+              <ViewportTracker onChange={onViewportChange}/>
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="ESRI"/>
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution="" opacity={0.65}/>
-              {filtradas.map(p=>{
+              {mapZoom>=ZOOM_MIN_POLIGONOS && visiblesMapa.map(p=>{
                 const pos=parsePoly(p.geom_geojson);
                 const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
                 if(!pos) return null;
@@ -436,7 +490,7 @@ export default function ParcelasAdminPage() {
                   pathOptions={{color,fillColor:color,fillOpacity:0.28,weight:2,opacity:0.9}}
                   eventHandlers={{click:()=>setFlyTarget([p.centroid_lat,p.centroid_lng])}}/>;
               })}
-              {filtradas.map(p=>{
+              {visiblesMapa.map(p=>{
                 if(!parsePoly(p.geom_geojson)) return null;
                 const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
                 const nombre=[p.nombres,p.apellido_paterno,p.apellido_materno].filter(Boolean).join(' ');
@@ -524,13 +578,13 @@ export default function ParcelasAdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {filtradasLista.map((p,idx)=>{
+                    {filtradasListaPagina.map((p,idx)=>{
                       const nombre=[p.nombres,p.apellido_paterno,p.apellido_materno].filter(Boolean).join(' ');
                       const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
                       const ha=p.area_ha_calc!=null?parseFloat(String(p.area_ha_calc)):null;
                       return (
                         <tr key={p.up_id} className="hover:bg-[#f9fdfb] transition-colors">
-                          <td className="py-2 pl-4 pr-2 text-[10px] text-gray-300 font-mono">{idx+1}</td>
+                          <td className="py-2 pl-4 pr-2 text-[10px] text-gray-300 font-mono">{(paginaLista-1)*FILAS_POR_PAGINA+idx+1}</td>
                           <td className="py-2 px-3 whitespace-nowrap">
                             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border"
                               style={{color,background:color+'12',borderColor:color+'30'}}>
@@ -573,6 +627,23 @@ export default function ParcelasAdminPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {!loading && filtradasLista.length>FILAS_POR_PAGINA && (
+              <div className="flex-shrink-0 px-3 py-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                <span className="text-[10.5px] text-gray-400 font-medium">
+                  Página {paginaLista} de {totalPaginasLista}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={()=>setPaginaLista(p=>Math.max(1,p-1))} disabled={paginaLista<=1}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    Anterior
+                  </button>
+                  <button onClick={()=>setPaginaLista(p=>Math.min(totalPaginasLista,p+1))} disabled={paginaLista>=totalPaginasLista}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    Siguiente
+                  </button>
+                </div>
               </div>
             )}
           </div>
