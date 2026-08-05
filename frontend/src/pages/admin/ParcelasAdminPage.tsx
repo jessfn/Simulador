@@ -54,7 +54,14 @@ function parsePoly(geom: any): [number,number][]|null {
   return ring.map(([ln,la]:number[])=>[la,ln]);
 }
 
+// Cache de íconos por color — antes se creaba un L.divIcon (con su SVG)
+// NUEVO por cada una de las ~9,500 parcelas en cada render, saturando el
+// hilo principal. Solo hay ~12 colores posibles (PALETA), así que se
+// reutiliza la misma instancia de ícono por color.
+const flagIconCache = new globalThis.Map<string, L.DivIcon>();
 function makeFlag(color: string) {
+  const cached = flagIconCache.get(color);
+  if (cached) return cached;
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 22 26" style="overflow:visible;display:block">
     <line x1="5" y1="0" x2="5" y2="22" stroke="white" stroke-width="5" stroke-linecap="round"/>
     <polygon points="5,0 20,6 5,12" fill="white" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
@@ -63,7 +70,9 @@ function makeFlag(color: string) {
     <polygon points="5,0 19,6 5,12" fill="${color}"/>
     <circle cx="5" cy="22" r="3.5" fill="${color}"/>
   </svg>`;
-  return L.divIcon({ html:svg, className:'', iconSize:[22,26], iconAnchor:[5,26], popupAnchor:[2,-28] });
+  const icon = L.divIcon({ html:svg, className:'', iconSize:[22,26], iconAnchor:[5,26], popupAnchor:[2,-28] });
+  flagIconCache.set(color, icon);
+  return icon;
 }
 
 function FlyToController({ target }: { target:[number,number]|null }) {
@@ -499,7 +508,16 @@ export default function ParcelasAdminPage() {
                   eventHandlers={{click:()=>setFlyTarget([p.centroid_lat,p.centroid_lng])}}/>;
               })}
               {/* Todas las parcelas, agrupadas en clusters — rápido incluso con miles de puntos */}
-              <MarkerClusterGroup chunkedLoading maxClusterRadius={60} spiderfyOnMaxZoom disableClusteringAtZoom={ZOOM_MIN_POLIGONOS+2}>
+              <MarkerClusterGroup
+                chunkedLoading
+                chunkInterval={50}
+                chunkDelay={10}
+                maxClusterRadius={80}
+                spiderfyOnMaxZoom={false}
+                removeOutsideVisibleBounds
+                animate={false}
+                disableClusteringAtZoom={ZOOM_MIN_POLIGONOS+2}
+              >
                 {filtradas.map(p=>{
                   if(p.centroid_lat==null||p.centroid_lng==null) return null;
                   const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
