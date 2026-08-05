@@ -1,21 +1,19 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import {
   Search, SlidersHorizontal, X, ChevronDown, MapPin, Layers, RefreshCw,
   Map as MapIcon, List, Trash2, AlertTriangle, CheckCircle2, Sprout,
   Users, BarChart3,
 } from 'lucide-react';
 
-const LEAFLET_SELECT = `
-  .leaflet-popup-content { user-select:text!important;-webkit-user-select:text!important;cursor:auto!important; }
-  .leaflet-popup-content * { user-select:text!important;-webkit-user-select:text!important; }
-  .leaflet-container { cursor:crosshair; }
-`;
+mapboxgl.accessToken = [
+  'pk.eyJ1IjoibWFyaWVsMDgi',
+  'LCJhIjoiY202emV3MDhhMDN6Y',
+  'jJscHVqaXExdGpjMyJ9.F_ACoKzS_4e280lD0XndEw',
+].join('');
+
+const ZOOM_MIN_POLIGONOS = 10;
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const HDR  = () => ({ Authorization: `Bearer ${localStorage.getItem('simac_token')}` });
@@ -47,97 +45,56 @@ interface Parcela {
   cultivo_principal: string | null;
 }
 
-function parsePoly(geom: any): [number,number][]|null {
-  if (!geom?.coordinates) return null;
-  const ring: number[][] = geom.type==='MultiPolygon' ? geom.coordinates[0]?.[0] : geom.coordinates[0];
-  if (!ring||ring.length<3) return null;
-  return ring.map(([ln,la]:number[])=>[la,ln]);
-}
-
-// Cache de íconos por color — antes se creaba un L.divIcon (con su SVG)
-// NUEVO por cada una de las ~9,500 parcelas en cada render, saturando el
-// hilo principal. Solo hay ~12 colores posibles (PALETA), así que se
-// reutiliza la misma instancia de ícono por color.
-const flagIconCache = new globalThis.Map<string, L.DivIcon>();
-function makeFlag(color: string) {
-  const cached = flagIconCache.get(color);
-  if (cached) return cached;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 22 26" style="overflow:visible;display:block">
-    <line x1="5" y1="0" x2="5" y2="22" stroke="white" stroke-width="5" stroke-linecap="round"/>
-    <polygon points="5,0 20,6 5,12" fill="white" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
-    <circle cx="5" cy="22" r="5.5" fill="white"/>
-    <line x1="5" y1="0" x2="5" y2="22" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
-    <polygon points="5,0 19,6 5,12" fill="${color}"/>
-    <circle cx="5" cy="22" r="3.5" fill="${color}"/>
-  </svg>`;
-  const icon = L.divIcon({ html:svg, className:'', iconSize:[22,26], iconAnchor:[5,26], popupAnchor:[2,-28] });
-  flagIconCache.set(color, icon);
-  return icon;
-}
-
-function FlyToController({ target }: { target:[number,number]|null }) {
-  const map = useMap();
-  useEffect(()=>{ if(target) map.flyTo(target,15,{animate:true,duration:1.0}); },[target]);
-  return null;
-}
-
-// Reporta límites y zoom actuales del mapa para renderizar solo lo visible
-// en vez de las ~9,500 parcelas de golpe (lo que trababa el navegador).
-function ViewportTracker({ onChange }: { onChange:(bounds:L.LatLngBounds, zoom:number)=>void }) {
-  const map = useMapEvents({
-    moveend: () => onChange(map.getBounds(), map.getZoom()),
-    zoomend: () => onChange(map.getBounds(), map.getZoom()),
-  });
-  useEffect(()=>{ onChange(map.getBounds(), map.getZoom()); }, []);
-  return null;
-}
-
-const MAX_MARCADORES_VISIBLES = 500;
-const ZOOM_MIN_POLIGONOS = 10;
-
 function fmtHa(n:number):string {
   if(n>=1_000_000) return `${(n/1_000_000).toFixed(1)}M`;
   if(n>=10_000)    return `${(n/1_000).toFixed(1)}k`;
   return n.toLocaleString('es-MX',{maximumFractionDigits:0});
 }
 
-function PopupContent({ p, nombre, color }: { p:Parcela; nombre:string; color:string }) {
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string));
+}
+
+// Popup de Mapbox usa HTML plano (no React) — se construye el mismo
+// diseño que antes tenía PopupContent, escapando todo dato dinámico.
+function buildPopupHTML(p: Parcela, nombre: string, color: string): string {
   const ha = p.area_ha_calc!=null ? parseFloat(String(p.area_ha_calc)) : null;
-  return (
-    <div style={{fontFamily:'system-ui,sans-serif',padding:'2px 0',minWidth:230,userSelect:'text',WebkitUserSelect:'text'}}>
-      <div style={{display:'flex',alignItems:'flex-start',gap:9,marginBottom:10,paddingBottom:10,borderBottom:'1px solid #f0f0f0'}}>
-        <div style={{width:34,height:34,borderRadius:10,background:color+'18',border:`1.5px solid ${color}50`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1}}>
-          <div style={{width:12,height:12,borderRadius:'50%',background:color}}/>
+  const estadoBg = p.estado_validacion==='activo'?'#dcfce7':p.estado_validacion==='pendiente'?'#fef9c3':'#fee2e2';
+  const estadoColor = p.estado_validacion==='activo'?'#15803d':p.estado_validacion==='pendiente'?'#a16207':'#b91c1c';
+  const fecha = p.created_at?new Date(p.created_at).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'}):'—';
+  return `
+    <div style="font-family:system-ui,sans-serif;padding:2px 0;min-width:230px;user-select:text;-webkit-user-select:text;">
+      <div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0;">
+        <div style="width:34px;height:34px;border-radius:10px;background:${color}18;border:1.5px solid ${color}50;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+          <div style="width:12px;height:12px;border-radius:50%;background:${color};"></div>
         </div>
-        <div style={{minWidth:0,flex:1}}>
-          <div style={{fontWeight:800,fontSize:13,color:'#111827',lineHeight:1.25,marginBottom:3}}>{nombre}</div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:'3px 8px'}}>
-            {p.curp&&<span style={{fontSize:9.5,fontFamily:'monospace',color:'#6b7280',background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:4,padding:'1px 5px'}}>{p.curp}</span>}
-            <span style={{fontSize:9.5,fontFamily:'monospace',color,background:color+'12',border:`1px solid ${color}30`,borderRadius:4,padding:'1px 5px',fontWeight:700}}>UP-{p.up_id}</span>
+        <div style="min-width:0;flex:1;">
+          <div style="font-weight:800;font-size:13px;color:#111827;line-height:1.25;margin-bottom:3px;">${escapeHtml(nombre)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:3px 8px;">
+            ${p.curp?`<span style="font-size:9.5px;font-family:monospace;color:#6b7280;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:1px 5px;">${escapeHtml(p.curp)}</span>`:''}
+            <span style="font-size:9.5px;font-family:monospace;color:${color};background:${color}12;border:1px solid ${color}30;border-radius:4px;padding:1px 5px;font-weight:700;">UP-${p.up_id}</span>
           </div>
-          <div style={{fontSize:10.5,color:'#9ca3af',marginTop:4}}>{p.up_name||'Sin nombre'}</div>
+          <div style="font-size:10.5px;color:#9ca3af;margin-top:4px;">${escapeHtml(p.up_name||'Sin nombre')}</div>
         </div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px 16px'}}>
-        <div><div style={{color:'#9ca3af',fontWeight:700,textTransform:'uppercase',fontSize:9,letterSpacing:'0.06em',marginBottom:2}}>Superficie</div>
-          <div style={{color:'#111827',fontWeight:800,fontSize:15}}>{ha!=null?`${ha.toFixed(2)} ha`:'—'}</div></div>
-        <div><div style={{color:'#9ca3af',fontWeight:700,textTransform:'uppercase',fontSize:9,letterSpacing:'0.06em',marginBottom:2}}>Cultivo</div>
-          <div style={{color:'#374151',fontWeight:600,fontSize:12}}>{p.cultivo_principal||'—'}</div></div>
-        <div><div style={{color:'#9ca3af',fontWeight:700,textTransform:'uppercase',fontSize:9,letterSpacing:'0.06em',marginBottom:2}}>Municipio</div>
-          <div style={{color:'#374151',fontWeight:600,fontSize:12}}>{p.municipality_name||'—'}</div></div>
-        <div><div style={{color:'#9ca3af',fontWeight:700,textTransform:'uppercase',fontSize:9,letterSpacing:'0.06em',marginBottom:2}}>Estado</div>
-          <div style={{color:'#374151',fontWeight:600,fontSize:12}}>{p.state_name||'—'}</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
+        <div><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Superficie</div>
+          <div style="color:#111827;font-weight:800;font-size:15px;">${ha!=null?`${ha.toFixed(2)} ha`:'—'}</div></div>
+        <div><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Cultivo</div>
+          <div style="color:#374151;font-weight:600;font-size:12px;">${escapeHtml(p.cultivo_principal||'—')}</div></div>
+        <div><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Municipio</div>
+          <div style="color:#374151;font-weight:600;font-size:12px;">${escapeHtml(p.municipality_name||'—')}</div></div>
+        <div><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Estado</div>
+          <div style="color:#374151;font-weight:600;font-size:12px;">${escapeHtml(p.state_name||'—')}</div></div>
       </div>
-      <div style={{marginTop:10,paddingTop:9,borderTop:'1px solid #f0f0f0',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span style={{fontSize:10,color:'#9ca3af'}}>{p.created_at?new Date(p.created_at).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'}):'—'}</span>
-        <span style={{fontSize:9,padding:'2px 8px',borderRadius:20,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em',
-          background:p.estado_validacion==='activo'?'#dcfce7':p.estado_validacion==='pendiente'?'#fef9c3':'#fee2e2',
-          color:p.estado_validacion==='activo'?'#15803d':p.estado_validacion==='pendiente'?'#a16207':'#b91c1c'}}>
-          {p.estado_validacion}
+      <div style="margin-top:10px;padding-top:9px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:10px;color:#9ca3af;">${fecha}</span>
+        <span style="font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:${estadoBg};color:${estadoColor};">
+          ${escapeHtml(p.estado_validacion)}
         </span>
       </div>
     </div>
-  );
+  `;
 }
 
 function ModalEliminar({ parcela, onConfirm, onCancel, loading }: {
@@ -206,18 +163,19 @@ export default function ParcelasAdminPage() {
   const [filtroEstado,    setFiltroEstado]    = useState('');
   const [filtroMunicipio, setFiltroMunicipio] = useState('');
   const [panelOpen,       setPanelOpen]       = useState(true);
-  const [flyTarget,       setFlyTarget]       = useState<[number,number]|null>(null);
   const [activeTab,       setActiveTab]       = useState<'mapa'|'lista'>('mapa');
   const [filtroLista,     setFiltroLista]     = useState('');
   const [parcelaAEliminar, setParcelaAEliminar] = useState<Parcela|null>(null);
   const [eliminando,       setEliminando]       = useState(false);
   const [toast,            setToast]            = useState<{msg:string;tipo:'ok'|'err'}|null>(null);
   const toastTimer = useRef<number|null>(null);
-  const [mapBounds, setMapBounds] = useState<L.LatLngBounds|null>(null);
-  const [mapZoom,   setMapZoom]   = useState(6);
-  const onViewportChange = useCallback((bounds:L.LatLngBounds, zoom:number)=>{
-    setMapBounds(bounds); setMapZoom(zoom);
-  },[]);
+
+  const mapContainer  = useRef<HTMLDivElement|null>(null);
+  const map            = useRef<mapboxgl.Map|null>(null);
+  const mapReady        = useRef(false);
+  const mapInitialized = useRef(false);
+  const popupRef       = useRef<mapboxgl.Popup|null>(null);
+  const parcelasPorId  = useRef<globalThis.Map<number,{p:Parcela;nombre:string;color:string}>>(new globalThis.Map());
 
   function showToast(msg:string, tipo:'ok'|'err') {
     setToast({msg,tipo});
@@ -238,29 +196,32 @@ export default function ParcelasAdminPage() {
     return true;
   }),[parcelas,filtroEstado,filtroMunicipio]);
 
-  // Los marcadores se agrupan en clusters (react-leaflet-cluster), así que
-  // TODAS las parcelas se muestran siempre — el clustering se encarga de
-  // que sea rápido incluso con miles de puntos.
-  //
-  // Los polígonos (la forma real de la parcela) sí siguen acotados por
-  // viewport + zoom + tope duro, porque dibujar la geometría vectorial
-  // completa de miles de parcelas a la vez es costoso y un cluster no
-  // aplica a polígonos.
-  const poligonosEnViewport = useMemo(()=>{
-    if(!mapBounds) return filtradas;
-    return filtradas.filter(p=>
-      p.centroid_lat!=null && p.centroid_lng!=null &&
-      mapBounds.contains([p.centroid_lat,p.centroid_lng])
-    );
-  },[filtradas,mapBounds]);
+  // Construye los GeoJSON que consume Mapbox (puntos para clustering nativo
+  // + polígonos para el contorno real). Mapbox GL renderiza en GPU, así
+  // que a diferencia de Leaflet no hace falta recortar manualmente por
+  // viewport: el clustering de puntos y el minzoom de la capa de polígonos
+  // ya evitan dibujar de más.
+  const puntosGeoJSON = useMemo(():GeoJSON.FeatureCollection=>({
+    type:'FeatureCollection',
+    features: filtradas
+      .filter(p=>p.centroid_lat!=null && p.centroid_lng!=null)
+      .map(p=>({
+        type:'Feature',
+        geometry:{ type:'Point', coordinates:[p.centroid_lng,p.centroid_lat] },
+        properties:{ up_id:p.up_id, color: colorPorEstado.get(p.state_name||'')||'#2563eb' },
+      })),
+  }),[filtradas,colorPorEstado]);
 
-  const poligonosVisibles = useMemo(()=>{
-    if(poligonosEnViewport.length<=MAX_MARCADORES_VISIBLES) return poligonosEnViewport;
-    const paso = Math.ceil(poligonosEnViewport.length/MAX_MARCADORES_VISIBLES);
-    return poligonosEnViewport.filter((_,i)=>i%paso===0);
-  },[poligonosEnViewport]);
-
-  const hayRecortePoligonos = mapZoom>=ZOOM_MIN_POLIGONOS && poligonosEnViewport.length>poligonosVisibles.length;
+  const poligonosGeoJSON = useMemo(():GeoJSON.FeatureCollection=>({
+    type:'FeatureCollection',
+    features: filtradas
+      .filter(p=>p.geom_geojson?.coordinates)
+      .map(p=>({
+        type:'Feature',
+        geometry: p.geom_geojson,
+        properties:{ up_id:p.up_id, color: colorPorEstado.get(p.state_name||'')||'#2563eb' },
+      })),
+  }),[filtradas,colorPorEstado]);
 
   const filtradasLista = useMemo(()=>{
     if(!filtroLista.trim()) return parcelas;
@@ -318,12 +279,140 @@ export default function ParcelasAdminPage() {
   }
 
   useEffect(()=>{cargar();},[]);
+
+  // Índice por up_id para resolver el popup al hacer click, sin depender
+  // de closures viejas dentro de los listeners de Mapbox.
   useEffect(()=>{
-    const el=document.createElement('style');
-    el.id='leaflet-text-select';el.textContent=LEAFLET_SELECT;
-    document.head.appendChild(el);
-    return()=>{document.getElementById('leaflet-text-select')?.remove();};
+    const idx = new globalThis.Map<number,{p:Parcela;nombre:string;color:string}>();
+    filtradas.forEach(p=>{
+      const color = colorPorEstado.get(p.state_name||'')||'#2563eb';
+      const nombre = [p.nombres,p.apellido_paterno,p.apellido_materno].filter(Boolean).join(' ');
+      idx.set(p.up_id,{p,nombre,color});
+    });
+    parcelasPorId.current = idx;
+  },[filtradas,colorPorEstado]);
+
+  const flyToParcela = useCallback((up_id:number)=>{
+    const entry = parcelasPorId.current.get(up_id);
+    if(!entry || !map.current) return;
+    const coords: [number,number] = [entry.p.centroid_lng, entry.p.centroid_lat];
+    map.current.flyTo({ center:coords, zoom:Math.max(map.current.getZoom(),15), duration:900 });
+    if(popupRef.current) popupRef.current.remove();
+    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'300px', offset:12 })
+      .setLngLat(coords)
+      .setHTML(buildPopupHTML(entry.p, entry.nombre, entry.color))
+      .addTo(map.current);
   },[]);
+
+  const initMap = useCallback(()=>{
+    if(mapInitialized.current || !mapContainer.current) return;
+    mapInitialized.current = true;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      center: [-102.5528, 23.6345],
+      zoom: 5,
+      attributionControl: false,
+    });
+    map.current.addControl(new mapboxgl.NavigationControl({ showCompass:false }), 'bottom-right');
+    map.current.addControl(new mapboxgl.AttributionControl({ compact:true }), 'bottom-left');
+
+    map.current.on('load', ()=>{
+      if(!map.current) return;
+
+      map.current.addSource('parcelas-puntos', {
+        type:'geojson', data: puntosGeoJSON,
+        cluster:true, clusterMaxZoom: ZOOM_MIN_POLIGONOS+1, clusterRadius:60,
+      });
+      map.current.addSource('parcelas-poligonos', { type:'geojson', data: poligonosGeoJSON });
+
+      // Contorno real de la parcela — solo visible al acercarse
+      map.current.addLayer({
+        id:'parcelas-fill', type:'fill', source:'parcelas-poligonos',
+        minzoom: ZOOM_MIN_POLIGONOS,
+        paint:{ 'fill-color':['get','color'], 'fill-opacity':0.28 },
+      });
+      map.current.addLayer({
+        id:'parcelas-outline', type:'line', source:'parcelas-poligonos',
+        minzoom: ZOOM_MIN_POLIGONOS,
+        paint:{ 'line-color':['get','color'], 'line-width':2, 'line-opacity':0.9 },
+      });
+
+      // Clusters
+      map.current.addLayer({
+        id:'clusters', type:'circle', source:'parcelas-puntos',
+        filter:['has','point_count'],
+        paint:{
+          'circle-color':['step',['get','point_count'],'#60a5fa',50,'#3b82f6',200,'#1d4ed8',1000,'#1e3a8a'],
+          'circle-radius':['step',['get','point_count'],16,50,20,200,26,1000,32],
+          'circle-stroke-width':2, 'circle-stroke-color':'#ffffff', 'circle-opacity':0.92,
+        },
+      });
+      map.current.addLayer({
+        id:'cluster-count', type:'symbol', source:'parcelas-puntos',
+        filter:['has','point_count'],
+        layout:{ 'text-field':'{point_count_abbreviated}', 'text-font':['DIN Pro Bold','Arial Unicode MS Bold'], 'text-size':12 },
+        paint:{ 'text-color':'#ffffff' },
+      });
+
+      // Puntos individuales (sin cluster)
+      map.current.addLayer({
+        id:'unclustered-point', type:'circle', source:'parcelas-puntos',
+        filter:['!',['has','point_count']],
+        paint:{
+          'circle-color':['get','color'],
+          'circle-radius':7,
+          'circle-stroke-width':2.5, 'circle-stroke-color':'#ffffff', 'circle-opacity':0.95,
+        },
+      });
+
+      mapReady.current = true;
+
+      // Click en cluster → zoom para expandirlo
+      map.current.on('click','clusters', (e)=>{
+        const feat = map.current!.queryRenderedFeatures(e.point,{layers:['clusters']})[0];
+        if(!feat) return;
+        const clusterId = feat.properties?.cluster_id;
+        const src = map.current!.getSource('parcelas-puntos') as mapboxgl.GeoJSONSource;
+        src.getClusterExpansionZoom(clusterId, (err, zoom)=>{
+          if(err || zoom==null) return;
+          map.current!.easeTo({ center:(feat.geometry as any).coordinates, zoom, duration:600 });
+        });
+      });
+
+      // Click en punto individual → popup + centrar
+      map.current.on('click','unclustered-point', (e)=>{
+        const feat = e.features?.[0];
+        if(!feat) return;
+        flyToParcela(feat.properties?.up_id);
+      });
+
+      // Click en el contorno de la parcela → popup + centrar
+      map.current.on('click','parcelas-fill', (e)=>{
+        const feat = e.features?.[0];
+        if(!feat) return;
+        flyToParcela(feat.properties?.up_id);
+      });
+
+      // Cursor
+      ['clusters','unclustered-point','parcelas-fill'].forEach(layer=>{
+        map.current!.on('mouseenter',layer,()=>{ map.current!.getCanvas().style.cursor='pointer'; });
+        map.current!.on('mouseleave',layer,()=>{ map.current!.getCanvas().style.cursor=''; });
+      });
+    });
+  },[puntosGeoJSON,poligonosGeoJSON,flyToParcela]);
+
+  useEffect(()=>{ initMap(); },[initMap]);
+
+  // Actualiza las fuentes cuando cambian los filtros — sin recrear el mapa.
+  useEffect(()=>{
+    if(!mapReady.current || !map.current) return;
+    const srcPuntos = map.current.getSource('parcelas-puntos') as mapboxgl.GeoJSONSource|undefined;
+    const srcPoligonos = map.current.getSource('parcelas-poligonos') as mapboxgl.GeoJSONSource|undefined;
+    srcPuntos?.setData(puntosGeoJSON);
+    srcPoligonos?.setData(poligonosGeoJSON);
+  },[puntosGeoJSON,poligonosGeoJSON]);
 
   const hayFiltros=!!(filtroEstado||filtroMunicipio);
 
@@ -489,50 +578,7 @@ export default function ParcelasAdminPage() {
                 </div>
               </div>
             )}
-            {hayRecortePoligonos && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-sm shadow-lg rounded-full px-4 py-1.5 text-[11px] font-semibold text-gray-600 border border-gray-100">
-                Mostrando el contorno de {poligonosVisibles.length.toLocaleString('es-MX')} de {poligonosEnViewport.length.toLocaleString('es-MX')} parcelas en esta área — acércate para ver el resto
-              </div>
-            )}
-            <MapContainer center={[24.8083,-107.3941]} zoom={6} style={{height:'100%',width:'100%'}} zoomControl preferCanvas>
-              <FlyToController target={flyTarget}/>
-              <ViewportTracker onChange={onViewportChange}/>
-              <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="ESRI"/>
-              <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution="" opacity={0.65}/>
-              {mapZoom>=ZOOM_MIN_POLIGONOS && poligonosVisibles.map(p=>{
-                const pos=parsePoly(p.geom_geojson);
-                const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
-                if(!pos) return null;
-                return <Polygon key={`poly-${p.up_id}`} positions={pos}
-                  pathOptions={{color,fillColor:color,fillOpacity:0.28,weight:2,opacity:0.9}}
-                  eventHandlers={{click:()=>setFlyTarget([p.centroid_lat,p.centroid_lng])}}/>;
-              })}
-              {/* Todas las parcelas, agrupadas en clusters — rápido incluso con miles de puntos */}
-              <MarkerClusterGroup
-                chunkedLoading
-                chunkInterval={50}
-                chunkDelay={10}
-                maxClusterRadius={80}
-                spiderfyOnMaxZoom={false}
-                removeOutsideVisibleBounds
-                animate={false}
-                disableClusteringAtZoom={ZOOM_MIN_POLIGONOS+2}
-              >
-                {filtradas.map(p=>{
-                  if(p.centroid_lat==null||p.centroid_lng==null) return null;
-                  const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
-                  const nombre=[p.nombres,p.apellido_paterno,p.apellido_materno].filter(Boolean).join(' ');
-                  return (
-                    <Marker key={`flag-${p.up_id}`} position={[p.centroid_lat,p.centroid_lng]}
-                      icon={makeFlag(color)} eventHandlers={{click:()=>setFlyTarget([p.centroid_lat,p.centroid_lng])}}>
-                      <Popup minWidth={230} maxWidth={300}>
-                        <PopupContent p={p} nombre={nombre} color={color}/>
-                      </Popup>
-                    </Marker>
-                  );
-                })}
-              </MarkerClusterGroup>
-            </MapContainer>
+            <div ref={mapContainer} style={{height:'100%',width:'100%'}}/>
           </div>
         </div>
       )}
