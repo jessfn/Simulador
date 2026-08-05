@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import {
   Search, SlidersHorizontal, X, ChevronDown, MapPin, Layers, RefreshCw,
   Map as MapIcon, List, Trash2, AlertTriangle, CheckCircle2, Sprout,
@@ -226,10 +229,15 @@ export default function ParcelasAdminPage() {
     return true;
   }),[parcelas,filtroEstado,filtroMunicipio]);
 
-  // Solo se renderizan en el mapa las parcelas dentro del área visible
-  // actual (viewport), con un tope duro — antes se dibujaban las ~9,500 de
-  // golpe sin importar zoom/posición, lo que trababa el navegador.
-  const enViewport = useMemo(()=>{
+  // Los marcadores se agrupan en clusters (react-leaflet-cluster), así que
+  // TODAS las parcelas se muestran siempre — el clustering se encarga de
+  // que sea rápido incluso con miles de puntos.
+  //
+  // Los polígonos (la forma real de la parcela) sí siguen acotados por
+  // viewport + zoom + tope duro, porque dibujar la geometría vectorial
+  // completa de miles de parcelas a la vez es costoso y un cluster no
+  // aplica a polígonos.
+  const poligonosEnViewport = useMemo(()=>{
     if(!mapBounds) return filtradas;
     return filtradas.filter(p=>
       p.centroid_lat!=null && p.centroid_lng!=null &&
@@ -237,13 +245,13 @@ export default function ParcelasAdminPage() {
     );
   },[filtradas,mapBounds]);
 
-  const visiblesMapa = useMemo(()=>{
-    if(enViewport.length<=MAX_MARCADORES_VISIBLES) return enViewport;
-    const paso = Math.ceil(enViewport.length/MAX_MARCADORES_VISIBLES);
-    return enViewport.filter((_,i)=>i%paso===0);
-  },[enViewport]);
+  const poligonosVisibles = useMemo(()=>{
+    if(poligonosEnViewport.length<=MAX_MARCADORES_VISIBLES) return poligonosEnViewport;
+    const paso = Math.ceil(poligonosEnViewport.length/MAX_MARCADORES_VISIBLES);
+    return poligonosEnViewport.filter((_,i)=>i%paso===0);
+  },[poligonosEnViewport]);
 
-  const hayRecorte = enViewport.length>visiblesMapa.length;
+  const hayRecortePoligonos = mapZoom>=ZOOM_MIN_POLIGONOS && poligonosEnViewport.length>poligonosVisibles.length;
 
   const filtradasLista = useMemo(()=>{
     if(!filtroLista.trim()) return parcelas;
@@ -472,9 +480,9 @@ export default function ParcelasAdminPage() {
                 </div>
               </div>
             )}
-            {hayRecorte && (
+            {hayRecortePoligonos && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-sm shadow-lg rounded-full px-4 py-1.5 text-[11px] font-semibold text-gray-600 border border-gray-100">
-                Mostrando {visiblesMapa.length.toLocaleString('es-MX')} de {enViewport.length.toLocaleString('es-MX')} en esta área — acércate para ver el resto
+                Mostrando el contorno de {poligonosVisibles.length.toLocaleString('es-MX')} de {poligonosEnViewport.length.toLocaleString('es-MX')} parcelas en esta área — acércate para ver el resto
               </div>
             )}
             <MapContainer center={[24.8083,-107.3941]} zoom={6} style={{height:'100%',width:'100%'}} zoomControl preferCanvas>
@@ -482,7 +490,7 @@ export default function ParcelasAdminPage() {
               <ViewportTracker onChange={onViewportChange}/>
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="ESRI"/>
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution="" opacity={0.65}/>
-              {mapZoom>=ZOOM_MIN_POLIGONOS && visiblesMapa.map(p=>{
+              {mapZoom>=ZOOM_MIN_POLIGONOS && poligonosVisibles.map(p=>{
                 const pos=parsePoly(p.geom_geojson);
                 const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
                 if(!pos) return null;
@@ -490,19 +498,22 @@ export default function ParcelasAdminPage() {
                   pathOptions={{color,fillColor:color,fillOpacity:0.28,weight:2,opacity:0.9}}
                   eventHandlers={{click:()=>setFlyTarget([p.centroid_lat,p.centroid_lng])}}/>;
               })}
-              {visiblesMapa.map(p=>{
-                if(!parsePoly(p.geom_geojson)) return null;
-                const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
-                const nombre=[p.nombres,p.apellido_paterno,p.apellido_materno].filter(Boolean).join(' ');
-                return (
-                  <Marker key={`flag-${p.up_id}`} position={[p.centroid_lat,p.centroid_lng]}
-                    icon={makeFlag(color)} eventHandlers={{click:()=>setFlyTarget([p.centroid_lat,p.centroid_lng])}}>
-                    <Popup minWidth={230} maxWidth={300}>
-                      <PopupContent p={p} nombre={nombre} color={color}/>
-                    </Popup>
-                  </Marker>
-                );
-              })}
+              {/* Todas las parcelas, agrupadas en clusters — rápido incluso con miles de puntos */}
+              <MarkerClusterGroup chunkedLoading maxClusterRadius={60} spiderfyOnMaxZoom disableClusteringAtZoom={ZOOM_MIN_POLIGONOS+2}>
+                {filtradas.map(p=>{
+                  if(p.centroid_lat==null||p.centroid_lng==null) return null;
+                  const color=colorPorEstado.get(p.state_name||'')||'#2563eb';
+                  const nombre=[p.nombres,p.apellido_paterno,p.apellido_materno].filter(Boolean).join(' ');
+                  return (
+                    <Marker key={`flag-${p.up_id}`} position={[p.centroid_lat,p.centroid_lng]}
+                      icon={makeFlag(color)} eventHandlers={{click:()=>setFlyTarget([p.centroid_lat,p.centroid_lng])}}>
+                      <Popup minWidth={230} maxWidth={300}>
+                        <PopupContent p={p} nombre={nombre} color={color}/>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </MarkerClusterGroup>
             </MapContainer>
           </div>
         </div>
