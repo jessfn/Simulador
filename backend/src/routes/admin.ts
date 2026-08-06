@@ -611,7 +611,7 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
         up.posible_traslape_producer_id,
         up.traslape_revisado,
         ciclo.ciclo_activo,
-        COALESCE(ciclo.cultivo_principal, 'Maíz') AS cultivo_principal,
+        ciclo.cultivo_principal,
         ciclo.variedad,
         pt.nombres AS traslape_productor_nombre,
         pt.apellido_paterno AS traslape_productor_apellido,
@@ -642,7 +642,7 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
       LEFT JOIN LATERAL (
         SELECT
           CONCAT(c.cycle_type, ' ', c.cycle_year) AS ciclo_activo,
-          COALESCE(cc.tipo_maiz, 'Maíz') AS cultivo_principal,
+          CASE cc.crop WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.crop) END AS cultivo_principal,
           COALESCE(cv.label, cc.variety_id, '') AS variedad
         FROM cycle c
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
@@ -1320,13 +1320,13 @@ router.get('/parcelas', authMiddleware, async (req: any, res: Response): Promise
         p.correo,
         p.estado_validacion,
         ciclo.ciclo_activo,
-        COALESCE(ciclo.cultivo_principal, 'Maíz') AS cultivo_principal
+        ciclo.cultivo_principal
       FROM up u
       JOIN producer p ON p.producer_id = u.producer_id
       LEFT JOIN LATERAL (
         SELECT
           CONCAT(c.cycle_type, ' ', c.cycle_year) AS ciclo_activo,
-          COALESCE(cc.tipo_maiz, 'Maíz')           AS cultivo_principal
+          CASE cc.crop WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.crop) END AS cultivo_principal
         FROM cycle c
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
         WHERE c.up_id = u.up_id
