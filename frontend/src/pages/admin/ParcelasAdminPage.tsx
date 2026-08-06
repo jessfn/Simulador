@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import {
@@ -63,12 +64,12 @@ function buildPopupHTML(p: Parcela, nombre: string, color: string): string {
   const estadoColor = p.estado_validacion==='activo'?'#15803d':p.estado_validacion==='pendiente'?'#a16207':'#b91c1c';
   const fecha = p.created_at?new Date(p.created_at).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'}):'—';
   return `
-    <div style="font-family:system-ui,sans-serif;padding:2px 0;min-width:230px;user-select:text;-webkit-user-select:text;">
+    <div style="font-family:system-ui,sans-serif;padding:2px 0;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text;">
       <div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0;">
         <div style="width:34px;height:34px;border-radius:10px;background:${color}18;border:1.5px solid ${color}50;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
           <div style="width:12px;height:12px;border-radius:50%;background:${color};"></div>
         </div>
-        <div style="min-width:0;flex:1;">
+        <div style="min-width:0;flex:1;overflow-wrap:anywhere;">
           <div style="font-weight:800;font-size:13px;color:#111827;line-height:1.25;margin-bottom:3px;">${escapeHtml(nombre)}</div>
           <div style="display:flex;flex-wrap:wrap;gap:3px 8px;">
             ${p.curp?`<span style="font-size:9.5px;font-family:monospace;color:#6b7280;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:1px 5px;">${escapeHtml(p.curp)}</span>`:''}
@@ -77,19 +78,19 @@ function buildPopupHTML(p: Parcela, nombre: string, color: string): string {
           <div style="font-size:10.5px;color:#9ca3af;margin-top:4px;">${escapeHtml(p.up_name||'Sin nombre')}</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
-        <div><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Superficie</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px 14px;">
+        <div style="min-width:0;"><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Superficie</div>
           <div style="color:#111827;font-weight:800;font-size:15px;">${ha!=null?`${ha.toFixed(2)} ha`:'—'}</div></div>
-        <div><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Cultivo</div>
+        <div style="min-width:0;overflow-wrap:anywhere;"><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Cultivo</div>
           <div style="color:#374151;font-weight:600;font-size:12px;">${escapeHtml(p.cultivo_principal||'—')}</div></div>
-        <div><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Municipio</div>
+        <div style="min-width:0;overflow-wrap:anywhere;"><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Municipio</div>
           <div style="color:#374151;font-weight:600;font-size:12px;">${escapeHtml(p.municipality_name||'—')}</div></div>
-        <div><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Estado</div>
+        <div style="min-width:0;overflow-wrap:anywhere;"><div style="color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;margin-bottom:2px;">Estado</div>
           <div style="color:#374151;font-weight:600;font-size:12px;">${escapeHtml(p.state_name||'—')}</div></div>
       </div>
-      <div style="margin-top:10px;padding-top:9px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">
+      <div style="margin-top:10px;padding-top:9px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
         <span style="font-size:10px;color:#9ca3af;">${fecha}</span>
-        <span style="font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:${estadoBg};color:${estadoColor};">
+        <span style="font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;background:${estadoBg};color:${estadoColor};">
           ${escapeHtml(p.estado_validacion)}
         </span>
       </div>
@@ -298,7 +299,7 @@ export default function ParcelasAdminPage() {
     const coords: [number,number] = [entry.p.centroid_lng, entry.p.centroid_lat];
     map.current.flyTo({ center:coords, zoom:Math.max(map.current.getZoom(),15), duration:900 });
     if(popupRef.current) popupRef.current.remove();
-    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'300px', offset:12 })
+    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'min(300px, 92vw)', offset:12 })
       .setLngLat(coords)
       .setHTML(buildPopupHTML(entry.p, entry.nombre, entry.color))
       .addTo(map.current);
@@ -730,6 +731,17 @@ export default function ParcelasAdminPage() {
         <ModalEliminar parcela={parcelaAEliminar} onConfirm={eliminarParcela} onCancel={()=>setParcelaAEliminar(null)} loading={eliminando}/>
       )}
       {toast&&<Toast msg={toast.msg} tipo={toast.tipo}/>}
+
+      {createPortal(
+        <style>{`
+          .mapboxgl-popup-content { border-radius:16px!important; padding:14px!important; box-shadow:0 8px 32px rgba(0,0,0,.18)!important; border:1px solid rgba(0,0,0,.06)!important; max-width:100%!important; box-sizing:border-box!important; }
+          .mapboxgl-popup-close-button { font-size:18px; right:10px; top:8px; color:#9CA3AF; }
+          .mapboxgl-popup-close-button:hover { color:#374151; background:none; }
+          @media (max-width:420px) {
+            .mapboxgl-popup-content { padding:12px!important; }
+          }
+        `}</style>
+      , document.head)}
     </div>
   );
 }
