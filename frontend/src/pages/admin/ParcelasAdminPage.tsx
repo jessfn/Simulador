@@ -758,16 +758,27 @@ export default function ParcelasAdminPage() {
             padding:16px!important;
             max-width:100%!important;
             box-sizing:border-box!important;
-            background:rgba(255,255,255,0.72)!important;
+            background:rgba(255,255,255,0.92)!important;
             -webkit-backdrop-filter:blur(24px) saturate(180%)!important;
             backdrop-filter:blur(24px) saturate(180%)!important;
             box-shadow:
               0 1px 1px rgba(255,255,255,0.6) inset,
               0 20px 45px -12px rgba(0,0,0,.28),
-              0 0 0 1px rgba(255,255,255,0.5)!important;
+              0 0 0 1px rgba(255,255,255,0.6)!important;
             border:none!important;
           }
-          .mapboxgl-popup-tip { display:none!important; }
+
+          /* Flechita apuntando al punto exacto del mapa — mismo tono que el vidrio */
+          .mapboxgl-popup-tip { filter:drop-shadow(0 3px 3px rgba(0,0,0,.12)); }
+          .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+          .mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
+          .mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip { border-top-color:rgba(255,255,255,0.92)!important; }
+          .mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+          .mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
+          .mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip { border-bottom-color:rgba(255,255,255,0.92)!important; }
+          .mapboxgl-popup-anchor-left .mapboxgl-popup-tip { border-right-color:rgba(255,255,255,0.92)!important; }
+          .mapboxgl-popup-anchor-right .mapboxgl-popup-tip { border-left-color:rgba(255,255,255,0.92)!important; }
+
           .mapboxgl-popup-close-button {
             font-size:0; width:24px; height:24px; top:12px; right:12px;
             display:flex; align-items:center; justify-content:center;
@@ -782,8 +793,18 @@ export default function ParcelasAdminPage() {
           }
           .mapboxgl-popup-close-button:hover { background:rgba(120,120,128,0.28); transform:scale(1.06); }
           .mapboxgl-popup-close-button:active { transform:scale(0.94); }
-          .mapboxgl-popup { animation:popupFadeIn .22s cubic-bezier(.2,.9,.3,1.2); }
-          @keyframes popupFadeIn { from{opacity:0;transform:translateY(4px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+          /* Animación de apertura — crece desde el punto de anclaje, como si "brotara" del mapa */
+          .mapboxgl-popup { animation:popupPop .32s cubic-bezier(.34,1.56,.64,1); }
+          .mapboxgl-popup-anchor-bottom, .mapboxgl-popup-anchor-bottom-left, .mapboxgl-popup-anchor-bottom-right { transform-origin:bottom center; }
+          .mapboxgl-popup-anchor-top, .mapboxgl-popup-anchor-top-left, .mapboxgl-popup-anchor-top-right { transform-origin:top center; }
+          .mapboxgl-popup-anchor-left { transform-origin:center left; }
+          .mapboxgl-popup-anchor-right { transform-origin:center right; }
+          @keyframes popupPop {
+            0%   { opacity:0; transform:scale(.55); }
+            60%  { opacity:1; transform:scale(1.03); }
+            100% { opacity:1; transform:scale(1); }
+          }
           @media (max-width:420px) {
             .mapboxgl-popup-content { padding:14px!important; }
           }
