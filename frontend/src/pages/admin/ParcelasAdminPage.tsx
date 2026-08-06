@@ -61,13 +61,13 @@ function escapeHtml(s: string): string {
 // Íconos monolínea modernos (estilo SF Symbols) para el popup — currentColor
 // para heredar el color de cada bloque.
 const ICONS = {
-  ruler: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15l6-6M8 15l2-2M12 15l2-2M16 15l2-2"/><path d="M2.5 17.5l4-4a2 2 0 0 1 2.8 0l10.2 10.2a2 2 0 0 1 0 2.8l-4 4a2 2 0 0 1-2.8 0L2.5 20.3a2 2 0 0 1 0-2.8Z" transform="translate(-1,-6)"/></svg>`,
-  leaf:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13c0-5 4-9 10-11 1 5-1 9-4 11a7 7 0 0 1-7 7"/><path d="M4 13c3.5 0 6.5 2 8 5"/></svg>`,
-  pin:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-7.58 7-13a7 7 0 1 0-14 0c0 5.42 7 13 7 13Z"/><circle cx="12" cy="9" r="2.5"/></svg>`,
-  flag:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4a1 1 0 0 1 1-1h11.4a1 1 0 0 1 .8 1.6L15 9l3.2 4.4a1 1 0 0 1-.8 1.6H6"/></svg>`,
-  calendar: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 9.5h18"/></svg>`,
-  check: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
-  id:    `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><circle cx="8" cy="12" r="2"/><path d="M13 10h6M13 14h4"/></svg>`,
+  ruler: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15l6-6M8 15l2-2M12 15l2-2M16 15l2-2"/><path d="M2.5 17.5l4-4a2 2 0 0 1 2.8 0l10.2 10.2a2 2 0 0 1 0 2.8l-4 4a2 2 0 0 1-2.8 0L2.5 20.3a2 2 0 0 1 0-2.8Z" transform="translate(-1,-6)"/></svg>`,
+  leaf:  `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13c0-5 4-9 10-11 1 5-1 9-4 11a7 7 0 0 1-7 7"/><path d="M4 13c3.5 0 6.5 2 8 5"/></svg>`,
+  pin:   `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-7.58 7-13a7 7 0 1 0-14 0c0 5.42 7 13 7 13Z"/><circle cx="12" cy="9" r="2.5"/></svg>`,
+  flag:  `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4a1 1 0 0 1 1-1h11.4a1 1 0 0 1 .8 1.6L15 9l3.2 4.4a1 1 0 0 1-.8 1.6H6"/></svg>`,
+  calendar: `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 9.5h18"/></svg>`,
+  check: `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
+  id:    `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><circle cx="8" cy="12" r="2"/><path d="M13 10h6M13 14h4"/></svg>`,
 };
 
 function buildPopupHTML(p: Parcela, nombre: string, color: string): string {
@@ -78,37 +78,37 @@ function buildPopupHTML(p: Parcela, nombre: string, color: string): string {
 
   const campo = (icon:string, label:string, valor:string) => `
     <div style="min-width:0;">
-      <div style="display:flex;align-items:center;gap:4px;color:rgba(60,60,67,0.6);margin-bottom:3px;">
+      <div style="display:flex;align-items:center;gap:3px;color:rgba(60,60,67,0.6);margin-bottom:2px;">
         <span style="display:inline-flex;flex-shrink:0;">${icon}</span>
-        <span style="font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:0.05em;">${label}</span>
+        <span style="font-weight:600;text-transform:uppercase;font-size:7.5px;letter-spacing:0.05em;">${label}</span>
       </div>
-      <div style="color:#1c1c1e;font-weight:600;font-size:12.5px;overflow-wrap:anywhere;">${valor}</div>
+      <div style="color:#1c1c1e;font-weight:600;font-size:11px;overflow-wrap:anywhere;">${valor}</div>
     </div>`;
 
   return `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text;padding-right:22px;">
-      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(60,60,67,0.1);">
-        <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(150deg, ${color}2e, ${color}12);border:1px solid ${color}40;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 1px 1px rgba(255,255,255,0.5);">
-          <div style="width:11px;height:11px;border-radius:50%;background:${color};box-shadow:0 0 0 3px ${color}22;"></div>
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text;padding-right:18px;">
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(60,60,67,0.1);">
+        <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(150deg, ${color}2e, ${color}12);border:1px solid ${color}40;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 1px 1px rgba(255,255,255,0.5);">
+          <div style="width:9px;height:9px;border-radius:50%;background:${color};box-shadow:0 0 0 3px ${color}22;"></div>
         </div>
         <div style="min-width:0;flex:1;overflow-wrap:anywhere;">
-          <div style="font-weight:700;font-size:13.5px;color:#1c1c1e;line-height:1.3;letter-spacing:-0.01em;margin-bottom:4px;">${escapeHtml(nombre)}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px 6px;">
-            ${p.curp?`<span style="display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-family:ui-monospace,monospace;color:rgba(60,60,67,0.7);background:rgba(120,120,128,0.12);border-radius:6px;padding:2px 6px 2px 5px;">${ICONS.id}${escapeHtml(p.curp)}</span>`:''}
-            <span style="font-size:9.5px;font-family:ui-monospace,monospace;color:${color};background:${color}14;border-radius:6px;padding:2px 6px;font-weight:700;">UP-${p.up_id}</span>
+          <div style="font-weight:700;font-size:11.5px;color:#1c1c1e;line-height:1.3;letter-spacing:-0.01em;margin-bottom:3px;">${escapeHtml(nombre)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:3px 5px;">
+            ${p.curp?`<span style="display:inline-flex;align-items:center;gap:3px;font-size:8px;font-family:ui-monospace,monospace;color:rgba(60,60,67,0.7);background:rgba(120,120,128,0.12);border-radius:5px;padding:1.5px 5px 1.5px 4px;">${ICONS.id}${escapeHtml(p.curp)}</span>`:''}
+            <span style="font-size:8px;font-family:ui-monospace,monospace;color:${color};background:${color}14;border-radius:5px;padding:1.5px 5px;font-weight:700;">UP-${p.up_id}</span>
           </div>
-          ${p.up_name?`<div style="font-size:10.5px;color:rgba(60,60,67,0.55);margin-top:5px;">${escapeHtml(p.up_name)}</div>`:''}
+          ${p.up_name?`<div style="font-size:9px;color:rgba(60,60,67,0.55);margin-top:4px;">${escapeHtml(p.up_name)}</div>`:''}
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:11px 14px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:9px 12px;">
         ${campo(ICONS.ruler, 'Superficie', ha!=null?`${ha.toFixed(2)} ha`:'—')}
         ${campo(ICONS.leaf,  'Cultivo',    escapeHtml(p.cultivo_principal||'—'))}
         ${campo(ICONS.pin,   'Municipio',  escapeHtml(p.municipality_name||'—'))}
         ${campo(ICONS.flag,  'Estado',     escapeHtml(p.state_name||'—'))}
       </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(60,60,67,0.1);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-        <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:rgba(60,60,67,0.5);font-weight:500;">${ICONS.calendar}${fecha}</span>
-        <span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;padding:3px 9px 3px 7px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;background:${estadoBg};color:${estadoColor};backdrop-filter:blur(4px);">
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(60,60,67,0.1);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;">
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(60,60,67,0.5);font-weight:500;">${ICONS.calendar}${fecha}</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;padding:2.5px 7px 2.5px 6px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;background:${estadoBg};color:${estadoColor};backdrop-filter:blur(4px);">
           ${p.estado_validacion==='activo'?ICONS.check:''}${escapeHtml(p.estado_validacion)}
         </span>
       </div>
@@ -315,9 +315,12 @@ export default function ParcelasAdminPage() {
     const entry = parcelasPorId.current.get(up_id);
     if(!entry || !map.current) return;
     const coords: [number,number] = [entry.p.centroid_lng, entry.p.centroid_lat];
-    map.current.flyTo({ center:coords, zoom:Math.max(map.current.getZoom(),15), duration:900 });
+    // El popup abre hacia abajo del punto — se desplaza el centro hacia
+    // arriba (offset Y negativo) para que quede espacio debajo y no se
+    // corte contra el borde inferior del mapa.
+    map.current.flyTo({ center:coords, zoom:Math.max(map.current.getZoom(),15), duration:900, offset:[0,-140] });
     if(popupRef.current) popupRef.current.remove();
-    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'min(300px, 92vw)', offset:12 })
+    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'min(260px, 90vw)', offset:12, anchor:'bottom' })
       .setLngLat(coords)
       .setHTML(buildPopupHTML(entry.p, entry.nombre, entry.color))
       .addTo(map.current);
@@ -754,8 +757,8 @@ export default function ParcelasAdminPage() {
         <style>{`
           /* Popup "liquid glass" — vidrio translúcido con blur, al estilo iOS/macOS reciente */
           .mapboxgl-popup-content {
-            border-radius:20px!important;
-            padding:16px!important;
+            border-radius:16px!important;
+            padding:13px!important;
             max-width:100%!important;
             box-sizing:border-box!important;
             background:rgba(255,255,255,0.92)!important;
@@ -780,13 +783,13 @@ export default function ParcelasAdminPage() {
           .mapboxgl-popup-anchor-right .mapboxgl-popup-tip { border-left-color:rgba(255,255,255,0.92)!important; }
 
           .mapboxgl-popup-close-button {
-            font-size:0; width:24px; height:24px; top:12px; right:12px;
+            font-size:0; width:20px; height:20px; top:10px; right:10px;
             display:flex; align-items:center; justify-content:center;
             border-radius:50%; background:rgba(120,120,128,0.16);
             color:#3c3c43; transition:background .15s ease, transform .15s ease;
           }
           .mapboxgl-popup-close-button::before {
-            content:''; width:9px; height:9px;
+            content:''; width:8px; height:8px;
             background:currentColor;
             -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center/contain no-repeat;
             mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center/contain no-repeat;
@@ -806,7 +809,7 @@ export default function ParcelasAdminPage() {
             100% { opacity:1; transform:scale(1); }
           }
           @media (max-width:420px) {
-            .mapboxgl-popup-content { padding:14px!important; }
+            .mapboxgl-popup-content { padding:11px!important; }
           }
         `}</style>
       , document.head)}
