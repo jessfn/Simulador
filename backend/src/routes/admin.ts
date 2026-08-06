@@ -611,7 +611,7 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
         up.posible_traslape_producer_id,
         up.traslape_revisado,
         ciclo.ciclo_activo,
-        ciclo.cultivo_principal,
+        COALESCE(ciclo.cultivo_principal, 'Maíz') AS cultivo_principal,
         ciclo.variedad,
         pt.nombres AS traslape_productor_nombre,
         pt.apellido_paterno AS traslape_productor_apellido,
@@ -1320,7 +1320,7 @@ router.get('/parcelas', authMiddleware, async (req: any, res: Response): Promise
         p.correo,
         p.estado_validacion,
         ciclo.ciclo_activo,
-        ciclo.cultivo_principal
+        COALESCE(ciclo.cultivo_principal, 'Maíz') AS cultivo_principal
       FROM up u
       JOIN producer p ON p.producer_id = u.producer_id
       LEFT JOIN LATERAL (

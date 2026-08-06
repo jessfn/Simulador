@@ -100,7 +100,7 @@ function buildPopupHTML(p: Parcela, nombre: string, color: string): string {
           ${p.up_name?`<div style="font-size:9px;color:rgba(60,60,67,0.55);margin-top:4px;">${escapeHtml(p.up_name)}</div>`:''}
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:9px 12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px 10px;">
         ${campo(ICONS.ruler, 'Superficie', ha!=null?`${ha.toFixed(2)} ha`:'—')}
         ${campo(ICONS.leaf,  'Cultivo',    escapeHtml(p.cultivo_principal||'—'))}
         ${campo(ICONS.pin,   'Municipio',  escapeHtml(p.municipality_name||'—'))}
@@ -315,18 +315,17 @@ export default function ParcelasAdminPage() {
     const entry = parcelasPorId.current.get(up_id);
     if(!entry || !map.current) return;
     const coords: [number,number] = [entry.p.centroid_lng, entry.p.centroid_lat];
-    // Se reserva espacio (padding) alrededor del punto en vez de forzar un
-    // offset fijo — así Mapbox calcula el centro dentro del área "segura"
-    // resultante y el popup, con anchor automático, siempre tiene hueco
-    // disponible para abrir (arriba o abajo, el que le quepa) sin cortarse.
+    // El popup siempre abre arriba del punto (anchor fijo, no se mueve de
+    // lado). Se reserva espacio arriba con padding para que nunca se corte
+    // contra el borde superior del mapa.
     map.current.easeTo({
       center: coords,
       zoom: Math.max(map.current.getZoom(),15),
       duration: 900,
-      padding: { top:190, bottom:40, left:40, right:40 },
+      padding: { top:230, bottom:30, left:30, right:30 },
     });
     if(popupRef.current) popupRef.current.remove();
-    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'min(260px, 90vw)', offset:14 })
+    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'min(360px, 92vw)', offset:14, anchor:'bottom' })
       .setLngLat(coords)
       .setHTML(buildPopupHTML(entry.p, entry.nombre, entry.color))
       .addTo(map.current);
