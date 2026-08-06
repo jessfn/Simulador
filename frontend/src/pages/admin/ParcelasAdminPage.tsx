@@ -315,12 +315,18 @@ export default function ParcelasAdminPage() {
     const entry = parcelasPorId.current.get(up_id);
     if(!entry || !map.current) return;
     const coords: [number,number] = [entry.p.centroid_lng, entry.p.centroid_lat];
-    // El popup abre hacia abajo del punto — se desplaza el centro hacia
-    // arriba (offset Y negativo) para que quede espacio debajo y no se
-    // corte contra el borde inferior del mapa.
-    map.current.flyTo({ center:coords, zoom:Math.max(map.current.getZoom(),15), duration:900, offset:[0,-140] });
+    // Se reserva espacio (padding) alrededor del punto en vez de forzar un
+    // offset fijo — así Mapbox calcula el centro dentro del área "segura"
+    // resultante y el popup, con anchor automático, siempre tiene hueco
+    // disponible para abrir (arriba o abajo, el que le quepa) sin cortarse.
+    map.current.easeTo({
+      center: coords,
+      zoom: Math.max(map.current.getZoom(),15),
+      duration: 900,
+      padding: { top:190, bottom:40, left:40, right:40 },
+    });
     if(popupRef.current) popupRef.current.remove();
-    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'min(260px, 90vw)', offset:12, anchor:'bottom' })
+    popupRef.current = new mapboxgl.Popup({ closeButton:true, maxWidth:'min(260px, 90vw)', offset:14 })
       .setLngLat(coords)
       .setHTML(buildPopupHTML(entry.p, entry.nombre, entry.color))
       .addTo(map.current);
