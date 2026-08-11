@@ -44,6 +44,7 @@ interface Parcela {
   estado_validacion: string;
   ciclo_activo: string | null;
   cultivo_principal: string | null;
+  tipo_cultivo: string | null;
 }
 
 function fmtHa(n:number):string {
@@ -85,6 +86,21 @@ function buildPopupHTML(p: Parcela, nombre: string, color: string): string {
       <div style="color:#1c1c1e;font-weight:600;font-size:11px;overflow-wrap:anywhere;">${valor}</div>
     </div>`;
 
+  // "Tipo" (variedad/color de grano) — si no está capturado, se muestra una
+  // etiqueta explícita en vez de un guion, para distinguir "sin dato" de
+  // un valor real.
+  const campoTipo = (icon:string, label:string, valor:string|null) => `
+    <div style="min-width:0;">
+      <div style="display:flex;align-items:center;gap:3px;color:rgba(60,60,67,0.6);margin-bottom:2px;">
+        <span style="display:inline-flex;flex-shrink:0;">${icon}</span>
+        <span style="font-weight:600;text-transform:uppercase;font-size:7.5px;letter-spacing:0.05em;">${label}</span>
+      </div>
+      ${valor
+        ? `<div style="color:#1c1c1e;font-weight:600;font-size:11px;overflow-wrap:anywhere;">${valor}</div>`
+        : `<span style="display:inline-block;color:#a16207;background:rgba(254,249,195,.85);font-size:9px;font-weight:700;border-radius:5px;padding:1.5px 6px;white-space:nowrap;">Sin registrar</span>`
+      }
+    </div>`;
+
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text;padding-right:18px;">
       <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(60,60,67,0.1);">
@@ -102,7 +118,8 @@ function buildPopupHTML(p: Parcela, nombre: string, color: string): string {
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px 10px;">
         ${campo(ICONS.ruler, 'Superficie', ha!=null?`${ha.toFixed(2)} ha`:'—')}
-        ${campo(ICONS.leaf,  'Cultivo',    escapeHtml(p.cultivo_principal||'—'))}
+        ${campoTipo(ICONS.leaf, 'Cultivo', p.cultivo_principal ? escapeHtml(p.cultivo_principal) : null)}
+        ${campoTipo(ICONS.leaf, 'Tipo',    p.tipo_cultivo      ? escapeHtml(p.tipo_cultivo)      : null)}
         ${campo(ICONS.pin,   'Municipio',  escapeHtml(p.municipality_name||'—'))}
         ${campo(ICONS.flag,  'Estado',     escapeHtml(p.state_name||'—'))}
       </div>

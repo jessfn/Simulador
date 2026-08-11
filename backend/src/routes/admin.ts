@@ -1320,15 +1320,25 @@ router.get('/parcelas', authMiddleware, async (req: any, res: Response): Promise
         p.correo,
         p.estado_validacion,
         ciclo.ciclo_activo,
-        ciclo.cultivo_principal
+        ciclo.cultivo_principal,
+        ciclo.tipo_cultivo
       FROM up u
       JOIN producer p ON p.producer_id = u.producer_id
       LEFT JOIN LATERAL (
         SELECT
           CONCAT(c.cycle_type, ' ', c.cycle_year) AS ciclo_activo,
-          CASE cc.crop WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.crop) END AS cultivo_principal
+          CASE cc.crop WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.crop) END AS cultivo_principal,
+          -- Tipo/variedad real: prioriza el color de grano (blanco/amarillo/criollo)
+          -- cuando está capturado; si no, usa el nombre de la variedad comercial
+          -- del catálogo (o el texto libre capturado si es "OTRA").
+          COALESCE(
+            NULLIF(INITCAP(cc.tipo_maiz), ''),
+            CASE WHEN cc.variety_id = 'OTRA' THEN NULLIF(cc.variety_other, '') END,
+            cv.label
+          ) AS tipo_cultivo
         FROM cycle c
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
+        LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.is_active = TRUE
         WHERE c.up_id = u.up_id
         ORDER BY c.cycle_year DESC, c.cycle_id DESC LIMIT 1
       ) ciclo ON TRUE
