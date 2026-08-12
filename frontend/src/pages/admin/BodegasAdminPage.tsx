@@ -124,6 +124,12 @@ export default function BodegasAdminPage() {
   const [solicitudes,     setSolicitudes]     = useState<SolicitudBodega[]>([]);
   const [solicLoad,       setSolicLoad]       = useState(false);
   const [solicAccionLoad, setSolicAccionLoad] = useState<number | null>(null);
+
+  // Selección múltiple — "Por aprobar"
+  const [seleccionBodegasPend, setSeleccionBodegasPend] = useState<Set<number>>(new Set());
+  const [seleccionSolicitudes, setSeleccionSolicitudes] = useState<Set<number>>(new Set());
+  const [bulkAprobandoBodegas, setBulkAprobandoBodegas] = useState(false);
+  const [bulkAprobandoSolic,   setBulkAprobandoSolic]   = useState(false);
   const [solicModal,      setSolicModal]      = useState<SolicitudBodega | null>(null);
 
   function esNuevo(fecha: string) {
@@ -143,9 +149,61 @@ export default function BodegasAdminPage() {
     try {
       await fetch(`${BASE}/admin/solicitudes-bodega/${id}/${accion}`, { method: 'PATCH', headers: HDR() });
       setSolicitudes(s => s.filter(x => x.id !== id));
+      setSeleccionSolicitudes(prev => { const n = new Set(prev); n.delete(id); return n; });
       showToast(accion === 'aprobar' ? 'Solicitud aprobada' : 'Solicitud rechazada', accion === 'aprobar');
     } catch { showToast('Error al procesar solicitud', false); }
     finally { setSolicAccionLoad(null); }
+  }
+
+  function toggleSeleccionSolicitud(id: number) {
+    setSeleccionSolicitudes(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  }
+
+  function toggleSeleccionarTodasSolicitudes() {
+    setSeleccionSolicitudes(prev =>
+      prev.size === solicitudes.length ? new Set() : new Set(solicitudes.map(s => s.id))
+    );
+  }
+
+  /** Aprueba en paralelo las solicitudes indicadas (o todas si no se pasa lista). */
+  async function aprobarSolicitudesMasivo(ids?: number[]) {
+    const objetivo = ids ?? Array.from(seleccionSolicitudes);
+    if (objetivo.length === 0) return;
+    setBulkAprobandoSolic(true);
+    try {
+      const resultados = await Promise.allSettled(
+        objetivo.map(id =>
+          fetch(`${BASE}/admin/solicitudes-bodega/${id}/aprobar`, { method: 'PATCH', headers: HDR() })
+            .then(r => { if (!r.ok) throw new Error(); return id; })
+        )
+      );
+      const exitosos = new Set(
+        resultados.filter((r): r is PromiseFulfilledResult<number> => r.status === 'fulfilled').map(r => r.value)
+      );
+      const fallidos = objetivo.length - exitosos.size;
+      setSolicitudes(prev => prev.filter(s => !exitosos.has(s.id)));
+      setSeleccionSolicitudes(prev => {
+        const n = new Set(prev);
+        exitosos.forEach(id => n.delete(id));
+        return n;
+      });
+      if (exitosos.size > 0) {
+        showToast(
+          fallidos > 0
+            ? `${exitosos.size} solicitud(es) aprobada(s), ${fallidos} falló(aron)`
+            : `${exitosos.size} solicitud(es) aprobada(s) correctamente`,
+          fallidos === 0
+        );
+      } else {
+        showToast('No se pudo aprobar ninguna solicitud', false);
+      }
+    } finally {
+      setBulkAprobandoSolic(false);
+    }
   }
 
   // Usuarios bodega
@@ -623,8 +681,61 @@ export default function BodegasAdminPage() {
       const nuevoEstatus = modalAccion.tipo === 'aprobar' ? 'aprobada' : 'rechazada';
       setBodegas(prev => prev.map(b => b.id === modalAccion.bodega.id ? { ...b, estatus: nuevoEstatus as any } : b));
       showToast(`Bodega ${modalAccion.tipo === 'aprobar' ? 'aprobada' : 'rechazada'} correctamente`);
+      setSeleccionBodegasPend(prev => { const n = new Set(prev); n.delete(modalAccion.bodega.id); return n; });
     } catch (e: any) { showToast(e.message, false); }
     finally { setModalAccion(null); setAccionLoading(false); }
+  }
+
+  function toggleSeleccionBodegaPend(id: number) {
+    setSeleccionBodegasPend(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  }
+
+  function toggleSeleccionarTodasBodegasPend() {
+    const pendientesIds = bodegas.filter(b => b.estatus === 'pendiente').map(b => b.id);
+    setSeleccionBodegasPend(prev =>
+      prev.size === pendientesIds.length ? new Set() : new Set(pendientesIds)
+    );
+  }
+
+  /** Aprueba en paralelo las bodegas indicadas (o todas si no se pasa lista). */
+  async function aprobarBodegasMasivo(ids?: number[]) {
+    const objetivo = ids ?? Array.from(seleccionBodegasPend);
+    if (objetivo.length === 0) return;
+    setBulkAprobandoBodegas(true);
+    try {
+      const resultados = await Promise.allSettled(
+        objetivo.map(id =>
+          fetch(`${BASE}/bodegas/${id}/aprobar`, { method: 'PATCH', headers: HDR() })
+            .then(r => { if (!r.ok) throw new Error(); return id; })
+        )
+      );
+      const exitosos = new Set(
+        resultados.filter((r): r is PromiseFulfilledResult<number> => r.status === 'fulfilled').map(r => r.value)
+      );
+      const fallidos = objetivo.length - exitosos.size;
+      setBodegas(prev => prev.map(b => exitosos.has(b.id) ? { ...b, estatus: 'aprobada' as const } : b));
+      setSeleccionBodegasPend(prev => {
+        const n = new Set(prev);
+        exitosos.forEach(id => n.delete(id));
+        return n;
+      });
+      if (exitosos.size > 0) {
+        showToast(
+          fallidos > 0
+            ? `${exitosos.size} bodega(s) aprobada(s), ${fallidos} falló(aron)`
+            : `${exitosos.size} bodega(s) aprobada(s) correctamente`,
+          fallidos === 0
+        );
+      } else {
+        showToast('No se pudo aprobar ninguna bodega', false);
+      }
+    } finally {
+      setBulkAprobandoBodegas(false);
+    }
   }
 
   const cntAprob   = bodegas.filter(b => b.estatus === 'aprobada').length;
@@ -952,64 +1063,115 @@ export default function BodegasAdminPage() {
 
           {/* ── Sección 1: Bodegas pendientes de registro ── */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-wrap">
               <Warehouse size={13} className="text-amber-500" />
               <h3 className="text-[11px] font-black text-gray-600 uppercase tracking-widest">Registros de bodega pendientes</h3>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 ml-1">
                 {bodegas.filter(b => b.estatus === 'pendiente').length}
               </span>
+              {bodegas.filter(b => b.estatus === 'pendiente').length > 0 && (
+                <div className="flex items-center gap-2 ml-auto">
+                  {seleccionBodegasPend.size > 0 && (
+                    <button onClick={() => aprobarBodegasMasivo()} disabled={bulkAprobandoBodegas}
+                      className="h-7 px-3 rounded-lg bg-[#1A5C38] hover:bg-[#15482d] text-white text-[10.5px] font-bold transition flex items-center gap-1.5 disabled:opacity-50">
+                      {bulkAprobandoBodegas ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                      Aprobar seleccionadas ({seleccionBodegasPend.size})
+                    </button>
+                  )}
+                  <button
+                    onClick={() => aprobarBodegasMasivo(bodegas.filter(b => b.estatus === 'pendiente').map(b => b.id))}
+                    disabled={bulkAprobandoBodegas}
+                    className="h-7 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10.5px] font-bold transition flex items-center gap-1.5 disabled:opacity-50">
+                    {bulkAprobandoBodegas ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                    Aprobar todas
+                  </button>
+                </div>
+              )}
             </div>
             {bodegas.filter(b => b.estatus === 'pendiente').length === 0 ? (
               <div className="py-10 flex flex-col items-center text-gray-300">
                 <Warehouse size={26} className="mb-2" />
                 <p className="text-[12px] font-semibold">Sin bodegas pendientes</p>
               </div>
-            ) : bodegas.filter(b => b.estatus === 'pendiente').map(b => {
-              const nuevo = b.fecha_creacion ? esNuevo(b.fecha_creacion) : false;
-              return (
-                <div key={b.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center flex-shrink-0">
-                    <Warehouse size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[13px] font-bold text-gray-900 truncate">{b.nombre}</p>
-                      {nuevo && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-500 text-white flex-shrink-0">NUEVO</span>}
+            ) : (
+              <>
+                <label className="flex items-center gap-2 px-4 py-2 border-b border-gray-50 bg-gray-50/50 cursor-pointer select-none">
+                  <input type="checkbox"
+                    checked={seleccionBodegasPend.size > 0 && seleccionBodegasPend.size === bodegas.filter(b => b.estatus === 'pendiente').length}
+                    ref={el => { if (el) el.indeterminate = seleccionBodegasPend.size > 0 && seleccionBodegasPend.size < bodegas.filter(b => b.estatus === 'pendiente').length; }}
+                    onChange={toggleSeleccionarTodasBodegasPend}
+                    className="w-3.5 h-3.5 rounded accent-[#1A5C38]" />
+                  <span className="text-[10.5px] font-bold text-gray-500">Seleccionar todas</span>
+                </label>
+                {bodegas.filter(b => b.estatus === 'pendiente').map(b => {
+                  const nuevo = b.fecha_creacion ? esNuevo(b.fecha_creacion) : false;
+                  const marcada = seleccionBodegasPend.has(b.id);
+                  return (
+                    <div key={b.id} className={`flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 transition-colors ${marcada ? 'bg-emerald-50/40' : 'hover:bg-gray-50/60'}`}>
+                      <input type="checkbox" checked={marcada} onChange={() => toggleSeleccionBodegaPend(b.id)}
+                        className="w-3.5 h-3.5 rounded accent-[#1A5C38] flex-shrink-0" />
+                      <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center flex-shrink-0">
+                        <Warehouse size={16} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-[13px] font-bold text-gray-900 truncate">{b.nombre}</p>
+                          {nuevo && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-500 text-white flex-shrink-0">NUEVO</span>}
+                        </div>
+                        <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                          <MapPin size={9} />{b.municipio}, {b.estado}
+                          {b.capacidad_total ? ` · ${b.capacidad_total.toLocaleString()} t` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {puedeVerDetalle && (
+                          <button onClick={() => abrirDetalle(b)}
+                            className="h-8 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] font-bold transition flex items-center gap-1">
+                            <Eye size={12} /> Ver
+                          </button>
+                        )}
+                        <button onClick={() => setModalAccion({ tipo: 'aprobar', bodega: b })}
+                          className="h-8 px-3 rounded-xl bg-[#1A5C38] hover:bg-[#15482d] text-white text-[11px] font-bold transition flex items-center gap-1">
+                          <CheckCircle size={12} /> Aprobar
+                        </button>
+                        <button onClick={() => setModalAccion({ tipo: 'rechazar', bodega: b })}
+                          className="h-8 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 text-[11px] font-bold transition flex items-center gap-1">
+                          <X size={12} /> Rechazar
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
-                      <MapPin size={9} />{b.municipio}, {b.estado}
-                      {b.capacidad_total ? ` · ${b.capacidad_total.toLocaleString()} t` : ''}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {puedeVerDetalle && (
-                      <button onClick={() => abrirDetalle(b)}
-                        className="h-8 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] font-bold transition flex items-center gap-1">
-                        <Eye size={12} /> Ver
-                      </button>
-                    )}
-                    <button onClick={() => setModalAccion({ tipo: 'aprobar', bodega: b })}
-                      className="h-8 px-3 rounded-xl bg-[#1A5C38] hover:bg-[#15482d] text-white text-[11px] font-bold transition flex items-center gap-1">
-                      <CheckCircle size={12} /> Aprobar
-                    </button>
-                    <button onClick={() => setModalAccion({ tipo: 'rechazar', bodega: b })}
-                      className="h-8 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 text-[11px] font-bold transition flex items-center gap-1">
-                      <X size={12} /> Rechazar
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            )}
           </div>
 
           {/* ── Sección 2: Solicitudes de acceso bodeguero↔bodega ── */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-wrap">
               <Users size={13} className="text-blue-500" />
               <h3 className="text-[11px] font-black text-gray-600 uppercase tracking-widest">Solicitudes de acceso a bodega</h3>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 ml-1">
                 {solicitudes.length}
               </span>
+              {solicitudes.length > 0 && (
+                <div className="flex items-center gap-2 ml-auto">
+                  {seleccionSolicitudes.size > 0 && (
+                    <button onClick={() => aprobarSolicitudesMasivo()} disabled={bulkAprobandoSolic}
+                      className="h-7 px-3 rounded-lg bg-[#1A5C38] hover:bg-[#15482d] text-white text-[10.5px] font-bold transition flex items-center gap-1.5 disabled:opacity-50">
+                      {bulkAprobandoSolic ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                      Aprobar seleccionadas ({seleccionSolicitudes.size})
+                    </button>
+                  )}
+                  <button
+                    onClick={() => aprobarSolicitudesMasivo(solicitudes.map(s => s.id))}
+                    disabled={bulkAprobandoSolic}
+                    className="h-7 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10.5px] font-bold transition flex items-center gap-1.5 disabled:opacity-50">
+                    {bulkAprobandoSolic ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                    Aprobar todas
+                  </button>
+                </div>
+              )}
             </div>
             {solicLoad ? (
               Array.from({ length: 3 }).map((_, i) => (
@@ -1026,47 +1188,62 @@ export default function BodegasAdminPage() {
                 <Users size={26} className="mb-2" />
                 <p className="text-[12px] font-semibold">Sin solicitudes pendientes</p>
               </div>
-            ) : solicitudes.map((s, idx) => {
-              const nuevo = esNuevo(s.fecha_solicitud);
-              return (
-                <div key={`${s.id}-${s.bodega_id}-${idx}`} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                  {/* Avatar usuario */}
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-black text-[11px] flex-shrink-0">
-                    {s.nombre_completo.split(' ').slice(0,2).map((w: string) => w[0]).join('').toUpperCase()}
-                  </div>
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-[12px] font-bold text-gray-900 truncate">{s.nombre_completo}</p>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex-shrink-0 capitalize">{s.rol}</span>
-                      {nuevo && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-500 text-white flex-shrink-0">NUEVO</span>}
+            ) : (
+              <>
+                <label className="flex items-center gap-2 px-4 py-2 border-b border-gray-50 bg-gray-50/50 cursor-pointer select-none">
+                  <input type="checkbox"
+                    checked={seleccionSolicitudes.size > 0 && seleccionSolicitudes.size === solicitudes.length}
+                    ref={el => { if (el) el.indeterminate = seleccionSolicitudes.size > 0 && seleccionSolicitudes.size < solicitudes.length; }}
+                    onChange={toggleSeleccionarTodasSolicitudes}
+                    className="w-3.5 h-3.5 rounded accent-[#1A5C38]" />
+                  <span className="text-[10.5px] font-bold text-gray-500">Seleccionar todas</span>
+                </label>
+                {solicitudes.map((s, idx) => {
+                  const nuevo = esNuevo(s.fecha_solicitud);
+                  const marcada = seleccionSolicitudes.has(s.id);
+                  return (
+                    <div key={`${s.id}-${s.bodega_id}-${idx}`} className={`flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 transition-colors ${marcada ? 'bg-emerald-50/40' : 'hover:bg-gray-50/60'}`}>
+                      <input type="checkbox" checked={marcada} onChange={() => toggleSeleccionSolicitud(s.id)}
+                        className="w-3.5 h-3.5 rounded accent-[#1A5C38] flex-shrink-0" />
+                      {/* Avatar usuario */}
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-black text-[11px] flex-shrink-0">
+                        {s.nombre_completo.split(' ').slice(0,2).map((w: string) => w[0]).join('').toUpperCase()}
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-[12px] font-bold text-gray-900 truncate">{s.nombre_completo}</p>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex-shrink-0 capitalize">{s.rol}</span>
+                          {nuevo && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-500 text-white flex-shrink-0">NUEVO</span>}
+                        </div>
+                        <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                          Solicita: <span className="font-semibold text-gray-600">{s.bodega_nombre}</span>
+                          {' · '}{s.bodega_municipio}, {s.bodega_estado}
+                        </p>
+                        <p className="text-[9px] text-gray-300 mt-0.5">
+                          {new Date(s.fecha_solicitud).toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' })}
+                        </p>
+                      </div>
+                      {/* Acciones */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button onClick={() => setSolicModal(s)}
+                          className="h-8 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] font-bold transition flex items-center gap-1">
+                          <Eye size={12} /> Ver
+                        </button>
+                        <button onClick={() => procesarSolicitud(s.id, 'aprobar')} disabled={solicAccionLoad === s.id}
+                          className="h-8 px-3 rounded-xl bg-[#1A5C38] hover:bg-[#15482d] text-white text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50">
+                          {solicAccionLoad === s.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />} Aprobar
+                        </button>
+                        <button onClick={() => procesarSolicitud(s.id, 'rechazar')} disabled={solicAccionLoad === s.id}
+                          className="h-8 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50">
+                          <X size={11} /> Rechazar
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-gray-400 truncate mt-0.5">
-                      Solicita: <span className="font-semibold text-gray-600">{s.bodega_nombre}</span>
-                      {' · '}{s.bodega_municipio}, {s.bodega_estado}
-                    </p>
-                    <p className="text-[9px] text-gray-300 mt-0.5">
-                      {new Date(s.fecha_solicitud).toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' })}
-                    </p>
-                  </div>
-                  {/* Acciones */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button onClick={() => setSolicModal(s)}
-                      className="h-8 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] font-bold transition flex items-center gap-1">
-                      <Eye size={12} /> Ver
-                    </button>
-                    <button onClick={() => procesarSolicitud(s.id, 'aprobar')} disabled={solicAccionLoad === s.id}
-                      className="h-8 px-3 rounded-xl bg-[#1A5C38] hover:bg-[#15482d] text-white text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50">
-                      {solicAccionLoad === s.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />} Aprobar
-                    </button>
-                    <button onClick={() => procesarSolicitud(s.id, 'rechazar')} disabled={solicAccionLoad === s.id}
-                      className="h-8 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50">
-                      <X size={11} /> Rechazar
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            )}
           </div>
 
         </div>
