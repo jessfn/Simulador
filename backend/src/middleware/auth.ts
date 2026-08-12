@@ -47,3 +47,27 @@ export function soloAdmin(req: AuthRequest, res: Response, next: NextFunction): 
   }
   next();
 }
+
+/**
+ * Igual que soloAdmin, pero consultando roles_panel.permisos_totales en vez
+ * de comparar el rol contra el literal 'admin'. Refleja exactamente lo que
+ * el frontend usa para mostrar la pestaña "Por aprobar" (permisosTotal):
+ * cualquier rol que el sistema de /admin/permisos marque con permisos
+ * totales (admin, responsable, o uno creado a futuro) queda autorizado,
+ * en vez de solo el rol admin literal.
+ */
+export async function requierePermisosTotales(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { rows } = await pool.query(
+      'SELECT permisos_totales FROM roles_panel WHERE clave = $1',
+      [req.user?.rol]
+    );
+    if (rows[0]?.permisos_totales) {
+      next();
+      return;
+    }
+    res.status(403).json({ error: 'Acceso denegado: se requieren permisos totales' });
+  } catch {
+    res.status(500).json({ error: 'Error verificando permisos' });
+  }
+}

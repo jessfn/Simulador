@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { authMiddleware, requierePermisosTotales, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -259,12 +259,8 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
 // =============================================
 // PATCH /api/bodegas/:id/aprobar
 // =============================================
-router.patch('/:id/aprobar', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch('/:id/aprobar', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.user?.rol !== 'admin') {
-      res.status(403).json({ error: 'Solo el admin puede aprobar bodegas' });
-      return;
-    }
     const { id } = req.params;
     const result = await pool.query(
       `UPDATE bodegas SET estatus = 'aprobada' WHERE id = $1
@@ -308,12 +304,8 @@ router.patch('/:id/semaforo', authMiddleware, async (req: AuthRequest, res: Resp
 // =============================================
 // PATCH /api/bodegas/:id/rechazar
 // =============================================
-router.patch('/:id/rechazar', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch('/:id/rechazar', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.user?.rol !== 'admin') {
-      res.status(403).json({ error: 'Solo el admin puede rechazar bodegas' });
-      return;
-    }
     const { id } = req.params;
     const result = await pool.query(
       `UPDATE bodegas SET estatus = 'rechazada' WHERE id = $1

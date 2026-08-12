@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import pool from '../config/database';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { authMiddleware, requierePermisosTotales, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -343,7 +343,7 @@ router.get('/solicitudes-bodega', authMiddleware, async (req: AuthRequest, res: 
 });
 
 // PATCH /api/admin/solicitudes-bodega/:id/aprobar
-router.patch('/solicitudes-bodega/:id/aprobar', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch('/solicitudes-bodega/:id/aprobar', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await pool.query(
@@ -360,7 +360,7 @@ router.patch('/solicitudes-bodega/:id/aprobar', authMiddleware, soloAdmin, async
 });
 
 // PATCH /api/admin/solicitudes-bodega/:id/rechazar
-router.patch('/solicitudes-bodega/:id/rechazar', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch('/solicitudes-bodega/:id/rechazar', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await pool.query(
