@@ -42,6 +42,8 @@ export default function CompletarUbicacionPage() {
   const [capturandoGPS, setCapturandoGPS] = useState(false);
   const [gpsMsg, setGpsMsg] = useState<string | null>(null);
   const [searchPin, setSearchPin] = useState<[number, number] | null>(null);
+  const [overlapWarning, setOverlapWarning] = useState<string | null>(null);
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
 
   // Detecta estado/municipio EXACTOS según dónde quedó marcada la parcela
   const detectarUbicacion = async (lat: number, lng: number) => {
@@ -89,11 +91,12 @@ export default function CompletarUbicacionPage() {
   const guardar = async () => {
     if (!poligono && !coords) return;
     setLoading(true);
+    setErrorGuardar(null);
     try {
       const token = localStorage.getItem('simac_token');
       const centroide = coords || center;
       const areaRealNum = coincideArea === false && areaReal ? Number(areaReal) : areaCalc;
-      await fetch(`${BASE}/productor/ubicacion`, {
+      const res = await fetch(`${BASE}/productor/ubicacion`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -105,8 +108,15 @@ export default function CompletarUbicacionPage() {
           coincide_area: coincideArea ?? true,
         }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setErrorGuardar(d.error || 'No se pudo guardar la parcela. Intenta de nuevo.');
+        return;
+      }
       localStorage.removeItem('dismiss_ubicacion');
       navigate('/productor/perfil');
+    } catch {
+      setErrorGuardar('Error de conexión. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -159,8 +169,18 @@ export default function CompletarUbicacionPage() {
 
       {/* Mapa */}
       <div className="flex-1 relative min-h-0">
+        {/* Aviso de traslape con otra parcela */}
+        {overlapWarning && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[700] pointer-events-none w-[calc(100%-1.5rem)] max-w-sm">
+            <div className="bg-red-900/90 backdrop-blur-md rounded-2xl px-4 py-2.5 flex items-start gap-2 shadow-lg">
+              <MapPin size={14} className="text-red-300 flex-shrink-0 mt-0.5" />
+              <p className="text-white/95 text-xs font-medium leading-snug">{overlapWarning}</p>
+            </div>
+          </div>
+        )}
+
         {/* Hint de edición */}
-        {drawMode === 'editing' && (
+        {!overlapWarning && drawMode === 'editing' && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[700] pointer-events-none w-[calc(100%-1.5rem)] max-w-sm">
             <div className="bg-amber-900/85 backdrop-blur-md rounded-full px-4 py-2 flex items-center justify-center gap-2 shadow-lg">
               <Pencil size={13} className="text-amber-300 flex-shrink-0" />
@@ -190,7 +210,9 @@ export default function CompletarUbicacionPage() {
             <DibujarPoligonoUP
               ref={dibujarRef}
               poligonoInicial={poligonoInicial ?? undefined}
+              excluirUpIds={upId ? [parseInt(upId)] : []}
               onPoligonoCompleto={(c, centroide, ha) => {
+                setOverlapWarning(null);
                 setPoligono(c);
                 setCoords(centroide);
                 setAreaCalc(ha);
@@ -199,13 +221,17 @@ export default function CompletarUbicacionPage() {
                 detectarUbicacion(centroide.lat, centroide.lng);
               }}
               onPoligonoEliminado={() => {
+                setOverlapWarning(null);
                 setPoligono(null);
                 setAreaCalc(null);
                 setCoincideArea(null);
                 setAreaReal('');
                 setGeoDetectado(null);
               }}
-              onModeChange={setDrawMode}
+              onOverlap={({ pctOverlap }) => {
+                setOverlapWarning(`Esta parcela se encima con una ya registrada (${Math.round(pctOverlap * 100)}% de traslape). Ajusta el contorno para separarla.`);
+              }}
+              onModeChange={mode => { setDrawMode(mode); if (mode !== 'idle') setOverlapWarning(null); }}
               onPointCountChange={n => { setPointCount(n); if (n > 0) setSearchPin(null); }}
             />
             {/* Pin de búsqueda — desaparece al empezar a dibujar */}
@@ -331,6 +357,12 @@ export default function CompletarUbicacionPage() {
               <div className="bg-green-500/12 ring-1 ring-green-400/25 rounded-2xl px-4 py-3 flex items-center justify-between">
                 <span className="text-sm text-white/70">Área calculada</span>
                 <span className="text-green-300 font-bold text-lg">{areaCalc} ha</span>
+              </div>
+            )}
+
+            {errorGuardar && (
+              <div className="bg-red-500/15 ring-1 ring-red-400/25 rounded-xl px-3.5 py-2.5 text-red-200 text-xs font-medium">
+                {errorGuardar}
               </div>
             )}
 

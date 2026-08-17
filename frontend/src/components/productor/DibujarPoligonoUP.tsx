@@ -4,6 +4,9 @@ import L from 'leaflet';
 import area from '@turf/area';
 import centroid from '@turf/centroid';
 import { polygon } from '@turf/helpers';
+import { calcularTraslape, type ParcelaExistente } from '../../utils/overlap';
+
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export type DrawMode = 'idle' | 'drawing' | 'editing';
 
@@ -38,6 +41,12 @@ interface Props {
   onPoligonoEliminado: () => void;
   onModeChange?: (mode: DrawMode) => void;
   onPointCountChange?: (count: number) => void;
+  /** IDs de UPs a ignorar en la validación de traslape (ej. la propia UP al editarla). */
+  excluirUpIds?: number[];
+  /** Se dispara cuando el polígono dibujado se superpone significativamente
+   *  (>10% de su área) con una parcela ya registrada — el polígono NO se
+   *  confirma (no se llama a onPoligonoCompleto) hasta que se corrija. */
+  onOverlap?: (info: { pctOverlap: number }) => void;
 }
 
 const GREEN = '#34d079';
@@ -48,8 +57,11 @@ const GREEN_DARK = '#16a34a';
  * sin riesgo de agregar puntos por error. Cada vértice se agrega SOLO al tocar
  * el botón (que llama a addPoint()), tomando el centro visible del mapa.
  */
+const RED = '#ef4444';
+const RED_DARK = '#b91c1c';
+
 const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
-  ({ poligonoInicial, onPoligonoCompleto, onPoligonoEliminado, onModeChange, onPointCountChange }, ref) => {
+  ({ poligonoInicial, onPoligonoCompleto, onPoligonoEliminado, onModeChange, onPointCountChange, excluirUpIds, onOverlap }, ref) => {
     const map = useMap();
     const groupRef = useRef(new L.FeatureGroup());
     const verticesRef = useRef<[number, number][]>([]);
@@ -57,6 +69,28 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
     const polyLayerRef = useRef<L.Layer | null>(null);
     const markerLayersRef = useRef<L.Marker[]>([]);
     const backupRef = useRef<[number, number][] | null>(null);
+    const overlapRef = useRef(false);
+    const parcelasExistentesRef = useRef<ParcelaExistente[]>([]);
+
+    // Parcelas ya registradas (de cualquier productor) contra las que se
+    // valida el traslape. Se cargan una vez; el mismo dataset que dibuja
+    // ParcelasExistentesLayer en gris.
+    useEffect(() => {
+      fetch(`${BASE}/ups/geometrias`)
+        .then(r => r.ok ? r.json() : { ups: [] })
+        .then(d => {
+          const resultado: ParcelaExistente[] = [];
+          for (const u of (d.ups || [])) {
+            const g = u.geom_geojson;
+            if (!g?.coordinates) continue;
+            const ring: number[][] = g.type === 'MultiPolygon' ? g.coordinates[0]?.[0] : g.coordinates[0];
+            if (!ring || ring.length < 3) continue;
+            resultado.push({ id: u.up_id, pos: ring.map(([ln, la]: number[]) => [la, ln] as [number, number]) });
+          }
+          parcelasExistentesRef.current = resultado;
+        })
+        .catch(() => {});
+    }, []);
 
     const setMode = useCallback((m: DrawMode) => {
       modeRef.current = m;
@@ -70,6 +104,19 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
     const computeAndEmit = useCallback(() => {
       const v = verticesRef.current;
       if (v.length < 3) return;
+
+      const traslape = calcularTraslape(v, parcelasExistentesRef.current, excluirUpIds);
+      if (traslape.bloqueado) {
+        overlapRef.current = true;
+        fullRedraw();
+        onOverlap?.({ pctOverlap: traslape.pct });
+        return; // No se confirma el polígono mientras se traslape.
+      }
+      if (overlapRef.current) {
+        overlapRef.current = false;
+        fullRedraw();
+      }
+
       const ring = [...v.map(([la, ln]) => [ln, la]), [v[0][1], v[0][0]]];
       const poly = polygon([ring]);
       const areaHa = parseFloat((area(poly) / 10000).toFixed(4));
@@ -79,11 +126,12 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
         { lat: c[1], lng: c[0] },
         areaHa
       );
-    }, [onPoligonoCompleto]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [onPoligonoCompleto, onOverlap, excluirUpIds]);
 
     const vertexIcon = (index: number, editing: boolean) => {
       const size = editing ? 20 : 13;
-      const color = index === 0 ? GREEN_DARK : GREEN;
+      const color = overlapRef.current ? (index === 0 ? RED_DARK : RED) : (index === 0 ? GREEN_DARK : GREEN);
       return L.divIcon({
         className: '',
         html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45)${editing ? ';cursor:grab' : ''}"></div>`,
@@ -96,13 +144,14 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
       const g = groupRef.current;
       if (polyLayerRef.current) { g.removeLayer(polyLayerRef.current); polyLayerRef.current = null; }
       const v = verticesRef.current;
+      const col = overlapRef.current ? RED : GREEN;
       if (v.length >= 3 && modeRef.current !== 'drawing') {
         polyLayerRef.current = L.polygon(v as L.LatLngTuple[], {
-          color: GREEN, fillColor: GREEN, fillOpacity: 0.22, weight: 3,
+          color: col, fillColor: col, fillOpacity: 0.22, weight: 3,
         });
       } else if (v.length >= 2) {
         polyLayerRef.current = L.polyline(v as L.LatLngTuple[], {
-          color: GREEN, weight: 3, dashArray: '7 7',
+          color: col, weight: 3, dashArray: '7 7',
         });
       }
       if (polyLayerRef.current) g.addLayer(polyLayerRef.current);
@@ -117,14 +166,15 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
       markerLayersRef.current = [];
 
       const v = verticesRef.current;
+      const col = overlapRef.current ? RED : GREEN;
       // Polígono / línea
       if (v.length >= 3 && modeRef.current !== 'drawing') {
         polyLayerRef.current = L.polygon(v as L.LatLngTuple[], {
-          color: GREEN, fillColor: GREEN, fillOpacity: 0.22, weight: 3,
+          color: col, fillColor: col, fillOpacity: 0.22, weight: 3,
         });
       } else if (v.length >= 2) {
         polyLayerRef.current = L.polyline(v as L.LatLngTuple[], {
-          color: GREEN, weight: 3, dashArray: '7 7',
+          color: col, weight: 3, dashArray: '7 7',
         });
       }
       if (polyLayerRef.current) g.addLayer(polyLayerRef.current);

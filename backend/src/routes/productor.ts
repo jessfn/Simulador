@@ -548,21 +548,33 @@ async function crearUP(client: any, producerId: number, up: any): Promise<number
     }
   }
 
-  // Overlap con UPs de OTROS productores (no bloqueante — se guarda con bandera para revisión admin)
+  // Overlap con UPs de OTROS productores. Si el traslape supera el 10% del
+  // área del polígono nuevo, se bloquea el registro (antes solo se marcaba
+  // para revisión del admin y la parcela se guardaba encimada de todos
+  // modos). Un contacto menor (linderos compartidos, <10%) se sigue
+  // registrando pero queda marcado para revisión.
   let traslapeProducerId: number | null = null;
   if (hasPoligono && postgisActivo) {
     const ovCruz = await client.query(
-      `SELECT traslape_producer_id FROM (
-         SELECT u.producer_id AS traslape_producer_id,
+      `SELECT traslape_producer_id, pct, up_name FROM (
+         SELECT u.producer_id AS traslape_producer_id, u.up_name,
            ST_Area(ST_Intersection(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
            / NULLIF(ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326)::geography), 0) AS pct
          FROM up u
          WHERE u.producer_id != $1 AND u.geom IS NOT NULL
            AND ST_Overlaps(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
-       ) t WHERE t.pct > 0.10 LIMIT 1`,
+       ) t WHERE t.pct > 0.02 ORDER BY t.pct DESC LIMIT 1`,
       [producerId, geojson]
     );
-    if (ovCruz.rows.length > 0) traslapeProducerId = ovCruz.rows[0].traslape_producer_id;
+    if (ovCruz.rows.length > 0) {
+      const fila = ovCruz.rows[0];
+      if (Number(fila.pct) > 0.10) {
+        const e: any = new Error('overlap_cross');
+        e.code = 'UP_OVERLAP_CROSS';
+        throw e;
+      }
+      traslapeProducerId = fila.traslape_producer_id;
+    }
   }
 
   let upId: number;
@@ -754,6 +766,13 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       res.status(409).json({
         error: `Una de tus parcelas se intersecta con otra que dibujaste ("${error.up_conflicto}"). Dibújala en un área diferente.`,
         up_conflicto: error.up_conflicto,
+      });
+      return;
+    }
+    if (error.code === 'UP_OVERLAP_CROSS') {
+      res.status(409).json({
+        error: 'El polígono que dibujaste se superpone con una parcela que ya está registrada por otro productor. Ajusta el contorno para que no se encime.',
+        codigo: 'UP_OVERLAP_CROSS',
       });
       return;
     }
@@ -1070,6 +1089,7 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
     if (!targetUpId) { res.status(404).json({ error: 'Parcela no encontrada' }); return; }
 
     const hasPoligono = poligono && Array.isArray(poligono) && poligono.length >= 3;
+    const postgisActivo = process.env.POSTGIS_ENABLED === 'true';
     if (hasPoligono) {
       const geomGeoJSON = JSON.stringify({
         type: 'Polygon',
@@ -1078,6 +1098,51 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
           [poligono[0][1], poligono[0][0]],
         ]],
       });
+
+      if (postgisActivo) {
+        // Traslape con OTRAS parcelas del mismo productor (excluyendo esta misma UP)
+        const ovPropio = await pool.query(
+          `SELECT up_id, up_name FROM up
+           WHERE producer_id = $1 AND up_id != $2 AND geom IS NOT NULL
+             AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326))
+           LIMIT 1`,
+          [producerId, targetUpId, geomGeoJSON]
+        );
+        if (ovPropio.rows.length > 0) {
+          res.status(409).json({
+            error: `El polígono se intersecta con tu parcela "${ovPropio.rows[0].up_name}". Ajusta el contorno.`,
+            up_conflicto: ovPropio.rows[0].up_name,
+          });
+          return;
+        }
+
+        // Traslape con parcelas de OTROS productores — bloquea si supera el 10%
+        const ovCruz = await pool.query(
+          `SELECT traslape_producer_id, pct FROM (
+             SELECT u.producer_id AS traslape_producer_id,
+               ST_Area(ST_Intersection(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326))::geography)
+               / NULLIF(ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography), 0) AS pct
+             FROM up u
+             WHERE u.producer_id != $1 AND u.up_id != $2 AND u.geom IS NOT NULL
+               AND ST_Overlaps(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326))
+           ) t WHERE t.pct > 0.02 ORDER BY t.pct DESC LIMIT 1`,
+          [producerId, targetUpId, geomGeoJSON]
+        );
+        if (ovCruz.rows.length > 0 && Number(ovCruz.rows[0].pct) > 0.10) {
+          res.status(409).json({
+            error: 'El polígono que dibujaste se superpone con una parcela que ya está registrada por otro productor. Ajusta el contorno para que no se encime.',
+            codigo: 'UP_OVERLAP_CROSS',
+          });
+          return;
+        }
+        if (ovCruz.rows.length > 0) {
+          await pool.query(
+            `UPDATE up SET posible_traslape_producer_id = $1, traslape_revisado = false WHERE up_id = $2`,
+            [ovCruz.rows[0].traslape_producer_id, targetUpId]
+          );
+        }
+      }
+
       await pool.query(
         `UPDATE up SET
            centroid = ST_SetSRID(ST_MakePoint($1, $2), 4326),
@@ -1541,21 +1606,35 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
       }
     }
 
-    // Overlap con UPs de OTROS productores (no bloqueante — bandera para revisión admin)
+    // Overlap con UPs de OTROS productores. >10% de traslape bloquea el
+    // registro (antes solo quedaba marcado para revisión del admin y la
+    // parcela se guardaba encimada de todos modos). Contacto menor
+    // (linderos compartidos, <10%) se permite pero queda marcado.
     let traslapeProducerId2: number | null = null;
     if (hasPoligono && postgisActivo) {
       const ovCruz = await client.query(
-        `SELECT traslape_producer_id FROM (
-           SELECT u.producer_id AS traslape_producer_id,
+        `SELECT traslape_producer_id, pct, up_name FROM (
+           SELECT u.producer_id AS traslape_producer_id, u.up_name,
              ST_Area(ST_Intersection(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
              / NULLIF(ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326)::geography), 0) AS pct
            FROM up u
            WHERE u.producer_id != $1 AND u.geom IS NOT NULL
              AND ST_Overlaps(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
-         ) t WHERE t.pct > 0.10 LIMIT 1`,
+         ) t WHERE t.pct > 0.02 ORDER BY t.pct DESC LIMIT 1`,
         [producer_id, geojson]
       );
-      if (ovCruz.rows.length > 0) traslapeProducerId2 = ovCruz.rows[0].traslape_producer_id;
+      if (ovCruz.rows.length > 0) {
+        const fila = ovCruz.rows[0];
+        if (Number(fila.pct) > 0.10) {
+          await client.query('ROLLBACK');
+          res.status(409).json({
+            error: 'El polígono que dibujaste se superpone con una parcela que ya está registrada por otro productor. Ajusta el contorno para que no se encime.',
+            codigo: 'UP_OVERLAP_CROSS',
+          });
+          return;
+        }
+        traslapeProducerId2 = fila.traslape_producer_id;
+      }
     }
 
     let upResult;

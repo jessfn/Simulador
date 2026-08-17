@@ -274,10 +274,14 @@ export default function AgregarUPPage() {
             ))}
             <DibujarPoligonoUP
               ref={dibujarRef}
-              onModeChange={setDrawMode}
+              onModeChange={mode => { setDrawMode(mode); if (mode !== 'idle') setErrorOverlap(null); }}
               onPointCountChange={n => { setPointCount(n); if (n > 0) setSearchPin(null); }}
               onPoligonoCompleto={(poly, centro, area) => { setSearchPin(null); onUPDibujada(poly, centro, area); }}
               onPoligonoEliminado={() => {}}
+              onOverlap={({ pctOverlap }) => {
+                setErrorOverlap(`Esta parcela se encima con una ya registrada (${Math.round(pctOverlap * 100)}% de traslape). Ajusta el contorno para separarla.`);
+                setAdvertenciaOverlap(null);
+              }}
             />
             {pendingUP && (
               <Polygon
