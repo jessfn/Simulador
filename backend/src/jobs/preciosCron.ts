@@ -3,12 +3,15 @@ import pool from '../config/database';
 import { actualizarReferenciasExternas } from '../services/preciosExternos';
 
 /**
- * Job de Precios Externos - se ejecuta diariamente a las 07:00 AM hora de la Ciudad de México.
- * Consulta Yahoo Finance (Chicago ZC=F) y Banxico API/Yahoo Finance (TC USD/MXN).
+ * Job de Precios Externos - se ejecuta diariamente a las 14:00 hrs hora de la
+ * Ciudad de México. El Dólar FIX de Banxico (SF43718) se publica entre 12:00
+ * y 13:00 hrs, así que antes de esa hora el cron traería el valor del día
+ * hábil anterior. Consulta Yahoo Finance (Chicago ZC=F) y Banxico API
+ * (TC USD/MXN, FIX oficial).
  */
 export async function runPreciosCron(): Promise<void> {
   try {
-    console.log('[CRON] Iniciando actualización diaria de precios a las 07:00 AM...');
+    console.log('[CRON] Iniciando actualización diaria de precios a las 14:00 hrs...');
     const result = await actualizarReferenciasExternas('cron');
     console.log('[CRON] Actualización de precios finalizada con éxito. ID insertado:', result?.id);
   } catch (err: any) {
@@ -26,12 +29,13 @@ export async function runPreciosCron(): Promise<void> {
 }
 
 /**
- * Agenda el job para ejecutarse todos los días a las 07:00 AM (America/Mexico_City).
+ * Agenda el job para ejecutarse todos los días a las 14:00 hrs (America/Mexico_City),
+ * una vez que Banxico ya publicó el Dólar FIX del día.
  */
 export function schedulePreciosCron(): void {
-  cron.schedule('0 7 * * *', async () => {
+  cron.schedule('0 14 * * *', async () => {
     await runPreciosCron();
   }, { timezone: 'America/Mexico_City' });
 
-  console.log('[CRON] Job de actualización de precios programado para las 07:00 AM (America/Mexico_City)');
+  console.log('[CRON] Job de actualización de precios programado para las 14:00 hrs (America/Mexico_City)');
 }
