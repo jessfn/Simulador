@@ -148,7 +148,7 @@ export default function B22PreciosMercado() {
               <div className="bg-[#f4fbf7]/50 rounded-xl p-2.5 border border-gray-100">
                 <div className="flex items-center gap-1">
                   <DollarSign size={10} className="text-gray-400" />
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Tipo Cambio</span>
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Dólar FIX</span>
                 </div>
                 <p className="text-[16px] font-black text-gray-850 mt-0.5 leading-tight">
                   {loading ? '—'

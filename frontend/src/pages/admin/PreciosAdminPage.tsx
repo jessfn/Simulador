@@ -307,7 +307,7 @@ export default function PreciosAdminPage() {
           <div className="h-6 w-px bg-white/10 hidden md:block" />
 
           <div className="space-y-0.5">
-            <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Tipo Cambio (Banxico SF43718)</span>
+            <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Dólar FIX (Banxico SF43718)</span>
             <p className="text-[14px] font-black text-gray-900 flex items-center gap-1">
               <DollarSign size={13} className="text-gray-500" />
               ${preciosData.tc_banxico.toFixed(4)} <span className="text-[10px] text-gray-500">MXN</span>

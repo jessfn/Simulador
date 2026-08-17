@@ -263,7 +263,7 @@ export default function PreciosProductorPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 relative z-10">
             {[
               { icon: TrendingUp, label: 'Futuro Chicago', value: tieneChicago ? `$${chicago} USD/bu` : 'Sin datos' },
-              { icon: DollarSign, label: 'Tipo de cambio', value: tipoCambio != null ? `$${tipoCambio} MXN` : 'Sin datos' },
+              { icon: DollarSign, label: 'Dólar FIX', value: tipoCambio != null ? `$${tipoCambio} MXN` : 'Sin datos' },
               { icon: Tag, label: 'Bono maíz', value: `+$${BONO_MAIZ_BLANCO_USD} USD` },
             ].map((item) => (
               <div key={item.label} className="bg-white/[0.04] border border-white/10 rounded-xl p-2.5 flex items-center sm:flex-col sm:items-start sm:justify-between transition-colors hover:bg-white/[0.08]">
