@@ -85,6 +85,7 @@ export default function RegistroNuevoPage() {
 
   // Mapa
   const dibujarRef = useRef<DibujarPoligonoHandle>(null);
+  const overlapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [drawMode, setDrawMode] = useState<DrawMode>('idle');
   const [pointCount, setPointCount] = useState(0);
   const [capturandoGPS, setCapturandoGPS] = useState(false);
@@ -250,7 +251,12 @@ export default function RegistroNuevoPage() {
 
   const onUPDibujada = (poly: [number, number][], centro: { lat: number; lng: number }, area: number) => {
     const errOv = validarOverlapLocal(poly);
-    if (errOv) { setErrorOverlap(errOv); return; }
+    if (errOv) {
+      setErrorOverlap(errOv);
+      if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+      overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 2500);
+      return;
+    }
     setErrorOverlap(null);
     setPendingUP({ poligono: poly, coords: centro, area });
     setUpActual(prev => ({ ...prev, coincide_area: null, area_real_ha: '' }));
@@ -432,6 +438,8 @@ export default function RegistroNuevoPage() {
               onPoligonoEliminado={() => {}}
               onOverlap={({ pctOverlap }) => {
                 setErrorOverlap(`Esta parcela se encima con una ya registrada en el sistema (${Math.round(pctOverlap * 100)}% de traslape). Ajusta el contorno para separarla.`);
+                if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+                overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 2500);
               }}
             />
             {/* Polígono visible durante confirmación */}

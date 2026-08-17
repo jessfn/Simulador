@@ -43,10 +43,15 @@ interface Props {
   onPointCountChange?: (count: number) => void;
   /** IDs de UPs a ignorar en la validación de traslape (ej. la propia UP al editarla). */
   excluirUpIds?: number[];
-  /** Se dispara cuando el polígono dibujado se superpone significativamente
-   *  (>10% de su área) con una parcela ya registrada — el polígono NO se
+  /** IDs de UPs propias del productor (distintas a la que se está editando).
+   *  Contra estas, CUALQUIER traslape bloquea — nunca debe permitirse que
+   *  dos parcelas del mismo productor queden encimadas. Contra el resto
+   *  (parcelas de otros productores) se tolera hasta 10%. */
+  misUpIds?: number[];
+  /** Se dispara cuando el polígono dibujado se traslapa lo suficiente para
+   *  bloquearse (ver misUpIds/UMBRAL_BLOQUEO_AJENA) — el polígono NO se
    *  confirma (no se llama a onPoligonoCompleto) hasta que se corrija. */
-  onOverlap?: (info: { pctOverlap: number }) => void;
+  onOverlap?: (info: { pctOverlap: number; esPropia: boolean }) => void;
 }
 
 const GREEN = '#34d079';
@@ -61,7 +66,7 @@ const RED = '#ef4444';
 const RED_DARK = '#b91c1c';
 
 const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
-  ({ poligonoInicial, onPoligonoCompleto, onPoligonoEliminado, onModeChange, onPointCountChange, excluirUpIds, onOverlap }, ref) => {
+  ({ poligonoInicial, onPoligonoCompleto, onPoligonoEliminado, onModeChange, onPointCountChange, excluirUpIds, misUpIds, onOverlap }, ref) => {
     const map = useMap();
     const groupRef = useRef(new L.FeatureGroup());
     const verticesRef = useRef<[number, number][]>([]);
@@ -105,11 +110,11 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
       const v = verticesRef.current;
       if (v.length < 3) return;
 
-      const traslape = calcularTraslape(v, parcelasExistentesRef.current, excluirUpIds);
+      const traslape = calcularTraslape(v, parcelasExistentesRef.current, excluirUpIds, misUpIds);
       if (traslape.bloqueado) {
         overlapRef.current = true;
         fullRedraw();
-        onOverlap?.({ pctOverlap: traslape.pct });
+        onOverlap?.({ pctOverlap: traslape.pct, esPropia: !!traslape.esPropia });
         return; // No se confirma el polígono mientras se traslape.
       }
       if (overlapRef.current) {
@@ -127,7 +132,7 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
         areaHa
       );
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [onPoligonoCompleto, onOverlap, excluirUpIds]);
+    }, [onPoligonoCompleto, onOverlap, excluirUpIds, misUpIds]);
 
     const vertexIcon = (index: number, editing: boolean) => {
       const size = editing ? 20 : 13;

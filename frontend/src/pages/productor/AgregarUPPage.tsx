@@ -21,6 +21,7 @@ export default function AgregarUPPage() {
   const token = localStorage.getItem('simac_token') || '';
   const dibujarRef = useRef<DibujarPoligonoHandle>(null);
   const mapRef = useRef<any>(null);
+  const overlapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [nombreUP, setNombreUP] = useState('');
   const [estadoUp, setEstadoUp] = useState('');
@@ -127,7 +128,13 @@ export default function AgregarUPPage() {
 
   const onUPDibujada = (poly: [number, number][], centro: { lat: number; lng: number }, area: number) => {
     const r = validarOverlapLocal(poly);
-    if (r.bloqueado) { setErrorOverlap(r.mensaje); setAdvertenciaOverlap(null); return; }
+    if (r.bloqueado) {
+      setErrorOverlap(r.mensaje);
+      setAdvertenciaOverlap(null);
+      if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+      overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 2500);
+      return;
+    }
     setErrorOverlap(null);
     setAdvertenciaOverlap(r.mensaje ?? null);
     setPendingUP({ poligono: poly, coords: centro, area });
@@ -274,13 +281,20 @@ export default function AgregarUPPage() {
             ))}
             <DibujarPoligonoUP
               ref={dibujarRef}
+              misUpIds={existentesIds}
               onModeChange={mode => { setDrawMode(mode); if (mode !== 'idle') setErrorOverlap(null); }}
               onPointCountChange={n => { setPointCount(n); if (n > 0) setSearchPin(null); }}
               onPoligonoCompleto={(poly, centro, area) => { setSearchPin(null); onUPDibujada(poly, centro, area); }}
               onPoligonoEliminado={() => {}}
-              onOverlap={({ pctOverlap }) => {
-                setErrorOverlap(`Esta parcela se encima con una ya registrada (${Math.round(pctOverlap * 100)}% de traslape). Ajusta el contorno para separarla.`);
+              onOverlap={({ pctOverlap, esPropia }) => {
                 setAdvertenciaOverlap(null);
+                setErrorOverlap(
+                  esPropia
+                    ? 'No puedes dibujar esta parcela encima de otra parcela tuya. Ajusta el contorno.'
+                    : `Esta parcela se encima con una ya registrada por otro productor (${Math.round(pctOverlap * 100)}% de traslape). Ajusta el contorno.`
+                );
+                if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+                overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 2500);
               }}
             />
             {pendingUP && (

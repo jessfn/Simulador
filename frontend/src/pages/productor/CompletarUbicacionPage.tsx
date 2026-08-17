@@ -60,6 +60,8 @@ export default function CompletarUbicacionPage() {
   const [center, setCenter] = useState<{ lat: number; lng: number }>({ lat: 23.6345, lng: -102.5528 });
   const [cargado, setCargado] = useState(false);
   const [tieneExistente, setTieneExistente] = useState(false);
+  const [misOtrasUpIds, setMisOtrasUpIds] = useState<number[]>([]);
+  const overlapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('simac_token');
@@ -68,6 +70,9 @@ export default function CompletarUbicacionPage() {
       .then(d => {
         const ups = d.ups ?? (Array.isArray(d) ? d : []);
         const up = upId ? ups.find((u: any) => String(u.up_id) === String(upId)) : ups[0];
+        setMisOtrasUpIds(
+          ups.map((u: any) => u.up_id).filter((id: number) => String(id) !== String(upId))
+        );
         if (up) {
           const geom = up.geom_geojson;
           if (geom?.coordinates) {
@@ -211,6 +216,7 @@ export default function CompletarUbicacionPage() {
               ref={dibujarRef}
               poligonoInicial={poligonoInicial ?? undefined}
               excluirUpIds={upId ? [parseInt(upId)] : []}
+              misUpIds={misOtrasUpIds}
               onPoligonoCompleto={(c, centroide, ha) => {
                 setOverlapWarning(null);
                 setPoligono(c);
@@ -228,8 +234,14 @@ export default function CompletarUbicacionPage() {
                 setAreaReal('');
                 setGeoDetectado(null);
               }}
-              onOverlap={({ pctOverlap }) => {
-                setOverlapWarning(`Esta parcela se encima con una ya registrada (${Math.round(pctOverlap * 100)}% de traslape). Ajusta el contorno para separarla.`);
+              onOverlap={({ pctOverlap, esPropia }) => {
+                setOverlapWarning(
+                  esPropia
+                    ? 'No puedes dibujar esta parcela encima de otra parcela tuya. Ajusta el contorno.'
+                    : `Esta parcela se encima con una ya registrada por otro productor (${Math.round(pctOverlap * 100)}% de traslape). Ajusta el contorno.`
+                );
+                if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+                overlapTimerRef.current = setTimeout(() => setOverlapWarning(null), 2500);
               }}
               onModeChange={mode => { setDrawMode(mode); if (mode !== 'idle') setOverlapWarning(null); }}
               onPointCountChange={n => { setPointCount(n); if (n > 0) setSearchPin(null); }}
