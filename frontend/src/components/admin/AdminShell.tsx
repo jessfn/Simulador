@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { usePermisosSSE } from '../../hooks/usePermisosSSE';
 import { usePermisosStore } from '../../store/permisos';
+import { GlobalConexionBanner } from './ErrorConexionBanner';
 import {
   LayoutDashboard, Users, Warehouse, AlertTriangle,
   TrendingUp, LogOut, Menu, X, ShieldCheck, ChevronRight,
@@ -305,6 +306,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </header>
 
         <main className="flex-1 px-3 pb-3 pt-0 overflow-y-auto">
+          <GlobalConexionBanner />
           <div key={location.pathname} className="max-w-[1400px] mx-auto h-full animate-fade-in">
             {children}
           </div>

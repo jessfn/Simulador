@@ -2,6 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { installConnectionGuard } from './services/connectionGuard'
+
+installConnectionGuard()
 
 // ── Recuperación automática tras un despliegue (PWA / Service Worker) ──
 // Si un chunk hasheado deja de existir (build nuevo) el navegador lanza

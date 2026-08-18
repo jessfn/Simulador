@@ -39,7 +39,12 @@ async function request<T = any>(path: string, opts: RequestInit = {}): Promise<T
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, { ...opts, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, { ...opts, headers });
+  } catch {
+    throw new Error('SIN_CONEXION');
+  }
 
   if (res.status === 401 && !path.startsWith('/auth/')) {
     handle401();
@@ -52,6 +57,34 @@ async function request<T = any>(path: string, opts: RequestInit = {}): Promise<T
   }
   return res.json();
 }
+
+/**
+ * Fetch crudo autenticado para páginas que necesitan el Response directo
+ * (ej. Promise.allSettled con múltiples endpoints). A diferencia de un
+ * fetch() manual, detecta caída del backend (SIN_CONEXION) y sesión
+ * expirada (401 -> logout automático) de forma centralizada.
+ */
+export async function apiFetch(path: string, opts: RequestInit = {}): Promise<Response> {
+  const token = getToken();
+  const headers: Record<string, string> = { ...(opts.headers as Record<string, string>) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, { ...opts, headers });
+  } catch {
+    throw new Error('SIN_CONEXION');
+  }
+
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    handle401();
+    throw new Error('SESION_EXPIRADA');
+  }
+
+  return res;
+}
+
+export { BASE };
 
 export const api = {
   auth: {
