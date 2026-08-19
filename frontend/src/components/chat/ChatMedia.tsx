@@ -37,6 +37,18 @@ export function bubbleRadius(esMio: boolean): CSSProperties {
     : { borderRadius: 16, borderBottomLeftRadius: 2 };
 }
 
+/**
+ * Sombra para el contenedor que envuelve burbuja + cola.
+ * IMPORTANTE: usar `filter: drop-shadow(...)` en vez de `box-shadow` — el
+ * box-shadow solo sigue el rectángulo de la burbuja y deja la cola (que es
+ * un SVG hermano) sin sombra, lo que se ve como una costura/corte justo
+ * donde se unen. drop-shadow sigue el contorno real de todo lo que hay
+ * dentro (burbuja + cola), como una sola pieza — igual que WhatsApp.
+ */
+export const bubbleShadow: CSSProperties = {
+  filter: 'drop-shadow(0 1px 1.5px rgba(0,0,0,0.13))',
+};
+
 /* ─────────────────────────── Reproductor de audio ─────────────────────────── */
 /** Reproductor de nota de voz estilo WhatsApp: botón circular + barras + duración. */
 export function AudioPlayer({ src, tono }: { src: string; tono: 'propio' | 'ajeno' }) {

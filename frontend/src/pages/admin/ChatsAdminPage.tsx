@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/auth';
 import { apiFetch, BASE } from '../../services/api';
 import ErrorConexionBanner from '../../components/admin/ErrorConexionBanner';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../../utils/chatSounds';
-import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius } from '../../components/chat/ChatMedia';
+import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow } from '../../components/chat/ChatMedia';
 
 /** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
 function SendIcon({ size = 18 }: { size?: number }) {
@@ -356,8 +356,8 @@ export default function ChatsAdminPage() {
                   // los del productor/bodeguero (dueño de la conversación) a la izquierda.
                   const alinearDerecha = m.autor_id !== seleccionada.usuario_id;
                   return (
-                    <div key={m.id} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
-                      <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] px-3.5 py-2.5 shadow-sm ${
+                    <div key={m.id} style={bubbleShadow} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
+                      <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] px-3.5 py-2.5 ${
                         alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
                       }`}>
                         <Tail esMio={alinearDerecha} color={alinearDerecha ? '#17603a' : '#ffffff'} />

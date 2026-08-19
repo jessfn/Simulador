@@ -7,7 +7,7 @@ import {
 import { useAuthStore } from '../store/auth';
 import { apiFetch, BASE } from '../services/api';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../utils/chatSounds';
-import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius } from './chat/ChatMedia';
+import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow } from './chat/ChatMedia';
 
 /** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
 function SendIcon({ size = 18 }: { size?: number }) {
@@ -425,8 +425,8 @@ export default function ChatBubble() {
                     <div className="flex-1 h-px bg-rose-200" />
                   </div>
                 )}
-                <div className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
-                  <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] px-3.5 py-2.5 shadow-sm ${
+                <div style={bubbleShadow} className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
+                  <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] px-3.5 py-2.5 ${
                     esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
                   }`}>
                     <Tail esMio={esMio} color={esMio ? '#17603a' : '#ffffff'} />
