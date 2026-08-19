@@ -7,16 +7,7 @@ import { useAuthStore } from '../../store/auth';
 import { apiFetch, BASE } from '../../services/api';
 import ErrorConexionBanner from '../../components/admin/ErrorConexionBanner';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../../utils/chatSounds';
-import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow, chatWallpaper } from '../../components/chat/ChatMedia';
-
-/** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
-function SendIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 1.5 }}>
-      <path d="M3.4 20.4 21 12 3.4 3.6c-.6-.3-1.3.2-1.2.9L4 11.2c.05.35.33.62.68.66L14 13l-9.32 1.12c-.35.04-.63.31-.68.66l-1.8 6.7c-.1.7.6 1.2 1.2.9Z" />
-    </svg>
-  );
-}
+import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow, chatWallpaper, SendIcon } from '../../components/chat/ChatMedia';
 
 /** Palomita(s) estilo WhatsApp: una = enviado, dos = entregado/leído. */
 function Ticks({ leido }: { leido: boolean }) {
