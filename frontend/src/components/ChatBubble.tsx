@@ -446,9 +446,9 @@ export default function ChatBubble() {
                   return (
                     <div style={bubbleShadow} className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
                       <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
-                        esMio ? 'bg-gradient-to-br from-[#2f8f61] to-[#256e4c]' : 'bg-white'
+                        esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
                       }`}>
-                        <Tail esMio={esMio} color={esMio ? '#256e4c' : '#ffffff'} />
+                        <Tail esMio={esMio} color={esMio ? '#17603a' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
                             <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-[10px] max-w-[220px] block cursor-pointer" />
