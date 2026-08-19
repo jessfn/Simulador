@@ -11,7 +11,7 @@ import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubble
 
 /** Palomita(s) estilo WhatsApp: una = enviado, dos = entregado/leído. */
 function Ticks({ dobles, leido }: { dobles: boolean; leido: boolean }) {
-  const color = leido ? '#7dd3fc' : 'currentColor';
+  const color = leido ? '#53bdeb' : 'currentColor';
   return (
     <svg width="15" height="11" viewBox="0 0 16 11" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       {dobles && <path d="M1 5.2 3.8 8 9 1.8" opacity="0.95" />}
@@ -440,37 +440,53 @@ export default function ChatBubble() {
                     <div className="flex-1 h-px bg-rose-200" />
                   </div>
                 )}
-                <div style={bubbleShadow} className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
-                  <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] px-3.5 py-2.5 ${
-                    esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
-                  }`}>
-                    <Tail esMio={esMio} color={esMio ? '#17603a' : '#ffffff'} />
-                    {m.tipo === 'imagen' && m.archivo_url && (
-                      <img src={`${BASE.replace('/api', '')}${m.archivo_url}`} onClick={() => setLightboxSrc(`${BASE.replace('/api', '')}${m.archivo_url}`)}
-                        className="rounded-xl max-w-[220px] mb-1.5 cursor-pointer" />
-                    )}
-                    {m.tipo === 'audio' && m.archivo_url && (
-                      <AudioPlayer src={`${BASE.replace('/api', '')}${m.archivo_url}`} tono={esMio ? 'propio' : 'ajeno'} />
-                    )}
-                    {m.tipo === 'archivo' && m.archivo_url && (
-                      <a href={`${BASE.replace('/api', '')}${m.archivo_url}`} target="_blank" rel="noreferrer"
-                        className={`flex items-center gap-2 text-[12px] font-semibold underline ${esMio ? 'text-white' : 'text-[#1A5C38]'}`}>
-                        <Paperclip size={13} /> {m.archivo_nombre || 'Archivo adjunto'}
-                      </a>
-                    )}
-                    {(m.tipo === 'ubicacion' || m.tipo === 'ubicacion_vivo') && m.lat && m.lng && (
-                      <LocationPreview lat={m.lat} lng={m.lng} enVivo={m.tipo === 'ubicacion_vivo'} activoHasta={m.activo_hasta}
-                        puedeDetener={esMio && compartiendoEnVivo === m.id} onDetener={() => detenerUbicacionEnVivo(m.id)} />
-                    )}
-                    {m.contenido && (
-                      <div className={`text-[13px] leading-[1.45] ${esMio ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
-                    )}
-                    <div className={`flex items-center justify-end gap-1 mt-1 ${esMio ? 'text-white/65' : 'text-slate-300'}`}>
-                      <span className="text-[9px]">{fmtHora(m.created_at)}</span>
-                      {esMio && <Ticks dobles leido={leido} />}
+                {(() => {
+                  const url = m.archivo_url ? `${BASE.replace('/api', '')}${m.archivo_url}` : '';
+                  const esSoloImagen = m.tipo === 'imagen' && !!m.archivo_url && !m.contenido;
+                  return (
+                    <div style={bubbleShadow} className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
+                      <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
+                        esMio ? 'bg-[#d9fdd3]' : 'bg-white'
+                      }`}>
+                        <Tail esMio={esMio} color={esMio ? '#d9fdd3' : '#ffffff'} />
+                        {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
+                          <div className="relative">
+                            <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-[10px] max-w-[220px] block cursor-pointer" />
+                            <div className="absolute bottom-1 right-1 flex items-center gap-1 bg-black/40 rounded-full pl-2 pr-1.5 py-0.5">
+                              <span className="text-[9px] text-white/95">{fmtHora(m.created_at)}</span>
+                              {esMio && <Ticks dobles leido={leido} />}
+                            </div>
+                          </div>
+                        )}
+                        {m.tipo === 'imagen' && m.archivo_url && !esSoloImagen && (
+                          <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-xl max-w-[220px] mb-1.5 cursor-pointer" />
+                        )}
+                        {m.tipo === 'audio' && m.archivo_url && (
+                          <AudioPlayer src={url} tono={esMio ? 'propio' : 'ajeno'} />
+                        )}
+                        {m.tipo === 'archivo' && m.archivo_url && (
+                          <a href={url} target="_blank" rel="noreferrer"
+                            className="flex items-center gap-2 text-[12px] font-semibold underline text-[#1A5C38]">
+                            <Paperclip size={13} /> {m.archivo_nombre || 'Archivo adjunto'}
+                          </a>
+                        )}
+                        {(m.tipo === 'ubicacion' || m.tipo === 'ubicacion_vivo') && m.lat && m.lng && (
+                          <LocationPreview lat={m.lat} lng={m.lng} enVivo={m.tipo === 'ubicacion_vivo'} activoHasta={m.activo_hasta}
+                            puedeDetener={esMio && compartiendoEnVivo === m.id} onDetener={() => detenerUbicacionEnVivo(m.id)} />
+                        )}
+                        {m.contenido && (
+                          <div className="text-[13px] leading-[1.45] text-slate-900">{m.contenido}</div>
+                        )}
+                        {!esSoloImagen && (
+                          <div className="flex items-center justify-end gap-1 mt-1 text-slate-500">
+                            <span className="text-[9px]">{fmtHora(m.created_at)}</span>
+                            {esMio && <Ticks dobles leido={leido} />}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
                 </div>
               );
             })}

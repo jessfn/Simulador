@@ -2,10 +2,16 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Navigation } from 'lucide-react';
 
-/** Ícono de enviar — avión de papel estilo Telegram, centrado dentro del botón circular. */
+/**
+ * Ícono de enviar — avión de papel estilo Telegram. El path oficial no está
+ * centrado en su propio viewBox 0 0 448 512 (el trazo real mide
+ * x:-0.56..448, y:64.4..440 — medido con getBBox()), así que se usa un
+ * viewBox recortado exactamente a esa caja para que quede centrado de
+ * verdad dentro del botón circular, sin márgenes a ojo.
+ */
 export function SendIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size * (512 / 448)} viewBox="0 0 448 512" fill="currentColor" style={{ marginLeft: 1.5, marginTop: -1 }}>
+    <svg width={size} height={size * (375.7 / 448.6)} viewBox="-0.56 64.4 448.6 375.7" fill="currentColor">
       <path d="M446.7 98.6l-67.6 318.8c-5.1 22.5-18.4 28.1-37.3 17.5l-103-75.9-49.7 47.8c-5.5 5.5-10.1 10.1-20.7 10.1l7.4-104.9 190.9-172.5c8.3-7.4-1.8-11.5-12.9-4.1L117.8 284 15.7 251.4c-22.2-6.9-22.6-22.2 4.6-32.9L418.2 66.4c18.5-6.9 34.7 4.1 28.5 32.2z" />
     </svg>
   );
@@ -160,15 +166,13 @@ export function AudioPlayer({ src, tono }: { src: string; tono: 'propio' | 'ajen
   }
 
   const barras = 26;
-  const claro = tono === 'propio';
+  void tono; // ambas burbujas (propia y ajena) son claras — mismo tratamiento oscuro sobre claro
 
   return (
     <div className="flex items-center gap-2.5 py-1 min-w-[190px]">
       <audio ref={audioRef} src={src} preload="metadata" />
       <button onClick={toggle} disabled={error}
-        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-transform active:scale-90 ${
-          claro ? 'bg-white/25 text-white' : 'bg-[#1A5C38] text-white'
-        }`}>
+        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-transform active:scale-90 bg-[#1A5C38] text-white">
         {playing
           ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1" /><rect x="14" y="4" width="5" height="16" rx="1" /></svg>
           : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>}
@@ -178,13 +182,11 @@ export function AudioPlayer({ src, tono }: { src: string; tono: 'propio' | 'ajen
           const h = 5 + Math.abs(Math.sin(i * 1.7)) * 14;
           const activo = i / barras <= progreso;
           return (
-            <div key={i} className={`w-[2.5px] rounded-full transition-colors ${
-              activo ? (claro ? 'bg-white' : 'bg-[#1A5C38]') : (claro ? 'bg-white/35' : 'bg-slate-300')
-            }`} style={{ height: h }} />
+            <div key={i} className={`w-[2.5px] rounded-full transition-colors ${activo ? 'bg-[#1A5C38]' : 'bg-black/15'}`} style={{ height: h }} />
           );
         })}
       </div>
-      <span className={`text-[10px] font-medium flex-shrink-0 tabular-nums ${claro ? 'text-white/80' : 'text-slate-400'}`}>
+      <span className="text-[10px] font-medium flex-shrink-0 tabular-nums text-slate-500">
         {error ? '—' : fmt(playing || actual > 0 ? actual : duracion)}
       </span>
     </div>

@@ -11,7 +11,7 @@ import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubble
 
 /** Palomita(s) estilo WhatsApp: una = enviado, dos = entregado/leído. */
 function Ticks({ leido }: { leido: boolean }) {
-  const color = leido ? '#7dd3fc' : 'currentColor';
+  const color = leido ? '#53bdeb' : 'currentColor';
   return (
     <svg width="15" height="11" viewBox="0 0 16 11" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M1 5.2 3.8 8 9 1.8" opacity="0.95" />
@@ -346,22 +346,34 @@ export default function ChatsAdminPage() {
                   // Vista del admin: los mensajes del equipo de soporte van a la derecha,
                   // los del productor/bodeguero (dueño de la conversación) a la izquierda.
                   const alinearDerecha = m.autor_id !== seleccionada.usuario_id;
+                  const url = m.archivo_url ? `${BASE.replace('/api', '')}${m.archivo_url}` : '';
+                  const esSoloImagen = m.tipo === 'imagen' && !!m.archivo_url && !m.contenido;
                   return (
                     <div key={m.id} style={bubbleShadow} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
-                      <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] px-3.5 py-2.5 ${
-                        alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
+                      <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
+                        alinearDerecha ? 'bg-[#d9fdd3]' : 'bg-white'
                       }`}>
-                        <Tail esMio={alinearDerecha} color={alinearDerecha ? '#17603a' : '#ffffff'} />
-                        {m.tipo === 'imagen' && m.archivo_url && (
-                          <img src={`${BASE.replace('/api', '')}${m.archivo_url}`} onClick={() => setLightboxSrc(`${BASE.replace('/api', '')}${m.archivo_url}`)}
-                            className="rounded-xl max-w-[260px] mb-1.5 cursor-pointer" />
+                        <Tail esMio={alinearDerecha} color={alinearDerecha ? '#d9fdd3' : '#ffffff'} />
+                        {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
+                          <div className="relative">
+                            <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-[10px] max-w-[260px] block cursor-pointer" />
+                            <div className="absolute bottom-1 right-1 flex items-center gap-1 bg-black/40 rounded-full pl-2 pr-1.5 py-0.5">
+                              <span className="text-[9px] text-white/95">{fmtHora(m.created_at)}</span>
+                              {alinearDerecha && (
+                                <Ticks leido={!!usuarioLeidoHasta && new Date(m.created_at) <= new Date(usuarioLeidoHasta)} />
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {m.tipo === 'imagen' && m.archivo_url && !esSoloImagen && (
+                          <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-xl max-w-[260px] mb-1.5 cursor-pointer" />
                         )}
                         {m.tipo === 'audio' && m.archivo_url && (
-                          <AudioPlayer src={`${BASE.replace('/api', '')}${m.archivo_url}`} tono={alinearDerecha ? 'propio' : 'ajeno'} />
+                          <AudioPlayer src={url} tono={alinearDerecha ? 'propio' : 'ajeno'} />
                         )}
                         {m.tipo === 'archivo' && m.archivo_url && (
-                          <a href={`${BASE.replace('/api', '')}${m.archivo_url}`} target="_blank" rel="noreferrer"
-                            className={`flex items-center gap-2 text-[12px] font-semibold underline ${alinearDerecha ? 'text-white' : 'text-[#1A5C38]'}`}>
+                          <a href={url} target="_blank" rel="noreferrer"
+                            className="flex items-center gap-2 text-[12px] font-semibold underline text-[#1A5C38]">
                             <Paperclip size={13} /> {m.archivo_nombre || 'Archivo adjunto'}
                           </a>
                         )}
@@ -369,14 +381,16 @@ export default function ChatsAdminPage() {
                           <LocationPreview lat={m.lat} lng={m.lng} enVivo={m.tipo === 'ubicacion_vivo'} activoHasta={m.activo_hasta} />
                         )}
                         {m.contenido && (
-                          <div className={`text-[13px] leading-[1.5] ${alinearDerecha ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
+                          <div className="text-[13px] leading-[1.5] text-slate-900">{m.contenido}</div>
                         )}
-                        <div className={`flex items-center justify-end gap-1 mt-1 ${alinearDerecha ? 'text-white/65' : 'text-slate-300'}`}>
-                          <span className="text-[9px]">{fmtHora(m.created_at)}</span>
-                          {alinearDerecha && (
-                            <Ticks leido={!!usuarioLeidoHasta && new Date(m.created_at) <= new Date(usuarioLeidoHasta)} />
-                          )}
-                        </div>
+                        {!esSoloImagen && (
+                          <div className="flex items-center justify-end gap-1 mt-1 text-slate-500">
+                            <span className="text-[9px]">{fmtHora(m.created_at)}</span>
+                            {alinearDerecha && (
+                              <Ticks leido={!!usuarioLeidoHasta && new Date(m.created_at) <= new Date(usuarioLeidoHasta)} />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
