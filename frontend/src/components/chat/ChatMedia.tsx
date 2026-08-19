@@ -19,8 +19,8 @@ export function Tail({ esMio, color }: { esMio: boolean; color: string }) {
     ? { position: 'absolute', bottom: 0, right: -8, width: 16, height: 16, overflow: 'hidden', pointerEvents: 'none' }
     : { position: 'absolute', bottom: 0, left: -8, width: 16, height: 16, overflow: 'hidden', pointerEvents: 'none' };
   const inner: CSSProperties = esMio
-    ? { position: 'absolute', bottom: -3, left: -9, width: 20, height: 20, background: color, borderRadius: 6, transform: 'rotate(45deg)' }
-    : { position: 'absolute', bottom: -3, right: -9, width: 20, height: 20, background: color, borderRadius: 6, transform: 'rotate(-45deg)' };
+    ? { position: 'absolute', bottom: -2, left: -7, width: 16, height: 16, background: color, borderRadius: 2, transform: 'rotate(45deg)' }
+    : { position: 'absolute', bottom: -2, right: -7, width: 16, height: 16, background: color, borderRadius: 2, transform: 'rotate(-45deg)' };
   return (
     <div style={outer}><div style={inner} /></div>
   );
