@@ -351,9 +351,9 @@ export default function ChatsAdminPage() {
                   return (
                     <div key={m.id} style={bubbleShadow} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
                       <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
-                        alinearDerecha ? 'bg-[#d9fdd3]' : 'bg-white'
+                        alinearDerecha ? 'bg-[#b6f0a0]' : 'bg-white'
                       }`}>
-                        <Tail esMio={alinearDerecha} color={alinearDerecha ? '#d9fdd3' : '#ffffff'} />
+                        <Tail esMio={alinearDerecha} color={alinearDerecha ? '#b6f0a0' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
                             <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-[10px] max-w-[260px] block cursor-pointer" />
