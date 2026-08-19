@@ -192,7 +192,7 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
       notificar({
         usuarioId: a.id,
         tipo: 'chat_ayuda',
-        titulo: 'Nuevo mensaje de soporte',
+        titulo: 'Mensaje nuevo',
         mensaje: contenido?.trim() || `Nuevo ${tipo === 'imagen' ? 'imagen' : tipo === 'audio' ? 'audio' : tipo === 'ubicacion' ? 'ubicación' : 'archivo'} recibido`,
         referenciaId: conv.id,
         referenciaTipo: 'chat_ayuda',
@@ -360,7 +360,7 @@ adminChatRouter.post('/:id/mensaje', authMiddleware, responderChats, upload.sing
     notificar({
       usuarioId: conv.rows[0].usuario_id,
       tipo: 'chat_ayuda',
-      titulo: 'Respuesta de soporte SIMAC',
+      titulo: 'Mensaje nuevo',
       mensaje: contenido?.trim() || 'Tienes una nueva respuesta del equipo de soporte',
       referenciaId: convId,
       referenciaTipo: 'chat_ayuda',
