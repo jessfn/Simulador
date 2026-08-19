@@ -134,41 +134,30 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
-  // ── Anclar el panel al viewport VISIBLE (arregla el header que se pierde) ──
+  // ── Anclar el panel al viewport VISIBLE ──
   //
-  // Bug real de iOS/WebKit: mientras el teclado está abierto, los elementos
-  // "position: fixed" DEJAN de comportarse como fijos y se desplazan junto
-  // con el documento. La secuencia que rompía el header era:
-  //   1. Al enfocar el input, iOS desplaza el documento para revelar el campo
-  //      → window.scrollY deja de ser 0.
-  //   2. Por el bug, el panel "fijo" se va hacia arriba con el documento.
-  //   3. El header (con quién hablas) queda fuera de pantalla por arriba.
+  // IMPORTANTE — error ya cometido, no repetir: NO sumar window.scrollY
+  // aquí. Se intentó una vez asumiendo que iOS desplaza los elementos
+  // "fixed" con el documento, pero si el usuario ya venía con la página
+  // desplazada (dashboard hacia abajo), esa suma empuja el panel fuera de
+  // la pantalla y deja ver la app de fondo. Los elementos position:fixed
+  // NO se desplazan con el documento aquí.
   //
-  // Los intentos anteriores solo usaban visualViewport.offsetTop y NUNCA
-  // compensaban window.scrollY — esa era la pieza que faltaba.
-  //
-  // Aquí compensamos las dos: desplazamos el panel hacia abajo exactamente
-  // lo mismo que el documento se desplazó, así vuelve a quedar clavado al
-  // área realmente visible. Se usa transform:translateY (no "top") porque
-  // se compone en GPU: no provoca recálculo de layout y por eso se ve
-  // fluido en vez de trabado.
+  // Lo único correcto es seguir el viewport visual: su altura y su
+  // desplazamiento propio (offsetTop), que es justo lo que cambia cuando
+  // el teclado aparece. Así el header queda siempre visible arriba.
   useEffect(() => {
     const panel = panelRef.current;
     if (!open || !panel) return;
 
     let ultimoAlto = -1;
-    let ultimoY = -1;
+    let ultimoTop = -1;
     const aplicar = () => {
       const vv = window.visualViewport;
       const alto = vv ? vv.height : window.innerHeight;
-      // window.scrollY: cuánto se desplazó el documento (bug de iOS).
-      // vv.offsetTop: cuánto se desplazó el viewport visual dentro del layout.
-      const desplazamiento = (window.scrollY || 0) + (vv ? vv.offsetTop : 0);
+      const arriba = vv ? vv.offsetTop : 0;
       if (alto !== ultimoAlto) { panel.style.height = `${alto}px`; ultimoAlto = alto; }
-      if (desplazamiento !== ultimoY) {
-        panel.style.transform = `translate3d(0, ${desplazamiento}px, 0)`;
-        ultimoY = desplazamiento;
-      }
+      if (arriba !== ultimoTop) { panel.style.top = `${arriba}px`; ultimoTop = arriba; }
     };
     aplicar();
 
@@ -189,14 +178,12 @@ export default function ChatBubble() {
     const vv = window.visualViewport;
     vv?.addEventListener('resize', aplicar);
     vv?.addEventListener('scroll', aplicar);
-    window.addEventListener('scroll', aplicar, { passive: true });
     document.addEventListener('focusin', seguirAnimacion);
     document.addEventListener('focusout', seguirAnimacion);
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       vv?.removeEventListener('resize', aplicar);
       vv?.removeEventListener('scroll', aplicar);
-      window.removeEventListener('scroll', aplicar);
       document.removeEventListener('focusin', seguirAnimacion);
       document.removeEventListener('focusout', seguirAnimacion);
     };
@@ -529,11 +516,12 @@ export default function ChatBubble() {
           ref={panelRef}
           style={{
             zIndex: 70,
+            top: 0,
             height: '100dvh',
-            // El efecto de arriba sobrescribe height y transform en vivo.
+            // El efecto de arriba sobrescribe height y top en vivo.
             // willChange mantiene el panel en su propia capa de GPU para
             // que el seguimiento del teclado se vea fluido, sin parpadeos.
-            willChange: 'transform, height',
+            willChange: 'height, top',
           }}
           className="fixed top-0 left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in"
         >
