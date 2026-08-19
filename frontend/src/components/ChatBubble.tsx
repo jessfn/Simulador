@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MessageCircle, X, Smile, Image as ImageIcon, Mic, Paperclip,
@@ -74,7 +74,6 @@ export default function ChatBubble() {
   // abrirla la burbuja reaparece sola — solo se re-oculta si vuelven a tocar la "×".
   const [hidden, setHidden] = useState(() => sessionStorage.getItem(HIDDEN_KEY) === '1');
   const [open, setOpen] = useState(false);
-  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [noLeidos, setNoLeidos] = useState(0);
   const [texto, setTexto] = useState('');
@@ -128,35 +127,7 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
-  // ── Seguir al teclado en iOS/Android (visualViewport) ──
-  // `100dvh`/`inset-0` no se achican cuando aparece el teclado en iOS Safari:
-  // el panel se queda con la altura de layout completa, el teclado lo tapa
-  // por encima y queda un hueco vacío donde antes estaba el teclado, además
-  // de empujar el header fuera de vista. Con visualViewport ajustamos la
-  // altura y posición reales del panel al espacio que de verdad es visible,
-  // igual que hace WhatsApp.
-  useEffect(() => {
-    if (!open) { setPanelStyle({}); return; }
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const actualizar = () => {
-      setPanelStyle({ height: vv.height, top: vv.offsetTop });
-      // El navegador puede tardar en "asentar" el scroll del layout tras
-      // abrir el teclado — forzamos que la página no quede desplazada.
-      window.scrollTo(0, 0);
-    };
-    actualizar();
-    vv.addEventListener('resize', actualizar);
-    vv.addEventListener('scroll', actualizar);
-    return () => {
-      vv.removeEventListener('resize', actualizar);
-      vv.removeEventListener('scroll', actualizar);
-    };
-  }, [open]);
-
   // ── Bloquear el scroll del body mientras el chat está abierto ──
-  // Sin esto, al aparecer el teclado en iOS el fondo puede desplazarse
-  // por detrás del panel fijo, empeorando el hueco y descuadrando el header.
   useEffect(() => {
     if (!open) return;
     const previo = document.body.style.overflow;
@@ -449,7 +420,7 @@ export default function ChatBubble() {
 
       {/* ── Panel de chat ── */}
       {open && (
-        <div style={{ zIndex: 70, ...panelStyle }} className="fixed inset-0 flex flex-col bg-[#dbe5df] animate-fade-in">
+        <div style={{ zIndex: 70, height: '100dvh' }} className="fixed inset-0 flex flex-col bg-[#dbe5df] animate-fade-in">
           {/* Header */}
           <div className="flex-none bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg">
             <button onClick={() => setOpen(false)} className="text-white/90 active:scale-90 transition-transform">
