@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MessageCircle, X, Smile, Image as ImageIcon, Mic, Paperclip,
@@ -87,11 +87,11 @@ export default function ChatBubble() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [ubicacionSheet, setUbicacionSheet] = useState(false);
   const [compartiendoEnVivo, setCompartiendoEnVivo] = useState<number | null>(null);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({ height: '100dvh', top: 0 });
 
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const footerRef = useRef<HTMLDivElement>(null);
   const fileImgRef = useRef<HTMLInputElement>(null);
   const fileDocRef = useRef<HTMLInputElement>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
@@ -129,48 +129,15 @@ export default function ChatBubble() {
   }, [noLeidos]);
 
   // ── Ajuste al teclado en iOS/Android ──
-  // Técnica real usada en apps de chat para iOS standalone (probada, no
-  // inventada a ciegas): en vez de intentar redimensionar TODO el panel a
-  // mano (lo que dejaba huecos por timing), la barra de escribir se ancla
-  // de forma independiente con "top: var(--vvh); transform: translateY(-100%)".
-  // Como --vvh se actualiza en vivo con visualViewport.height, la barra
-  // siempre queda pegada exactamente al borde del teclado, con una
-  // transición CSS suave — así no hay hueco ni salto, sin importar cuándo
-  // llegue el evento de resize.
+  // Probamos primero calcular la altura a mano con visualViewport (varias
+  // rondas), pero seguía dejando un hueco: el bloqueo de scroll del body y
+  // el cálculo manual competían con el propio ajuste nativo de iOS en vez
+  // de dejarlo actuar. La solución real es la más simple: NO tocar nada
+  // por JS. El panel usa "100dvh" (unidad que el motor de iOS sí achica de
+  // forma nativa y correcta cuando aparece el teclado, sin nuestra ayuda)
+  // y no bloqueamos el scroll del body, para no estorbar ese ajuste nativo.
   useEffect(() => {
-    if (!open) return;
-    const vv = window.visualViewport;
-    const actualizar = () => {
-      const alto = vv ? vv.height : window.innerHeight;
-      document.documentElement.style.setProperty('--simac-vvh', `${alto}px`);
-      document.documentElement.style.setProperty('--simac-vvs', alto < 600 ? '0px' : 'env(safe-area-inset-bottom, 0px)');
-    };
-    actualizar();
-    vv?.addEventListener('resize', actualizar);
-    vv?.addEventListener('scroll', actualizar);
-    const previoTouchAction = document.body.style.touchAction;
-    document.body.style.touchAction = 'none';
-
-    // Medimos la altura real del footer (cambia con el picker de emojis o
-    // el modo de grabación) para que los mensajes nunca queden tapados.
-    const actualizarAltoFooter = () => {
-      if (footerRef.current) {
-        document.documentElement.style.setProperty('--simac-footer-h', `${footerRef.current.offsetHeight}px`);
-      }
-    };
-    actualizarAltoFooter();
-    const ro = new ResizeObserver(actualizarAltoFooter);
-    if (footerRef.current) ro.observe(footerRef.current);
-
-    return () => {
-      vv?.removeEventListener('resize', actualizar);
-      vv?.removeEventListener('scroll', actualizar);
-      document.body.style.touchAction = previoTouchAction;
-      document.documentElement.style.removeProperty('--simac-vvh');
-      document.documentElement.style.removeProperty('--simac-vvs');
-      document.documentElement.style.removeProperty('--simac-footer-h');
-      ro.disconnect();
-    };
+    setPanelStyle(open ? { height: '100dvh', top: 0 } : {});
   }, [open]);
 
   // ── Cargar conversación inicial ──
@@ -456,7 +423,7 @@ export default function ChatBubble() {
 
       {/* ── Panel de chat ── */}
       {open && (
-        <div style={{ zIndex: 70, top: 0, height: 'var(--simac-vvh, 100dvh)' }} className="fixed left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in overflow-hidden">
+        <div style={{ zIndex: 70, ...panelStyle }} className="fixed left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in">
           {/* Header */}
           <div className="flex-none bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg">
             <button onClick={() => setOpen(false)} className="text-white/90 active:scale-90 transition-transform">
@@ -477,11 +444,7 @@ export default function ChatBubble() {
           </div>
 
           {/* Mensajes */}
-          <div
-            ref={scrollRef}
-            style={{ ...chatWallpaper, paddingBottom: 'var(--simac-footer-h, 76px)', overscrollBehavior: 'contain' }}
-            className="flex-1 overflow-y-auto px-4 pt-4 flex flex-col gap-2.5 bg-[#dbe5df]"
-          >
+          <div ref={scrollRef} style={chatWallpaper} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#dbe5df]">
             {mensajes.length === 0 && (
               <div className="mt-10">
                 <div className="text-center text-[12px] text-slate-400 mb-4">
@@ -572,24 +535,9 @@ export default function ChatBubble() {
             )}
           </div>
 
-          {/* Footer (emoji picker + barra de escribir): anclado de forma
-              independiente al borde real del teclado con top:var(--simac-vvh)
-              + translateY(-100%) — la técnica que usan las apps de chat en
-              iOS para que nunca quede un hueco, con transición suave. */}
-          <div
-            ref={footerRef}
-            style={{
-              zIndex: 71,
-              top: 'var(--simac-vvh, 100dvh)',
-              transform: 'translateY(-100%)',
-              transition: 'top 0.25s ease',
-              touchAction: 'none',
-            }}
-            className="fixed left-0 right-0"
-          >
           {/* Emoji picker */}
           {showEmoji && (
-            <div className="bg-white border-t border-slate-100 px-4 py-2.5 grid grid-cols-6 gap-1.5">
+            <div className="flex-none bg-white border-t border-slate-100 px-4 py-2.5 grid grid-cols-6 gap-1.5">
               {EMOJIS.map(em => (
                 <button key={em} onClick={() => { setTexto(t => t + em); setShowEmoji(false); }}
                   className="text-[22px] active:scale-90 transition-transform">{em}</button>
@@ -598,7 +546,7 @@ export default function ChatBubble() {
           )}
 
           {/* Input bar */}
-          <div className="bg-white border-t border-slate-100 px-3 pt-2" style={{ paddingBottom: 'calc(var(--simac-vvs, env(safe-area-inset-bottom,0px)) + 10px)' }}>
+          <div className="flex-none bg-white border-t border-slate-100 px-3 pt-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 10px)' }}>
             {grabando ? (
               <div className="flex items-center gap-3 py-1.5">
                 <button onClick={cancelarGrabacion} className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90 transition-transform">
@@ -648,7 +596,6 @@ export default function ChatBubble() {
                 </div>
               </>
             )}
-          </div>
           </div>
         </div>
       )}
