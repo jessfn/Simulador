@@ -134,13 +134,47 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
+  // ── Bloquear el scroll del fondo (sin desplazar el body) ──
+  //
+  // Corrección de una regla anterior mal formulada: "nunca tocar body/html"
+  // era demasiado amplio. Lo que rompió el panel la vez pasada fue
+  // DESPLAZAR la caja del body (position:fixed + top negativo) — eso sí
+  // se lleva el panel portado con él. Pero SIN bloqueo, iOS hace scroll
+  // nativo del documento al enfocar el input (para "revelarlo"), y por un
+  // bug conocido de WebKit los elementos position:fixed se arrastran con
+  // ese scroll durante la animación del teclado — así fue como el header
+  // terminó desapareciendo por completo en la última prueba.
+  //
+  // La solución correcta: overflow:hidden + altura explícita en html y
+  // body, SIN position ni top — eso impide que el documento tenga scroll
+  // que ofrecer, sin mover la caja del body ni un pixel, así que el panel
+  // portado nunca se ve afectado.
+  useEffect(() => {
+    if (!open) return;
+    const html = document.documentElement;
+    const { body } = document;
+    const previo = {
+      htmlOverflow: html.style.overflow, htmlHeight: html.style.height,
+      bodyOverflow: body.style.overflow, bodyHeight: body.style.height,
+    };
+    html.style.overflow = 'hidden';
+    html.style.height = '100%';
+    body.style.overflow = 'hidden';
+    body.style.height = '100%';
+    return () => {
+      html.style.overflow = previo.htmlOverflow;
+      html.style.height = previo.htmlHeight;
+      body.style.overflow = previo.bodyOverflow;
+      body.style.height = previo.bodyHeight;
+    };
+  }, [open]);
+
   // ── Tamaño del panel frente al teclado ──
   //
-  // REGLA DE ORO (aprendida rompiendo esto dos veces): NUNCA tocar los
-  // estilos de <body> ni de <html>. El panel se inyecta con un portal
-  // DENTRO del body, así que cualquier cosa que le hagamos al body
-  // (position:fixed, top negativo, etc.) se lleva el panel con él y
-  // termina mostrando la app de fondo. Tampoco sumar window.scrollY.
+  // El panel se inyecta con un portal DENTRO del body. Regla aprendida
+  // rompiendo esto dos veces: nunca DESPLAZAR la caja del body
+  // (position:fixed + top negativo) — eso sí arrastra al panel con él.
+  // Tampoco sumar window.scrollY.
   //
   // El modelo de tamaño es puramente geométrico y se apoya en dos datos
   // del viewport visual:
@@ -154,7 +188,7 @@ export default function ChatBubble() {
   //     el espacio en blanco por el que se alcanzaba a ver el inicio.
   //   · El "top" nunca cambia → el header no puede temblar al escribir.
   //   · El panel cubre todo lo visible → no hay nada del fondo que tocar
-  //     ni arrastrar, sin necesidad de bloquear el body.
+  //     ni arrastrar.
   useEffect(() => {
     if (!open) return;
     const panel = panelRef.current;
