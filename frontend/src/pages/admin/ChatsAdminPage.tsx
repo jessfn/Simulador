@@ -329,7 +329,7 @@ export default function ChatsAdminPage() {
         </div>
 
         {/* Panel de conversación */}
-        <div className="flex-1 bg-[#f4f7f5] rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 bg-[#dbe5df] rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden min-w-0">
           {!seleccionada ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-gray-300">
               <MessageCircle size={36} />

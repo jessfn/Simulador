@@ -409,7 +409,7 @@ export default function ChatBubble() {
 
       {/* ── Panel de chat ── */}
       {open && (
-        <div style={{ zIndex: 70 }} className="fixed inset-0 flex flex-col bg-[#f4f7f5] animate-fade-in">
+        <div style={{ zIndex: 70 }} className="fixed inset-0 flex flex-col bg-[#dbe5df] animate-fade-in">
           {/* Header */}
           <div className="flex-none bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg">
             <button onClick={() => setOpen(false)} className="text-white/90 active:scale-90 transition-transform">
@@ -430,7 +430,7 @@ export default function ChatBubble() {
           </div>
 
           {/* Mensajes */}
-          <div ref={scrollRef} style={chatWallpaper} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#f4f7f5]">
+          <div ref={scrollRef} style={chatWallpaper} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#dbe5df]">
             {mensajes.length === 0 && (
               <div className="text-center text-[12px] text-slate-400 mt-10">
                 Escríbenos si tienes cualquier duda o problema con la app.
