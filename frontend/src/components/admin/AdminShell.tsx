@@ -8,7 +8,9 @@ import {
   LayoutDashboard, Users, Warehouse, AlertTriangle,
   TrendingUp, LogOut, Menu, X, ShieldCheck, ChevronRight,
   Sprout, BarChart3, Settings, Leaf, KeyRound, CircleUserRound, Layers,
+  MessageCircle,
 } from 'lucide-react';
+import { apiFetch } from '../../services/api';
 
 interface SidebarItem {
   label: string;
@@ -27,6 +29,7 @@ const MENU: SidebarItem[] = [
   { label: 'Productores',       subtitle: 'Administración y gestión integral de agricultores registrados',    path: '/admin/productores',       icon: Users,           vista: 'productores' },
   { label: 'Parcelas',          subtitle: 'Mapa de todas las unidades de producción y parcelas registradas',  path: '/admin/parcelas',          icon: Layers,          vista: 'parcelas' },
   { label: 'Bodegas',           subtitle: 'Supervisión y control detallado de centros de acopio',             path: '/admin/bodegas',           icon: Warehouse,       vista: 'bodegas' },
+  { label: 'Chats de Ayuda',    subtitle: 'Soporte en vivo a productores y bodegas',                          path: '/admin/chats',             icon: MessageCircle,   vista: 'chats_ayuda' },
   { label: 'Alertas',           subtitle: 'Centro de notificaciones y avisos en tiempo real',                 path: '/admin/alertas',           icon: AlertTriangle,   vista: 'alertas' },
   { label: 'Precios',           subtitle: 'Monitoreo de cotizaciones y variaciones del mercado',              path: '/admin/precios',           icon: TrendingUp,      vista: 'precios' },
   { label: 'Producción',        subtitle: 'Registro, seguimiento y estimación de cosechas activas',           path: '/admin/produccion',        icon: Sprout,          vista: 'produccion' },
@@ -49,6 +52,21 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   // admin y responsable tienen permisos totales; OREF carga sus permisos individuales
   usePermisosSSE(user?.userId, esAdminOResponsable);
+
+  // Badge de conversaciones de soporte sin leer en el ítem "Chats de Ayuda"
+  const [chatsNoLeidos, setChatsNoLeidos] = useState(0);
+  useEffect(() => {
+    if (!puedeVerVista('chats_ayuda')) return;
+    const cargar = () => {
+      apiFetch('/admin/chats').then(r => r.json()).then(d => {
+        const total = (d.conversaciones || []).reduce((s: number, c: any) => s + (c.no_leidos_admin || 0), 0);
+        setChatsNoLeidos(total);
+      }).catch(() => {});
+    };
+    cargar();
+    const interval = setInterval(cargar, 30000);
+    return () => clearInterval(interval);
+  }, [puedeVerVista]);
 
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
 
@@ -164,7 +182,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all duration-500" />}
               <item.icon size={16} strokeWidth={2.2} className={`flex-shrink-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? 'text-white scale-110' : 'text-emerald-100/60 group-hover:text-white group-hover:scale-110'}`} />
               <span className="truncate transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-1">{item.label}</span>
-              {!mobile && <ChevronRight size={13} className="ml-auto opacity-0 -translate-x-2 group-hover:opacity-40 group-hover:translate-x-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]" />}
+              {item.path === '/admin/chats' && chatsNoLeidos > 0 && (
+                <span className="ml-auto flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9.5px] font-black flex items-center justify-center">
+                  {chatsNoLeidos > 9 ? '9+' : chatsNoLeidos}
+                </span>
+              )}
+              {!mobile && item.path !== '/admin/chats' && <ChevronRight size={13} className="ml-auto opacity-0 -translate-x-2 group-hover:opacity-40 group-hover:translate-x-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]" />}
             </>
           )}
         </NavLink>

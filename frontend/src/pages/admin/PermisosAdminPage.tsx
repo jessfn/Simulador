@@ -6,7 +6,7 @@ import {
   Loader2, RefreshCw, UserPlus,
   TriangleAlert, Sparkles, LayoutDashboard, Users, Warehouse,
   TrendingUp, Sprout, BarChart3, Leaf, Search, ChevronLeft, ChevronRight, Layers,
-  Eye, EyeOff, KeyRound,
+  Eye, EyeOff, KeyRound, MessageCircle,
 } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -32,10 +32,11 @@ const VISTAS_LABELS: Record<string, { label: string; icon: React.ReactNode }> = 
   mercado:             { label: 'Mercado',           icon: <BarChart3 size={14} className="text-cyan-500" /> },
   senasica:            { label: 'SENASICA',          icon: <Leaf size={14} className="text-lime-600" /> },
   'avisos-privacidad': { label: 'Avisos Privacidad', icon: <ShieldCheck size={14} className="text-slate-500" /> },
+  chats_ayuda:         { label: 'Chats de Ayuda',     icon: <MessageCircle size={14} className="text-teal-500" /> },
 };
 
 const ACCION_LABELS: Record<string, string> = {
-  ver: 'Ver', ver_detalle: 'Ver detalle', crear: 'Crear', editar: 'Editar', eliminar: 'Eliminar', exportar: 'Exportar',
+  ver: 'Ver', ver_detalle: 'Ver detalle', crear: 'Crear', editar: 'Editar', eliminar: 'Eliminar', exportar: 'Exportar', responder: 'Responder',
 };
 
 const VISTAS_ACCIONES: Record<string, string[]> = {
@@ -49,6 +50,7 @@ const VISTAS_ACCIONES: Record<string, string[]> = {
   mercado:             ['ver', 'exportar'],
   senasica:            ['ver', 'crear', 'eliminar'],
   'avisos-privacidad': ['ver', 'exportar'],
+  chats_ayuda:         ['ver', 'responder'],
 };
 
 const ESTADOS_MX = [

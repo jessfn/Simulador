@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth';
 import { api } from '../services/api';
 import AppHeader from './AppHeader';
 import PushPrompt from './PushPrompt';
+import ChatBubble from './ChatBubble';
 
 const NAV = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Tablero' },
@@ -89,6 +90,9 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Push prompt global (bodeguero) ── */}
       <PushPrompt rol="bodeguero" />
+
+      {/* ── Chat de ayuda ── */}
+      <ChatBubble />
 
       {/* ── Profile Drawer ─────────────────────────────── */}
       {/* Backdrop con transición suave */}

@@ -36,6 +36,7 @@ import disponibilidadRoutes from './routes/disponibilidad';
 import productorRoutes from './routes/productor';
 import senasicaRoutes from './routes/senasica';
 import exportarBdRoutes from './routes/exportar-bd';
+import chatRoutes, { adminChatRouter } from './routes/chat';
 import { scheduleBodegaDailyJobs } from './jobs/bodegaDailyJobs';
 import { schedulePreciosCron } from './jobs/preciosCron';
 import pool from './config/database';
@@ -141,6 +142,8 @@ app.use('/api/productores', productoresRoutes);
 app.use('/api/productor/disponibilidad', disponibilidadRoutes);
 app.use('/api/productor', productorRoutes);
 app.use('/api/senasica', senasicaRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/admin/chats', adminChatRouter);
 app.use('/api/admin/exportar-bd', exportarBdRoutes);
 
 // Health check — respuesta mínima hacia el público (Hallazgo 8): no revela

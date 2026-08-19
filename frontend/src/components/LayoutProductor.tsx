@@ -4,6 +4,7 @@ import { Home, Map, TrendingUp, Award, User, Bell, X, LogOut, ChevronRight, Chev
 import { useAuthStore } from '../store/auth';
 import AppHeader from './AppHeader';
 import PushPrompt from './PushPrompt';
+import ChatBubble from './ChatBubble';
 
 const NAV = [
   { path: '/productor', icon: Home, label: 'Inicio' },
@@ -109,6 +110,9 @@ export function LayoutProductor({ children }: { children: ReactNode }) {
 
       {/* ── Push prompt global (productor) ── */}
       <PushPrompt rol="productor" />
+
+      {/* ── Chat de ayuda ── */}
+      <ChatBubble />
 
       {/* ── Profile Drawer ─────────────────────────────── */}
       {/* Backdrop con transición suave */}

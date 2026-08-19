@@ -70,6 +70,7 @@ import ProductorDetalleAdminPage from './pages/admin/ProductorDetalleAdminPage';
 import BodegasAdminPage from './pages/admin/BodegasAdminPage';
 import BodegaDetalleAdminPage from './pages/admin/BodegaDetalleAdminPage';
 import AlertasAdminPage from './pages/admin/AlertasAdminPage';
+import ChatsAdminPage from './pages/admin/ChatsAdminPage';
 import PreciosAdminPage from './pages/admin/PreciosAdminPage';
 import RegistroAdminPage from './pages/admin/RegistroAdminPage';
 import ProduccionAdminPage from './pages/admin/ProduccionAdminPage';
@@ -320,6 +321,7 @@ export const router = createBrowserRouter([
       { path: 'bodegas',        element: <RequireVista vista="bodegas"><BodegasAdminPage /></RequireVista> },
       { path: 'bodegas/:id',    element: <RequireVista vista="bodegas"><BodegaDetalleAdminPage /></RequireVista> },
       { path: 'alertas',        element: <RequireVista vista="alertas"><AlertasAdminPage /></RequireVista> },
+      { path: 'chats',          element: <RequireVista vista="chats_ayuda"><ChatsAdminPage /></RequireVista> },
       { path: 'precios',        element: <RequireVista vista="precios"><PreciosAdminPage /></RequireVista> },
       { path: 'produccion',     element: <RequireVista vista="produccion"><ProduccionAdminPage /></RequireVista> },
       { path: 'mercado',        element: <RequireVista vista="mercado"><MercadoAdminPage /></RequireVista> },

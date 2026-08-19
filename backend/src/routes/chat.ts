@@ -1,0 +1,352 @@
+import { Router, Response } from 'express';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import jwt from 'jsonwebtoken';
+import pool from '../config/database';
+import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { checkPermiso } from './admin-permisos';
+import { JwtPayload } from '../types';
+import { notificar } from '../utils/notificacion';
+
+const verChats = checkPermiso('chats_ayuda', 'ver');
+const responderChats = checkPermiso('chats_ayuda', 'responder');
+
+const router = Router();
+
+const UPLOAD_DIR = process.env.NODE_ENV === 'production'
+  ? '/var/www/Simulador/uploads/chat'
+  : path.join(__dirname, '../../../uploads/chat');
+
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const MIME_PERMITIDOS = /^(image\/|audio\/|application\/pdf$|application\/msword$|application\/vnd\.openxmlformats|application\/vnd\.ms-excel$)/;
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).slice(0, 12);
+    cb(null, `chat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (_req, file, cb) => {
+    if (!MIME_PERMITIDOS.test(file.mimetype)) return cb(new Error('Tipo de archivo no permitido'));
+    cb(null, true);
+  },
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+});
+
+function tipoPorMime(mime: string): string {
+  if (mime.startsWith('image/')) return 'imagen';
+  if (mime.startsWith('audio/')) return 'audio';
+  return 'archivo';
+}
+
+function rolLegible(rol: string): string {
+  if (rol === 'productor') return 'Productor';
+  if (rol === 'admin' || rol === 'responsable') return 'Administrador';
+  return 'Bodega';
+}
+
+// ─── SSE ────────────────────────────────────────────────────────────────
+// Un canal por usuario final (productor/bodeguero) y un canal compartido
+// para todos los administradores conectados a la bandeja de chats.
+const sseUsuario = new Map<number, Response[]>();
+const sseAdmins: Response[] = [];
+
+function emitirAUsuario(usuarioId: number, payload: any) {
+  const data = JSON.stringify(payload);
+  (sseUsuario.get(usuarioId) ?? []).forEach(res => {
+    try { res.write(`data: ${data}\n\n`); } catch { /* desconectado */ }
+  });
+}
+
+function emitirAAdmins(payload: any) {
+  const data = JSON.stringify(payload);
+  sseAdmins.forEach(res => {
+    try { res.write(`data: ${data}\n\n`); } catch { /* desconectado */ }
+  });
+}
+
+function autenticarSSE(req: AuthRequest, res: Response): boolean {
+  let token: string | undefined;
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) token = authHeader.split(' ')[1];
+  else if (typeof req.query.token === 'string') token = req.query.token;
+  if (!token) { res.status(401).json({ error: 'Token requerido' }); return false; }
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+    return true;
+  } catch {
+    res.status(401).json({ error: 'Token inválido o expirado' });
+    return false;
+  }
+}
+
+function abrirSSE(res: Response) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  const heartbeat = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); } catch { clearInterval(heartbeat); }
+  }, 25000);
+  return heartbeat;
+}
+
+// ─── Lado usuario (productor / bodeguero) ─────────────────────────────────
+
+async function obtenerOCrearConversacion(usuarioId: number, rolUsuario: string) {
+  const existente = await pool.query('SELECT * FROM chat_conversaciones WHERE usuario_id = $1', [usuarioId]);
+  if (existente.rows.length) return existente.rows[0];
+  const creada = await pool.query(
+    `INSERT INTO chat_conversaciones (usuario_id, rol_usuario) VALUES ($1, $2) RETURNING *`,
+    [usuarioId, rolUsuario]
+  );
+  return creada.rows[0];
+}
+
+router.get('/mi-conversacion', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const conv = await obtenerOCrearConversacion(req.user!.userId, req.user!.rol);
+    const mensajes = await pool.query(
+      'SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at ASC LIMIT 200',
+      [conv.id]
+    );
+    res.json({ conversacion: conv, mensajes: mensajes.rows });
+  } catch (err) {
+    console.error('GET /chat/mi-conversacion:', err);
+    res.status(500).json({ error: 'Error al cargar la conversación' });
+  }
+});
+
+router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: AuthRequest, res: Response) => {
+  try {
+    const usuarioId = req.user!.userId;
+    const rolUsuario = req.user!.rol;
+    const conv = await obtenerOCrearConversacion(usuarioId, rolUsuario);
+
+    const { contenido, lat, lng } = req.body as { contenido?: string; lat?: string; lng?: string };
+    const archivo = (req as any).file as Express.Multer.File | undefined;
+
+    let tipo = 'texto';
+    let archivoUrl: string | null = null;
+    let archivoMime: string | null = null;
+    let archivoNombre: string | null = null;
+
+    if (archivo) {
+      tipo = tipoPorMime(archivo.mimetype);
+      archivoUrl = `/uploads/chat/${archivo.filename}`;
+      archivoMime = archivo.mimetype;
+      archivoNombre = archivo.originalname;
+    } else if (lat && lng) {
+      tipo = 'ubicacion';
+    }
+
+    if (!archivo && !contenido?.trim() && !(lat && lng)) {
+      res.status(400).json({ error: 'Mensaje vacío' });
+      return;
+    }
+
+    const msg = await pool.query(
+      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido, archivo_url, archivo_mime, archivo_nombre, lat, lng)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [conv.id, usuarioId, rolUsuario, tipo, contenido?.trim() || null, archivoUrl, archivoMime, archivoNombre,
+       lat ? Number(lat) : null, lng ? Number(lng) : null]
+    );
+
+    await pool.query(
+      `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_admin = no_leidos_admin + 1, estatus = 'abierta' WHERE id = $1`,
+      [conv.id]
+    );
+
+    emitirAAdmins({ tipo: 'mensaje', conversacionId: conv.id, mensaje: msg.rows[0] });
+
+    // Best-effort: avisar a todos los usuarios del panel con acceso al chat
+    // (permisos totales, o permiso granular 'chats_ayuda.ver' concedido en /admin/permisos).
+    const admins = await pool.query(`
+      SELECT u.id FROM usuarios u JOIN roles_panel rp ON rp.clave = u.rol WHERE rp.permisos_totales = TRUE
+      UNION
+      SELECT ap.usuario_id AS id FROM admin_permisos ap
+      WHERE ap.vista = 'chats_ayuda' AND ap.sub_accion = 'ver' AND ap.habilitado = TRUE
+    `);
+    for (const a of admins.rows) {
+      notificar({
+        usuarioId: a.id,
+        tipo: 'chat_ayuda',
+        titulo: 'Nuevo mensaje de soporte',
+        mensaje: contenido?.trim() || `Nuevo ${tipo === 'imagen' ? 'imagen' : tipo === 'audio' ? 'audio' : tipo === 'ubicacion' ? 'ubicación' : 'archivo'} recibido`,
+        referenciaId: conv.id,
+        referenciaTipo: 'chat_ayuda',
+      }).catch(() => {});
+    }
+
+    res.json({ mensaje: msg.rows[0] });
+  } catch (err: any) {
+    console.error('POST /chat/mensaje:', err);
+    res.status(500).json({ error: err?.message || 'Error al enviar el mensaje' });
+  }
+});
+
+router.patch('/leido', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await pool.query('UPDATE chat_conversaciones SET no_leidos_usuario = 0 WHERE usuario_id = $1', [req.user!.userId]);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Error al marcar como leído' });
+  }
+});
+
+router.get('/stream', (req: AuthRequest, res: Response) => {
+  if (!autenticarSSE(req, res)) return;
+  const usuarioId = req.user!.userId;
+  const heartbeat = abrirSSE(res);
+  if (!sseUsuario.has(usuarioId)) sseUsuario.set(usuarioId, []);
+  sseUsuario.get(usuarioId)!.push(res);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    sseUsuario.set(usuarioId, (sseUsuario.get(usuarioId) ?? []).filter(r => r !== res));
+  });
+});
+
+export default router;
+
+// ─── Lado administrador — montado por separado en index.ts bajo /api/admin/chats ──
+export const adminChatRouter = Router();
+
+adminChatRouter.get('/', authMiddleware, verChats, async (_req: AuthRequest, res: Response) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT c.*, u.nombre_completo, u.email, u.telefono, u.curp,
+             (SELECT contenido FROM chat_mensajes m WHERE m.conversacion_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS ultimo_contenido,
+             (SELECT tipo FROM chat_mensajes m WHERE m.conversacion_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS ultimo_tipo
+      FROM chat_conversaciones c
+      JOIN usuarios u ON u.id = c.usuario_id
+      ORDER BY c.ultimo_mensaje_at DESC
+    `);
+    res.json({ conversaciones: rows.map(r => ({ ...r, rol_legible: rolLegible(r.rol_usuario) })) });
+  } catch (err) {
+    console.error('GET /admin/chats:', err);
+    res.status(500).json({ error: 'Error al cargar las conversaciones' });
+  }
+});
+
+adminChatRouter.get('/:id/mensajes', authMiddleware, verChats, async (req: AuthRequest, res: Response) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at ASC LIMIT 300',
+      [req.params.id]
+    );
+    res.json({ mensajes: rows });
+  } catch {
+    res.status(500).json({ error: 'Error al cargar los mensajes' });
+  }
+});
+
+adminChatRouter.post('/:id/mensaje', authMiddleware, responderChats, upload.single('archivo'), async (req: AuthRequest, res: Response) => {
+  try {
+    const convId = Number(req.params.id);
+    const conv = await pool.query('SELECT * FROM chat_conversaciones WHERE id = $1', [convId]);
+    if (!conv.rows.length) { res.status(404).json({ error: 'Conversación no encontrada' }); return; }
+
+    const { contenido, lat, lng } = req.body as { contenido?: string; lat?: string; lng?: string };
+    const archivo = (req as any).file as Express.Multer.File | undefined;
+
+    let tipo = 'texto';
+    let archivoUrl: string | null = null;
+    let archivoMime: string | null = null;
+    let archivoNombre: string | null = null;
+
+    if (archivo) {
+      tipo = tipoPorMime(archivo.mimetype);
+      archivoUrl = `/uploads/chat/${archivo.filename}`;
+      archivoMime = archivo.mimetype;
+      archivoNombre = archivo.originalname;
+    } else if (lat && lng) {
+      tipo = 'ubicacion';
+    }
+
+    if (!archivo && !contenido?.trim() && !(lat && lng)) {
+      res.status(400).json({ error: 'Mensaje vacío' });
+      return;
+    }
+
+    const msg = await pool.query(
+      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido, archivo_url, archivo_mime, archivo_nombre, lat, lng)
+       VALUES ($1,$2,'admin',$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [convId, req.user!.userId, tipo, contenido?.trim() || null, archivoUrl, archivoMime, archivoNombre,
+       lat ? Number(lat) : null, lng ? Number(lng) : null]
+    );
+
+    await pool.query(
+      `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_usuario = no_leidos_usuario + 1 WHERE id = $1`,
+      [convId]
+    );
+
+    emitirAUsuario(conv.rows[0].usuario_id, { tipo: 'mensaje', conversacionId: convId, mensaje: msg.rows[0] });
+    emitirAAdmins({ tipo: 'mensaje', conversacionId: convId, mensaje: msg.rows[0] });
+
+    notificar({
+      usuarioId: conv.rows[0].usuario_id,
+      tipo: 'chat_ayuda',
+      titulo: 'Respuesta de soporte SIMAC',
+      mensaje: contenido?.trim() || 'Tienes una nueva respuesta del equipo de soporte',
+      referenciaId: convId,
+      referenciaTipo: 'chat_ayuda',
+    }).catch(() => {});
+
+    res.json({ mensaje: msg.rows[0] });
+  } catch (err: any) {
+    console.error('POST /admin/chats/:id/mensaje:', err);
+    res.status(500).json({ error: err?.message || 'Error al enviar el mensaje' });
+  }
+});
+
+adminChatRouter.patch('/:id/leido', authMiddleware, verChats, async (req: AuthRequest, res: Response) => {
+  try {
+    await pool.query('UPDATE chat_conversaciones SET no_leidos_admin = 0 WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Error al marcar como leído' });
+  }
+});
+
+adminChatRouter.patch('/:id/resolver', authMiddleware, responderChats, async (req: AuthRequest, res: Response) => {
+  try {
+    const { estatus } = req.body as { estatus?: string };
+    await pool.query(
+      `UPDATE chat_conversaciones SET estatus = $2 WHERE id = $1`,
+      [req.params.id, estatus === 'abierta' ? 'abierta' : 'resuelta']
+    );
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Error al actualizar el estatus' });
+  }
+});
+
+adminChatRouter.get('/stream', async (req: AuthRequest, res: Response) => {
+  if (!autenticarSSE(req, res)) return;
+  try {
+    const rolRow = await pool.query('SELECT permisos_totales FROM roles_panel WHERE clave = $1', [req.user!.rol]);
+    if (!rolRow.rows[0]?.permisos_totales) {
+      const permRow = await pool.query(
+        `SELECT habilitado FROM admin_permisos WHERE usuario_id = $1 AND vista = 'chats_ayuda' AND sub_accion = 'ver'`,
+        [req.user!.userId]
+      );
+      if (!permRow.rows[0]?.habilitado) { res.status(403).json({ error: 'Acceso denegado' }); return; }
+    }
+  } catch {
+    res.status(500).json({ error: 'Error verificando permisos' }); return;
+  }
+  const heartbeat = abrirSSE(res);
+  sseAdmins.push(res);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    const idx = sseAdmins.indexOf(res);
+    if (idx >= 0) sseAdmins.splice(idx, 1);
+  });
+});

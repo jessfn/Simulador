@@ -37,6 +37,7 @@ const VISTAS_PERMISOS: Record<string, string[]> = {
   mercado:            ['ver', 'exportar'],
   senasica:           ['ver', 'crear', 'eliminar'],
   'avisos-privacidad':['ver', 'exportar'],
+  chats_ayuda:        ['ver', 'responder'],
 };
 
 async function insertarPermisosDefault(usuarioId: number, vistasDefault: Record<string, string[]>) {
