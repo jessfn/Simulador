@@ -8,6 +8,61 @@ const MAPBOX_TOKEN = [
   'jJscHVqaXExdGpjMyJ9.F_ACoKzS_4e280lD0XndEw',
 ].join('');
 
+/* ─────────────────────────── Horario de servicio ─────────────────────────── */
+/** Lunes a viernes, 9:00–18:00, hora de Ciudad de México (independiente de la zona horaria del dispositivo). */
+export function enHorarioServicio(): boolean {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City', hour12: false, weekday: 'short', hour: 'numeric', minute: 'numeric',
+  });
+  const partes = fmt.formatToParts(new Date());
+  const dia = partes.find(p => p.type === 'weekday')?.value ?? '';
+  const hora = Number(partes.find(p => p.type === 'hour')?.value ?? 0);
+  const minuto = Number(partes.find(p => p.type === 'minute')?.value ?? 0);
+  const esLaborable = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(dia);
+  const minutosDelDia = hora * 60 + minuto;
+  return esLaborable && minutosDelDia >= 9 * 60 && minutosDelDia < 18 * 60;
+}
+
+/** Se re-evalúa solo — para que el estado cambie sin recargar si el chat queda abierto cruzando la hora. */
+export function useHorarioServicio(): boolean {
+  const [dentro, setDentro] = useState(enHorarioServicio());
+  useEffect(() => {
+    const t = setInterval(() => setDentro(enHorarioServicio()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return dentro;
+}
+
+/* ─────────────────────────── Fondo tipo WhatsApp (iconos de maíz) ─────────────────────────── */
+const CORN_TILE = `data:image/svg+xml,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140">
+  <g fill="none" stroke="#1A5C38" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.12">
+    <g transform="translate(18,20) rotate(-12)">
+      <ellipse cx="8" cy="20" rx="7" ry="16"/>
+      <path d="M8 4v32M2 10l6 3M14 10l-6 3M2 18l6 3M14 18l-6 3M2 26l6 3M14 26l-6 3"/>
+      <path d="M8 36c-4 3-4 8-8 9M8 36c4 3 4 8 8 9"/>
+    </g>
+    <g transform="translate(96,72) rotate(18) scale(0.8)">
+      <ellipse cx="8" cy="20" rx="7" ry="16"/>
+      <path d="M8 4v32M2 10l6 3M14 10l-6 3M2 18l6 3M14 18l-6 3M2 26l6 3M14 26l-6 3"/>
+      <path d="M8 36c-4 3-4 8-8 9M8 36c4 3 4 8 8 9"/>
+    </g>
+    <g transform="translate(60,100) rotate(-25) scale(0.65)">
+      <ellipse cx="8" cy="20" rx="7" ry="16"/>
+      <path d="M8 4v32M2 10l6 3M14 10l-6 3M2 18l6 3M14 18l-6 3M2 26l6 3M14 26l-6 3"/>
+      <path d="M8 36c-4 3-4 8-8 9M8 36c4 3 4 8 8 9"/>
+    </g>
+  </g>
+</svg>
+`)}`;
+
+/** Estilo de fondo suave con iconos de maíz repetidos, como el papel tapiz de WhatsApp. */
+export const chatWallpaper: CSSProperties = {
+  backgroundImage: `url("${CORN_TILE}")`,
+  backgroundRepeat: 'repeat',
+  backgroundSize: '140px 140px',
+};
+
 /**
  * Cola de burbuja estilo WhatsApp — la misma forma que usa WhatsApp Web,
  * fundida en la esquina de la burbuja (sin hueco ni desfase): la esquina

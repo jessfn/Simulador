@@ -7,7 +7,7 @@ import {
 import { useAuthStore } from '../store/auth';
 import { apiFetch, BASE } from '../services/api';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../utils/chatSounds';
-import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow } from './chat/ChatMedia';
+import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow, useHorarioServicio, chatWallpaper } from './chat/ChatMedia';
 
 /** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
 function SendIcon({ size = 18 }: { size?: number }) {
@@ -65,6 +65,7 @@ function fmtHora(iso: string) {
 export default function ChatBubble() {
   const { user, token } = useAuthStore();
   const esUsuarioFinal = user && (user.rol === 'productor' || user.rol === 'user' || user.rol === 'bodeguero');
+  const enHorario = useHorarioServicio();
 
   const [pos, setPos] = useState(() => {
     try { return JSON.parse(localStorage.getItem(POS_KEY) || 'null') || { x: window.innerWidth - 78, y: window.innerHeight - 190 }; }
@@ -420,14 +421,16 @@ export default function ChatBubble() {
             <div className="flex-1 min-w-0">
               <div className="text-white text-[14.5px] font-bold leading-tight">Ayuda y soporte SIMAC</div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
-                <span className="text-white/75 text-[10px] font-semibold">Responde en minutos</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${enHorario ? 'bg-emerald-300' : 'bg-rose-400'}`} />
+                <span className={`text-[10px] font-semibold ${enHorario ? 'text-white/75' : 'text-rose-300'}`}>
+                  {enHorario ? 'Responde en minutos' : 'Fuera de horario · Responde L-V de 9am a 6pm'}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Mensajes */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5">
+          <div ref={scrollRef} style={chatWallpaper} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#f4f7f5]">
             {mensajes.length === 0 && (
               <div className="text-center text-[12px] text-slate-400 mt-10">
                 Escríbenos si tienes cualquier duda o problema con la app.

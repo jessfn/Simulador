@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/auth';
 import { apiFetch, BASE } from '../../services/api';
 import ErrorConexionBanner from '../../components/admin/ErrorConexionBanner';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../../utils/chatSounds';
-import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow } from '../../components/chat/ChatMedia';
+import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow, chatWallpaper } from '../../components/chat/ChatMedia';
 
 /** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
 function SendIcon({ size = 18 }: { size?: number }) {
@@ -350,7 +350,7 @@ export default function ChatsAdminPage() {
                 </span>
               </div>
 
-              <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2.5">
+              <div ref={scrollRef} style={chatWallpaper} className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2.5">
                 {mensajes.map(m => {
                   // Vista del admin: los mensajes del equipo de soporte van a la derecha,
                   // los del productor/bodeguero (dueño de la conversación) a la izquierda.
