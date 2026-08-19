@@ -11,7 +11,7 @@ import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubble
 
 /** Palomita(s) estilo WhatsApp: una = enviado, dos = entregado/leído. */
 function Ticks({ dobles, leido }: { dobles: boolean; leido: boolean }) {
-  const color = leido ? '#53bdeb' : 'currentColor';
+  const color = leido ? '#7dd3fc' : 'currentColor';
   return (
     <svg width="15" height="11" viewBox="0 0 16 11" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       {dobles && <path d="M1 5.2 3.8 8 9 1.8" opacity="0.95" />}
@@ -446,9 +446,9 @@ export default function ChatBubble() {
                   return (
                     <div style={bubbleShadow} className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
                       <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
-                        esMio ? 'bg-[#b6f0a0]' : 'bg-white'
+                        esMio ? 'bg-gradient-to-br from-[#2f8f61] to-[#256e4c]' : 'bg-white'
                       }`}>
-                        <Tail esMio={esMio} color={esMio ? '#b6f0a0' : '#ffffff'} />
+                        <Tail esMio={esMio} color={esMio ? '#256e4c' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
                             <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-[10px] max-w-[220px] block cursor-pointer" />
@@ -466,7 +466,7 @@ export default function ChatBubble() {
                         )}
                         {m.tipo === 'archivo' && m.archivo_url && (
                           <a href={url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-2 text-[12px] font-semibold underline text-[#1A5C38]">
+                            className={`flex items-center gap-2 text-[12px] font-semibold underline ${esMio ? 'text-white' : 'text-[#1A5C38]'}`}>
                             <Paperclip size={13} /> {m.archivo_nombre || 'Archivo adjunto'}
                           </a>
                         )}
@@ -475,10 +475,10 @@ export default function ChatBubble() {
                             puedeDetener={esMio && compartiendoEnVivo === m.id} onDetener={() => detenerUbicacionEnVivo(m.id)} />
                         )}
                         {m.contenido && (
-                          <div className="text-[13px] leading-[1.45] text-slate-900">{m.contenido}</div>
+                          <div className={`text-[13px] leading-[1.45] ${esMio ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
                         )}
                         {!esSoloImagen && (
-                          <div className="flex items-center justify-end gap-1 mt-1 text-slate-500">
+                          <div className={`flex items-center justify-end gap-1 mt-1 ${esMio ? 'text-white/65' : 'text-slate-300'}`}>
                             <span className="text-[9px]">{fmtHora(m.created_at)}</span>
                             {esMio && <Ticks dobles leido={leido} />}
                           </div>

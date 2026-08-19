@@ -11,7 +11,7 @@ import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubble
 
 /** Palomita(s) estilo WhatsApp: una = enviado, dos = entregado/leído. */
 function Ticks({ leido }: { leido: boolean }) {
-  const color = leido ? '#53bdeb' : 'currentColor';
+  const color = leido ? '#7dd3fc' : 'currentColor';
   return (
     <svg width="15" height="11" viewBox="0 0 16 11" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M1 5.2 3.8 8 9 1.8" opacity="0.95" />
@@ -351,9 +351,9 @@ export default function ChatsAdminPage() {
                   return (
                     <div key={m.id} style={bubbleShadow} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
                       <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
-                        alinearDerecha ? 'bg-[#b6f0a0]' : 'bg-white'
+                        alinearDerecha ? 'bg-gradient-to-br from-[#2f8f61] to-[#256e4c]' : 'bg-white'
                       }`}>
-                        <Tail esMio={alinearDerecha} color={alinearDerecha ? '#b6f0a0' : '#ffffff'} />
+                        <Tail esMio={alinearDerecha} color={alinearDerecha ? '#256e4c' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
                             <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-[10px] max-w-[260px] block cursor-pointer" />
@@ -373,7 +373,7 @@ export default function ChatsAdminPage() {
                         )}
                         {m.tipo === 'archivo' && m.archivo_url && (
                           <a href={url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-2 text-[12px] font-semibold underline text-[#1A5C38]">
+                            className={`flex items-center gap-2 text-[12px] font-semibold underline ${alinearDerecha ? 'text-white' : 'text-[#1A5C38]'}`}>
                             <Paperclip size={13} /> {m.archivo_nombre || 'Archivo adjunto'}
                           </a>
                         )}
@@ -381,10 +381,10 @@ export default function ChatsAdminPage() {
                           <LocationPreview lat={m.lat} lng={m.lng} enVivo={m.tipo === 'ubicacion_vivo'} activoHasta={m.activo_hasta} />
                         )}
                         {m.contenido && (
-                          <div className="text-[13px] leading-[1.5] text-slate-900">{m.contenido}</div>
+                          <div className={`text-[13px] leading-[1.5] ${alinearDerecha ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
                         )}
                         {!esSoloImagen && (
-                          <div className="flex items-center justify-end gap-1 mt-1 text-slate-500">
+                          <div className={`flex items-center justify-end gap-1 mt-1 ${alinearDerecha ? 'text-white/65' : 'text-slate-300'}`}>
                             <span className="text-[9px]">{fmtHora(m.created_at)}</span>
                             {alinearDerecha && (
                               <Ticks leido={!!usuarioLeidoHasta && new Date(m.created_at) <= new Date(usuarioLeidoHasta)} />

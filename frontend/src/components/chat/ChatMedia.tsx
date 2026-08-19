@@ -166,13 +166,15 @@ export function AudioPlayer({ src, tono }: { src: string; tono: 'propio' | 'ajen
   }
 
   const barras = 26;
-  void tono; // ambas burbujas (propia y ajena) son claras — mismo tratamiento oscuro sobre claro
+  const claro = tono === 'propio'; // burbuja propia = fondo oscuro → íconos/barras claros
 
   return (
     <div className="flex items-center gap-2.5 py-1 min-w-[190px]">
       <audio ref={audioRef} src={src} preload="metadata" />
       <button onClick={toggle} disabled={error}
-        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-transform active:scale-90 bg-[#1A5C38] text-white">
+        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-transform active:scale-90 ${
+          claro ? 'bg-white/25 text-white' : 'bg-[#1A5C38] text-white'
+        }`}>
         {playing
           ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1" /><rect x="14" y="4" width="5" height="16" rx="1" /></svg>
           : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>}
@@ -182,11 +184,13 @@ export function AudioPlayer({ src, tono }: { src: string; tono: 'propio' | 'ajen
           const h = 5 + Math.abs(Math.sin(i * 1.7)) * 14;
           const activo = i / barras <= progreso;
           return (
-            <div key={i} className={`w-[2.5px] rounded-full transition-colors ${activo ? 'bg-[#1A5C38]' : 'bg-black/15'}`} style={{ height: h }} />
+            <div key={i} className={`w-[2.5px] rounded-full transition-colors ${
+              activo ? (claro ? 'bg-white' : 'bg-[#1A5C38]') : (claro ? 'bg-white/35' : 'bg-slate-300')
+            }`} style={{ height: h }} />
           );
         })}
       </div>
-      <span className="text-[10px] font-medium flex-shrink-0 tabular-nums text-slate-500">
+      <span className={`text-[10px] font-medium flex-shrink-0 tabular-nums ${claro ? 'text-white/80' : 'text-slate-400'}`}>
         {error ? '—' : fmt(playing || actual > 0 ? actual : duracion)}
       </span>
     </div>
