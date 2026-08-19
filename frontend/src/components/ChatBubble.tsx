@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  MessageCircle, X, Send, Smile, Image as ImageIcon, Mic, Paperclip,
-  MapPin, Square, ChevronLeft, CheckCheck,
+  MessageCircle, X, Smile, Image as ImageIcon, Mic, Paperclip,
+  MapPin, Square, ChevronLeft, Check, CheckCheck,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { apiFetch, BASE } from '../services/api';
+import { playSentSound, playReceivedSound, desbloquearAudio } from '../utils/chatSounds';
+
+/** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
+function SendIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 1.5 }}>
+      <path d="M3.4 20.4 21 12 3.4 3.6c-.6-.3-1.3.2-1.2.9L4 11.2c.05.35.33.62.68.66L14 13l-9.32 1.12c-.35.04-.63.31-.68.66l-1.8 6.7c-.1.7.6 1.2 1.2.9Z" />
+    </svg>
+  );
+}
 
 interface Mensaje {
   id: number;
@@ -45,6 +55,8 @@ export default function ChatBubble() {
   const [enviando, setEnviando] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [grabando, setGrabando] = useState(false);
+  const [adminLeidoHasta, setAdminLeidoHasta] = useState<string | null>(null);
+  const [divisorNoLeidos, setDivisorNoLeidos] = useState(0);
 
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
   const esRef = useRef<EventSource | null>(null);
@@ -53,14 +65,18 @@ export default function ChatBubble() {
   const fileDocRef = useRef<HTMLInputElement>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const idsVistos = useRef<Set<number>>(new Set());
 
   // ── Cargar conversación inicial ──
   useEffect(() => {
     if (!esUsuarioFinal) return;
     apiFetch('/chat/mi-conversacion').then(r => r.json()).then(d => {
-      setMensajes(d.mensajes || []);
+      const msgs: Mensaje[] = d.mensajes || [];
+      msgs.forEach(m => idsVistos.current.add(m.id));
+      setMensajes(msgs);
       const conv = d.conversacion;
-      if (conv?.no_leidos_usuario) setNoLeidos(conv.no_leidos_usuario);
+      if (conv?.no_leidos_usuario) { setNoLeidos(conv.no_leidos_usuario); setDivisorNoLeidos(conv.no_leidos_usuario); }
+      if (conv?.admin_leido_hasta) setAdminLeidoHasta(conv.admin_leido_hasta);
     }).catch(() => {});
   }, [esUsuarioFinal]);
 
@@ -72,13 +88,19 @@ export default function ChatBubble() {
     esRef.current = es;
     es.onmessage = (e) => {
       try {
-        const { tipo, mensaje } = JSON.parse(e.data);
-        if (tipo === 'mensaje') {
+        const payload = JSON.parse(e.data);
+        if (payload.tipo === 'mensaje') {
+          const mensaje: Mensaje = payload.mensaje;
+          if (idsVistos.current.has(mensaje.id)) return;
+          idsVistos.current.add(mensaje.id);
           setMensajes(prev => [...prev, mensaje]);
+          playReceivedSound();
           setOpen(prevOpen => {
             if (!prevOpen) setNoLeidos(n => n + 1);
             return prevOpen;
           });
+        } else if (payload.tipo === 'leido') {
+          setAdminLeidoHasta(payload.admin_leido_hasta);
         }
       } catch { /* ignore */ }
     };
@@ -91,6 +113,7 @@ export default function ChatBubble() {
   }, [mensajes, open]);
 
   const abrir = useCallback(() => {
+    desbloquearAudio();
     setOpen(true);
     setNoLeidos(0);
     apiFetch('/chat/leido', { method: 'PATCH' }).catch(() => {});
@@ -98,6 +121,7 @@ export default function ChatBubble() {
 
   // ── Arrastrar burbuja (clamp a la pantalla) ──
   function onPointerDown(e: React.PointerEvent) {
+    desbloquearAudio();
     dragRef.current = { startX: e.clientX - pos.x, startY: e.clientY - pos.y, moved: false };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }
@@ -139,8 +163,10 @@ export default function ChatBubble() {
       const res = await apiFetch('/chat/mensaje', { method: 'POST', body });
       const d = await res.json();
       if (res.ok && d.mensaje) {
+        idsVistos.current.add(d.mensaje.id);
         setMensajes(prev => [...prev, d.mensaje]);
         setTexto('');
+        playSentSound();
       }
     } catch { /* ignore — el guard global ya avisa si es problema de conexión */ }
     finally { setEnviando(false); }
@@ -259,10 +285,20 @@ export default function ChatBubble() {
                 Escríbenos si tienes cualquier duda o problema con la app.
               </div>
             )}
-            {mensajes.map(m => {
+            {mensajes.map((m, idx) => {
               const esMio = m.autor_id === user?.userId;
+              const leido = esMio && !!adminLeidoHasta && new Date(m.created_at) <= new Date(adminLeidoHasta);
+              const mostrarDivisor = divisorNoLeidos > 0 && idx === mensajes.length - divisorNoLeidos;
               return (
-                <div key={m.id} className={`flex flex-col ${esMio ? 'items-end' : 'items-start'}`}>
+                <div key={m.id} className="contents">
+                {mostrarDivisor && (
+                  <div className="flex items-center gap-2.5 my-1.5">
+                    <div className="flex-1 h-px bg-rose-200" />
+                    <span className="text-[9.5px] font-bold text-rose-500 uppercase tracking-wide">Mensajes nuevos</span>
+                    <div className="flex-1 h-px bg-rose-200" />
+                  </div>
+                )}
+                <div className={`flex flex-col ${esMio ? 'items-end' : 'items-start'}`}>
                   <div className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
                     esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a] rounded-br-md' : 'bg-white rounded-bl-md'
                   }`}>
@@ -289,9 +325,12 @@ export default function ChatBubble() {
                     )}
                     <div className={`flex items-center justify-end gap-1 mt-1 ${esMio ? 'text-white/65' : 'text-slate-300'}`}>
                       <span className="text-[9px]">{fmtHora(m.created_at)}</span>
-                      {esMio && <CheckCheck size={11} />}
+                      {esMio && (leido
+                        ? <CheckCheck size={13} className="text-sky-300" />
+                        : <Check size={13} />)}
                     </div>
                   </div>
+                </div>
                 </div>
               );
             })}
@@ -330,8 +369,8 @@ export default function ChatBubble() {
                 className="flex-1 bg-slate-100 rounded-full px-4 py-2.5 text-[13px] outline-none disabled:opacity-50"
               />
               <button onClick={() => enviar()} disabled={enviando || !texto.trim()}
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 disabled:opacity-40 active:scale-90 transition-transform">
-                <Send size={16} className="text-white" />
+                className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 active:scale-90 transition-transform">
+                <SendIcon size={17} />
               </button>
             </div>
           </div>

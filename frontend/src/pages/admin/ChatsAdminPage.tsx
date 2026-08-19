@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Search, MessageCircle, Send, Paperclip, Image as ImageIcon, MapPin,
-  Smile, CheckCheck, RefreshCw,
+  Search, MessageCircle, Paperclip, Image as ImageIcon, MapPin,
+  Smile, Check, CheckCheck, RefreshCw,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { apiFetch, BASE } from '../../services/api';
 import ErrorConexionBanner from '../../components/admin/ErrorConexionBanner';
+import { playSentSound, playReceivedSound, desbloquearAudio } from '../../utils/chatSounds';
+
+/** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
+function SendIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 1.5 }}>
+      <path d="M3.4 20.4 21 12 3.4 3.6c-.6-.3-1.3.2-1.2.9L4 11.2c.05.35.33.62.68.66L14 13l-9.32 1.12c-.35.04-.63.31-.68.66l-1.8 6.7c-.1.7.6 1.2 1.2.9Z" />
+    </svg>
+  );
+}
 
 interface Conversacion {
   id: number;
@@ -59,7 +69,7 @@ function previewTexto(c: Conversacion) {
 }
 
 export default function ChatsAdminPage() {
-  const { token } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorConexion, setErrorConexion] = useState(false);
@@ -70,6 +80,7 @@ export default function ChatsAdminPage() {
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [usuarioLeidoHasta, setUsuarioLeidoHasta] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileImgRef = useRef<HTMLInputElement>(null);
@@ -77,6 +88,7 @@ export default function ChatsAdminPage() {
   const esRef = useRef<EventSource | null>(null);
   const seleccionadaRef = useRef<Conversacion | null>(null);
   seleccionadaRef.current = seleccionada;
+  const idsVistos = useRef<Set<number>>(new Set());
 
   async function cargarLista() {
     setLoading(true);
@@ -101,29 +113,45 @@ export default function ChatsAdminPage() {
     esRef.current = es;
     es.onmessage = (e) => {
       try {
-        const { tipo, conversacionId, mensaje } = JSON.parse(e.data);
-        if (tipo !== 'mensaje') return;
+        const payload = JSON.parse(e.data);
+        if (payload.tipo === 'leido') {
+          if (seleccionadaRef.current?.id === payload.conversacionId) {
+            setUsuarioLeidoHasta(payload.usuario_leido_hasta);
+          }
+          return;
+        }
+        if (payload.tipo !== 'mensaje') return;
+        const { conversacionId, mensaje } = payload;
         cargarLista();
-        if (seleccionadaRef.current?.id === conversacionId) {
+        const esNuevo = !idsVistos.current.has(mensaje.id);
+        if (esNuevo) idsVistos.current.add(mensaje.id);
+        if (seleccionadaRef.current?.id === conversacionId && esNuevo) {
           setMensajes(prev => [...prev, mensaje]);
         }
+        // Sonido de "recibido": solo para mensajes que no son eco de mi propio envío.
+        if (esNuevo && mensaje.autor_id !== user?.userId) playReceivedSound();
       } catch { /* ignore */ }
     };
     es.onerror = () => es.close();
     return () => es.close();
-  }, [token]);
+  }, [token, user?.userId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [mensajes]);
 
   async function abrirConversacion(c: Conversacion) {
+    desbloquearAudio();
     setSeleccionada(c);
     setMensajes([]);
+    setUsuarioLeidoHasta(null);
     try {
       const res = await apiFetch(`/admin/chats/${c.id}/mensajes`);
       const d = await res.json();
-      setMensajes(d.mensajes || []);
+      const msgs: Mensaje[] = d.mensajes || [];
+      msgs.forEach(m => idsVistos.current.add(m.id));
+      setMensajes(msgs);
+      setUsuarioLeidoHasta(d.conversacion?.usuario_leido_hasta ?? null);
       await apiFetch(`/admin/chats/${c.id}/leido`, { method: 'PATCH' });
       setConversaciones(prev => prev.map(x => x.id === c.id ? { ...x, no_leidos_admin: 0 } : x));
     } catch { /* ignore */ }
@@ -141,8 +169,10 @@ export default function ChatsAdminPage() {
       const res = await apiFetch(`/admin/chats/${seleccionada.id}/mensaje`, { method: 'POST', body });
       const d = await res.json();
       if (res.ok && d.mensaje) {
+        idsVistos.current.add(d.mensaje.id);
         setMensajes(prev => [...prev, d.mensaje]);
         setTexto('');
+        playSentSound();
         cargarLista();
       }
     } catch { /* ignore */ }
@@ -295,7 +325,9 @@ export default function ChatsAdminPage() {
                         )}
                         <div className={`flex items-center justify-end gap-1 mt-1 ${alinearDerecha ? 'text-white/65' : 'text-slate-300'}`}>
                           <span className="text-[9px]">{fmtHora(m.created_at)}</span>
-                          {alinearDerecha && <CheckCheck size={11} />}
+                          {alinearDerecha && (usuarioLeidoHasta && new Date(m.created_at) <= new Date(usuarioLeidoHasta)
+                            ? <CheckCheck size={13} className="text-sky-300" />
+                            : <Check size={13} />)}
                         </div>
                       </div>
                     </div>
@@ -329,8 +361,8 @@ export default function ChatsAdminPage() {
                     className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-[12.5px] outline-none focus:border-[#1A5C38]/40"
                   />
                   <button onClick={() => enviar()} disabled={enviando || !texto.trim()}
-                    className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 disabled:opacity-40 active:scale-95 transition-transform">
-                    <Send size={16} className="text-white" />
+                    className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 active:scale-95 transition-transform">
+                    <SendIcon size={17} />
                   </button>
                 </div>
               </div>

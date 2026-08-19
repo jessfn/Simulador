@@ -194,7 +194,14 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
 
 router.patch('/leido', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    await pool.query('UPDATE chat_conversaciones SET no_leidos_usuario = 0 WHERE usuario_id = $1', [req.user!.userId]);
+    const { rows } = await pool.query(
+      `UPDATE chat_conversaciones SET no_leidos_usuario = 0, usuario_leido_hasta = now()
+       WHERE usuario_id = $1 RETURNING id, usuario_leido_hasta`,
+      [req.user!.userId]
+    );
+    if (rows.length) {
+      emitirAAdmins({ tipo: 'leido', conversacionId: rows[0].id, usuario_leido_hasta: rows[0].usuario_leido_hasta });
+    }
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: 'Error al marcar como leído' });
@@ -237,11 +244,11 @@ adminChatRouter.get('/', authMiddleware, verChats, async (_req: AuthRequest, res
 
 adminChatRouter.get('/:id/mensajes', authMiddleware, verChats, async (req: AuthRequest, res: Response) => {
   try {
-    const { rows } = await pool.query(
-      'SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at ASC LIMIT 300',
-      [req.params.id]
-    );
-    res.json({ mensajes: rows });
+    const [mensajes, conv] = await Promise.all([
+      pool.query('SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at ASC LIMIT 300', [req.params.id]),
+      pool.query('SELECT id, usuario_leido_hasta, admin_leido_hasta FROM chat_conversaciones WHERE id = $1', [req.params.id]),
+    ]);
+    res.json({ mensajes: mensajes.rows, conversacion: conv.rows[0] || null });
   } catch {
     res.status(500).json({ error: 'Error al cargar los mensajes' });
   }
@@ -308,7 +315,16 @@ adminChatRouter.post('/:id/mensaje', authMiddleware, responderChats, upload.sing
 
 adminChatRouter.patch('/:id/leido', authMiddleware, verChats, async (req: AuthRequest, res: Response) => {
   try {
-    await pool.query('UPDATE chat_conversaciones SET no_leidos_admin = 0 WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query(
+      `UPDATE chat_conversaciones SET no_leidos_admin = 0, admin_leido_hasta = now()
+       WHERE id = $1 RETURNING usuario_id, admin_leido_hasta`,
+      [req.params.id]
+    );
+    if (rows.length) {
+      emitirAUsuario(rows[0].usuario_id, {
+        tipo: 'leido', conversacionId: Number(req.params.id), admin_leido_hasta: rows[0].admin_leido_hasta,
+      });
+    }
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: 'Error al marcar como leído' });
