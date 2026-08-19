@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MessageCircle, X, Smile, Image as ImageIcon, Mic, Paperclip,
-  MapPin, Square, ChevronLeft, Check, CheckCheck,
+  MapPin, Square, ChevronLeft,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { apiFetch, BASE } from '../services/api';
@@ -14,6 +14,27 @@ function SendIcon({ size = 18 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 1.5 }}>
       <path d="M3.4 20.4 21 12 3.4 3.6c-.6-.3-1.3.2-1.2.9L4 11.2c.05.35.33.62.68.66L14 13l-9.32 1.12c-.35.04-.63.31-.68.66l-1.8 6.7c-.1.7.6 1.2 1.2.9Z" />
     </svg>
+  );
+}
+
+/** Palomita(s) estilo WhatsApp: una = enviado, dos = entregado/leído. */
+function Ticks({ dobles, leido }: { dobles: boolean; leido: boolean }) {
+  const color = leido ? '#7dd3fc' : 'currentColor';
+  return (
+    <svg width="15" height="11" viewBox="0 0 16 11" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {dobles && <path d="M1 5.2 3.8 8 9 1.8" opacity="0.95" />}
+      <path d={dobles ? 'M6.2 5.2 9 8 14.5 1.8' : 'M1 5.2 3.8 8 9 1.8'} />
+    </svg>
+  );
+}
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-1">
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '120ms' }} />
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '240ms' }} />
+    </div>
   );
 }
 
@@ -57,6 +78,7 @@ export default function ChatBubble() {
   const [grabando, setGrabando] = useState(false);
   const [adminLeidoHasta, setAdminLeidoHasta] = useState<string | null>(null);
   const [divisorNoLeidos, setDivisorNoLeidos] = useState(0);
+  const [adminEscribiendo, setAdminEscribiendo] = useState(false);
 
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
   const esRef = useRef<EventSource | null>(null);
@@ -66,6 +88,21 @@ export default function ChatBubble() {
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const idsVistos = useRef<Set<number>>(new Set());
+  const escribiendoAdminTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ultimoEnvioEscribiendo = useRef(0);
+  const abrirRef = useRef<() => void>(() => {});
+
+  // ── Abrir el chat desde el botón "Ayuda" del header ──
+  useEffect(() => {
+    const onAbrirGlobal = () => abrirRef.current?.();
+    window.addEventListener('simac:abrir-chat', onAbrirGlobal);
+    return () => window.removeEventListener('simac:abrir-chat', onAbrirGlobal);
+  }, []);
+
+  // ── Difundir el contador de no leídos para el botón del header ──
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
+  }, [noLeidos]);
 
   // ── Cargar conversación inicial ──
   useEffect(() => {
@@ -101,6 +138,10 @@ export default function ChatBubble() {
           });
         } else if (payload.tipo === 'leido') {
           setAdminLeidoHasta(payload.admin_leido_hasta);
+        } else if (payload.tipo === 'escribiendo') {
+          setAdminEscribiendo(true);
+          if (escribiendoAdminTimeoutRef.current) clearTimeout(escribiendoAdminTimeoutRef.current);
+          escribiendoAdminTimeoutRef.current = setTimeout(() => setAdminEscribiendo(false), 4000);
         }
       } catch { /* ignore */ }
     };
@@ -118,6 +159,16 @@ export default function ChatBubble() {
     setNoLeidos(0);
     apiFetch('/chat/leido', { method: 'PATCH' }).catch(() => {});
   }, []);
+  abrirRef.current = abrir;
+
+  function onCambiarTexto(v: string) {
+    setTexto(v);
+    const ahora = Date.now();
+    if (ahora - ultimoEnvioEscribiendo.current > 2500) {
+      ultimoEnvioEscribiendo.current = ahora;
+      apiFetch('/chat/escribiendo', { method: 'POST' }).catch(() => {});
+    }
+  }
 
   // ── Arrastrar burbuja (clamp a la pantalla) ──
   function onPointerDown(e: React.PointerEvent) {
@@ -325,15 +376,20 @@ export default function ChatBubble() {
                     )}
                     <div className={`flex items-center justify-end gap-1 mt-1 ${esMio ? 'text-white/65' : 'text-slate-300'}`}>
                       <span className="text-[9px]">{fmtHora(m.created_at)}</span>
-                      {esMio && (leido
-                        ? <CheckCheck size={13} className="text-sky-300" />
-                        : <Check size={13} />)}
+                      {esMio && <Ticks dobles leido={leido} />}
                     </div>
                   </div>
                 </div>
                 </div>
               );
             })}
+            {adminEscribiendo && (
+              <div className="flex items-start">
+                <div className="bg-white rounded-2xl rounded-bl-md px-3.5 py-2.5 shadow-sm">
+                  <TypingDots />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Emoji picker */}
@@ -362,7 +418,7 @@ export default function ChatBubble() {
             <div className="flex items-center gap-2">
               <input
                 value={texto}
-                onChange={e => setTexto(e.target.value)}
+                onChange={e => onCambiarTexto(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') enviar(); }}
                 placeholder={grabando ? 'Grabando audio…' : 'Escribe un mensaje…'}
                 disabled={grabando}

@@ -1,4 +1,5 @@
-import { Bell } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bell, MessageCircle } from 'lucide-react';
 
 const SPRING = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
@@ -9,6 +10,8 @@ interface Props {
   onBrand?: () => void;
   onBell?: () => void;
   onMenu?: () => void;
+  /** Muestra el botón de "Ayuda" que abre el chat de soporte flotante. */
+  mostrarAyuda?: boolean;
 }
 
 /**
@@ -16,7 +19,16 @@ interface Props {
  * Vidrio esmerilado translúcido, brillo especular que recorre el header,
  * squircles y micro-interacciones tipo spring. Compartida por ambos roles.
  */
-export default function AppHeader({ subtitle, initials, notifCount = 0, onBrand, onBell, onMenu }: Props) {
+export default function AppHeader({ subtitle, initials, notifCount = 0, onBrand, onBell, onMenu, mostrarAyuda }: Props) {
+  const [chatNoLeidos, setChatNoLeidos] = useState(0);
+
+  useEffect(() => {
+    if (!mostrarAyuda) return;
+    const onUnread = (e: Event) => setChatNoLeidos((e as CustomEvent).detail ?? 0);
+    window.addEventListener('simac:chat-unread', onUnread);
+    return () => window.removeEventListener('simac:chat-unread', onUnread);
+  }, [mostrarAyuda]);
+
   return (
     <header className="flex-none relative z-30 isolate" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Capa de vidrio */}
@@ -55,6 +67,22 @@ export default function AppHeader({ subtitle, initials, notifCount = 0, onBrand,
 
         {/* Acciones */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Ayuda / chat de soporte */}
+          {mostrarAyuda && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('simac:abrir-chat'))}
+              aria-label="Ayuda"
+              className="relative w-9 h-9 rounded-full bg-white/55 ring-1 ring-black/[0.05] shadow-[0_1px_3px_rgba(0,0,0,0.05)] flex items-center justify-center text-slate-600 hover:text-[#1A5C38] hover:bg-white hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] active:scale-90 transition-all duration-300"
+              style={{ transitionTimingFunction: SPRING }}
+            >
+              <MessageCircle size={18} strokeWidth={2} />
+              {chatNoLeidos > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white shadow-sm">
+                  {chatNoLeidos > 9 ? '9+' : chatNoLeidos}
+                </span>
+              )}
+            </button>
+          )}
           {/* Campana */}
           <button
             onClick={onBell}

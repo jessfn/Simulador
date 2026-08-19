@@ -112,7 +112,15 @@ async function obtenerOCrearConversacion(usuarioId: number, rolUsuario: string) 
 
 router.get('/mi-conversacion', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const conv = await obtenerOCrearConversacion(req.user!.userId, req.user!.rol);
+    // Solo lectura: NUNCA crea una conversación por el simple hecho de abrir
+    // la app — eso llenaba la bandeja del admin con conversaciones vacías.
+    // La conversación se crea únicamente al enviar el primer mensaje.
+    const existente = await pool.query('SELECT * FROM chat_conversaciones WHERE usuario_id = $1', [req.user!.userId]);
+    if (!existente.rows.length) {
+      res.json({ conversacion: null, mensajes: [] });
+      return;
+    }
+    const conv = existente.rows[0];
     const mensajes = await pool.query(
       'SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at ASC LIMIT 200',
       [conv.id]
@@ -189,6 +197,18 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
   } catch (err: any) {
     console.error('POST /chat/mensaje:', err);
     res.status(500).json({ error: err?.message || 'Error al enviar el mensaje' });
+  }
+});
+
+router.post('/escribiendo', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const conv = await pool.query('SELECT id FROM chat_conversaciones WHERE usuario_id = $1', [req.user!.userId]);
+    if (conv.rows.length) {
+      emitirAAdmins({ tipo: 'escribiendo', conversacionId: conv.rows[0].id });
+    }
+    res.json({ ok: true });
+  } catch {
+    res.status(200).json({ ok: true }); // best-effort, nunca bloquea el input
   }
 });
 
@@ -310,6 +330,18 @@ adminChatRouter.post('/:id/mensaje', authMiddleware, responderChats, upload.sing
   } catch (err: any) {
     console.error('POST /admin/chats/:id/mensaje:', err);
     res.status(500).json({ error: err?.message || 'Error al enviar el mensaje' });
+  }
+});
+
+adminChatRouter.post('/:id/escribiendo', authMiddleware, responderChats, async (req: AuthRequest, res: Response) => {
+  try {
+    const conv = await pool.query('SELECT usuario_id FROM chat_conversaciones WHERE id = $1', [req.params.id]);
+    if (conv.rows.length) {
+      emitirAUsuario(conv.rows[0].usuario_id, { tipo: 'escribiendo' });
+    }
+    res.json({ ok: true });
+  } catch {
+    res.status(200).json({ ok: true });
   }
 });
 

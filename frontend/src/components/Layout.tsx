@@ -56,6 +56,7 @@ export function Layout({ children }: { children: ReactNode }) {
         onBrand={() => navigate('/dashboard')}
         onBell={() => navigate('/notificaciones')}
         onMenu={() => setDrawerOpen(true)}
+        mostrarAyuda
       />
 
       {/* ── Main content ───────────────────────────────── */}

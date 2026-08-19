@@ -44,7 +44,7 @@ router.get('/notificaciones/mis', authMiddleware, async (req: AuthRequest, res: 
       LEFT JOIN alertas a ON n.alerta_id = a.id
       LEFT JOIN producer p ON a.producer_id = p.producer_id
       LEFT JOIN up u ON a.up_id = u.up_id
-      WHERE n.usuario_id = $1
+      WHERE n.usuario_id = $1 AND n.tipo != 'chat_ayuda'
       ORDER BY n.created_at DESC
       LIMIT 50
     `, [req.user!.userId]);

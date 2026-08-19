@@ -69,6 +69,7 @@ export function LayoutProductor({ children }: { children: ReactNode }) {
         onBrand={() => navigate('/productor')}
         onBell={() => navigate('/productor/alertas')}
         onMenu={() => setDrawerOpen(true)}
+        mostrarAyuda
       />
 
       {/* ── Main content ───────────────────────────────── */}
