@@ -49,6 +49,14 @@ const POS_KEY = 'simac_chat_bubble_pos';
 const HIDDEN_KEY = 'simac_chat_bubble_hidden';
 const EMOJIS = ['😀', '😅', '👍', '🙏', '🙌', '😢', '😡', '❓', '✅', '📍', '🌽', '🚜'];
 
+/** Sugerencias solo para el primer mensaje — al tocarlas llenan la barra, no envían nada solas. */
+const MENSAJES_SUGERIDOS = [
+  'Hola, necesito ayuda',
+  'Tengo un problema con mi parcela',
+  'No puedo iniciar sesión en mi cuenta',
+  'Tengo una duda sobre mis pagos',
+];
+
 function fmtHora(iso: string) {
   return new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 }
@@ -423,8 +431,21 @@ export default function ChatBubble() {
           {/* Mensajes */}
           <div ref={scrollRef} style={chatWallpaper} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#dbe5df]">
             {mensajes.length === 0 && (
-              <div className="text-center text-[12px] text-slate-400 mt-10">
-                Escríbenos si tienes cualquier duda o problema con la app.
+              <div className="mt-10">
+                <div className="text-center text-[12px] text-slate-400 mb-4">
+                  Escríbenos si tienes cualquier duda o problema con la app.
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  {MENSAJES_SUGERIDOS.map(sug => (
+                    <button
+                      key={sug}
+                      onClick={() => setTexto(sug)}
+                      className="bg-white border border-slate-200 text-slate-700 text-[12.5px] font-medium px-4 py-2.5 rounded-2xl shadow-sm active:scale-95 active:bg-slate-50 transition-transform max-w-[85%]"
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {mensajes.map((m, idx) => {
