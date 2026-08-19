@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MessageCircle, X, Smile, Image as ImageIcon, Mic, Paperclip,
@@ -87,6 +87,7 @@ export default function ChatBubble() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [ubicacionSheet, setUbicacionSheet] = useState(false);
   const [compartiendoEnVivo, setCompartiendoEnVivo] = useState<number | null>(null);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({ height: '100dvh', top: 0 });
 
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
   const esRef = useRef<EventSource | null>(null);
@@ -134,6 +135,28 @@ export default function ChatBubble() {
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previo;
+    };
+  }, [open]);
+
+  // ── Seguir al teclado en iOS/Android (visualViewport) ──
+  // El meta "interactive-widget=resizes-content" no aplica dentro de la PWA
+  // en modo standalone en todas las versiones de iOS, así que además
+  // ajustamos a mano la altura y posición reales del panel con
+  // visualViewport — igual que hace WhatsApp — sin forzar scrollTo en cada
+  // evento (eso era lo que causaba el salto/hueco).
+  useEffect(() => {
+    if (!open) { setPanelStyle({ height: '100dvh', top: 0 }); return; }
+    const vv = window.visualViewport;
+    if (!vv) { setPanelStyle({ height: '100dvh', top: 0 }); return; }
+    const actualizar = () => {
+      setPanelStyle({ height: vv.height, top: vv.offsetTop });
+    };
+    actualizar();
+    vv.addEventListener('resize', actualizar);
+    vv.addEventListener('scroll', actualizar);
+    return () => {
+      vv.removeEventListener('resize', actualizar);
+      vv.removeEventListener('scroll', actualizar);
     };
   }, [open]);
 
@@ -420,7 +443,7 @@ export default function ChatBubble() {
 
       {/* ── Panel de chat ── */}
       {open && (
-        <div style={{ zIndex: 70, height: '100dvh' }} className="fixed inset-0 flex flex-col bg-[#dbe5df] animate-fade-in">
+        <div style={{ zIndex: 70, ...panelStyle }} className="fixed left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in">
           {/* Header */}
           <div className="flex-none bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg">
             <button onClick={() => setOpen(false)} className="text-white/90 active:scale-90 transition-transform">
@@ -563,27 +586,33 @@ export default function ChatBubble() {
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-1.5 mb-2 pl-1">
-                  <button onClick={() => setShowEmoji(v => !v)} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><Smile size={20} /></button>
-                  <button onClick={() => fileImgRef.current?.click()} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={20} /></button>
-                  <button onClick={iniciarGrabacion} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><Mic size={20} /></button>
-                  <button onClick={() => setUbicacionSheet(true)} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><MapPin size={20} /></button>
-                  <button onClick={() => fileDocRef.current?.click()} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={20} /></button>
-                  <input ref={fileImgRef} type="file" accept="image/*" className="hidden" onChange={onArchivo} />
-                  <input ref={fileDocRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={onArchivo} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    value={texto}
-                    onChange={e => onCambiarTexto(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') enviar(); }}
-                    placeholder="Escribe un mensaje…"
-                    className="flex-1 bg-slate-100 rounded-full px-4 py-2.5 text-[13px] outline-none"
-                  />
-                  <button onClick={() => enviar()} disabled={enviando || !texto.trim()}
-                    className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 active:scale-90 transition-transform">
-                    <SendIcon size={17} />
-                  </button>
+                <div className="flex items-end gap-1.5">
+                  <button onClick={() => setShowEmoji(v => !v)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><Smile size={21} /></button>
+                  <div className="flex-1 flex items-center gap-0.5 bg-slate-100 rounded-full pl-3.5 pr-1 py-1">
+                    <input
+                      value={texto}
+                      onChange={e => onCambiarTexto(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') enviar(); }}
+                      placeholder="Escribe un mensaje…"
+                      className="flex-1 min-w-0 bg-transparent text-[13px] outline-none py-1"
+                    />
+                    <button onClick={() => fileImgRef.current?.click()} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={18} /></button>
+                    <button onClick={() => fileDocRef.current?.click()} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={18} /></button>
+                    <button onClick={() => setUbicacionSheet(true)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><MapPin size={18} /></button>
+                    <input ref={fileImgRef} type="file" accept="image/*" className="hidden" onChange={onArchivo} />
+                    <input ref={fileDocRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={onArchivo} />
+                  </div>
+                  {texto.trim() ? (
+                    <button onClick={() => enviar()} disabled={enviando}
+                      className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center text-white disabled:opacity-40 active:scale-90 transition-transform">
+                      <SendIcon size={17} />
+                    </button>
+                  ) : (
+                    <button onClick={iniciarGrabacion}
+                      className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center text-white active:scale-90 transition-transform">
+                      <Mic size={18} />
+                    </button>
+                  )}
                 </div>
               </>
             )}
