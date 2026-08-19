@@ -169,55 +169,56 @@ export default function ChatBubble() {
     };
   }, [open]);
 
-  // ── Tamaño del panel frente al teclado ──
+  // ── Seguir al viewport VISIBLE (top + altura) ──
+  //
+  // Corrección de un error de geometría anterior: se dejaba "top" fijo
+  // en 0 y solo se crecía la altura hasta (offsetTop + height). Eso
+  // dejaba el panel bien DIMENSIONADO pero mal UBICADO: cuando iOS
+  // desplaza la ventana visual hacia abajo (offsetTop > 0, algo que pasa
+  // todo el tiempo al escribir), el header —que vive arriba del panel—
+  // quedaba por ENCIMA del área que de verdad se ve. El panel cubría el
+  // tamaño correcto, pero en el lugar equivocado.
+  //
+  // La corrección real: el panel sigue tanto el "top" como la altura del
+  // visualViewport, así su borde de arriba SIEMPRE coincide con donde
+  // empieza lo visible (ahí vive el header) y su borde de abajo con
+  // donde termina (justo encima del teclado).
+  //
+  // Por qué esto no repite el temblor original: el temblor venía de
+  // actualizar el estilo dentro de un bucle por frames (requestAnimation-
+  // Frame) disparando muchas escrituras por segundo. Aquí se escribe UNA
+  // sola vez por cada evento real "resize"/"scroll" del viewport visual
+  // — nada de bucles — así que el navegador nunca ve más cambios de los
+  // que el propio sistema operativo ya está aplicando.
   //
   // El panel se inyecta con un portal DENTRO del body. Regla aprendida
   // rompiendo esto dos veces: nunca DESPLAZAR la caja del body
   // (position:fixed + top negativo) — eso sí arrastra al panel con él.
   // Tampoco sumar window.scrollY.
-  //
-  // El modelo de tamaño es puramente geométrico y se apoya en dos datos
-  // del viewport visual:
-  //   offsetTop → dónde empieza el área visible dentro del layout
-  //   height    → qué tan alta es esa área visible
-  //
-  // El panel se fija en top:0 y su altura es (offsetTop + height), es
-  // decir, se estira desde el borde del layout hasta el borde INFERIOR
-  // de lo visible. Eso da las tres garantías a la vez:
-  //   · El borde de abajo llega siempre justo hasta el teclado → no queda
-  //     el espacio en blanco por el que se alcanzaba a ver el inicio.
-  //   · El "top" nunca cambia → el header no puede temblar al escribir.
-  //   · El panel cubre todo lo visible → no hay nada del fondo que tocar
-  //     ni arrastrar.
   useEffect(() => {
     if (!open) return;
     const panel = panelRef.current;
     if (!panel) return;
 
     let ultimoAlto = -1;
-    const aplicarAlto = () => {
+    let ultimoTop = -1;
+    const aplicar = () => {
       const vv = window.visualViewport;
-      const alto = vv
-        ? Math.round(vv.offsetTop + vv.height)
-        : window.innerHeight;
-      if (alto !== ultimoAlto) {
-        panel.style.height = `${alto}px`;
-        ultimoAlto = alto;
-      }
+      const alto = Math.round(vv ? vv.height : window.innerHeight);
+      const arriba = Math.round(vv ? vv.offsetTop : 0);
+      if (alto !== ultimoAlto) { panel.style.height = `${alto}px`; ultimoAlto = alto; }
+      if (arriba !== ultimoTop) { panel.style.top = `${arriba}px`; ultimoTop = arriba; }
     };
-    aplicarAlto();
+    aplicar();
 
-    // Solo "resize" y "scroll" del viewport visual: son los eventos que
-    // de verdad dispara el teclado. Sin bucles por frames — ese bucle era
-    // lo que hacía que se viera trabado al escribir.
     const vv = window.visualViewport;
-    vv?.addEventListener('resize', aplicarAlto);
-    vv?.addEventListener('scroll', aplicarAlto);
-    window.addEventListener('resize', aplicarAlto);
+    vv?.addEventListener('resize', aplicar);
+    vv?.addEventListener('scroll', aplicar);
+    window.addEventListener('resize', aplicar);
     return () => {
-      vv?.removeEventListener('resize', aplicarAlto);
-      vv?.removeEventListener('scroll', aplicarAlto);
-      window.removeEventListener('resize', aplicarAlto);
+      vv?.removeEventListener('resize', aplicar);
+      vv?.removeEventListener('scroll', aplicar);
+      window.removeEventListener('resize', aplicar);
     };
   }, [open]);
 
@@ -558,7 +559,8 @@ export default function ChatBubble() {
             gridTemplateRows: 'auto minmax(0, 1fr) auto',
             overflow: 'auto',
             overscrollBehavior: 'contain',
-            willChange: 'height',
+            willChange: 'top, height',
+            transition: 'top 0.15s ease-out, height 0.15s ease-out',
           }}
           className="fixed top-0 left-0 right-0 bg-[#dbe5df] animate-fade-in"
         >
