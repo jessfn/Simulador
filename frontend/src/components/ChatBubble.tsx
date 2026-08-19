@@ -516,15 +516,23 @@ export default function ChatBubble() {
             zIndex: 70,
             top: 0,
             height: '100dvh',
-            // Solo la ALTURA se ajusta en vivo (el top nunca se toca, para
-            // que el header no pueda brincar). willChange mantiene el panel
-            // en su propia capa de GPU para que se vea fluido.
+            // Rejilla de 3 filas: header (auto) · mensajes (todo el resto) ·
+            // barra de escribir (auto). El contenedor es desplazable y
+            // "contiene" su scroll para que iOS pueda reacomodarlo por
+            // dentro al abrir el teclado sin arrastrar nada de la app.
+            display: 'grid',
+            gridTemplateRows: 'auto minmax(0, 1fr) auto',
+            overflow: 'auto',
+            overscrollBehavior: 'contain',
             willChange: 'height',
           }}
-          className="fixed top-0 left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in"
+          className="fixed top-0 left-0 right-0 bg-[#dbe5df] animate-fade-in"
         >
           {/* Header */}
-          <div className="flex-none bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg">
+          <div
+            style={{ position: 'sticky', top: 0, zIndex: 2 }}
+            className="bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg"
+          >
             <button onClick={() => setOpen(false)} className="text-white/90 active:scale-90 transition-transform">
               <ChevronLeft size={22} strokeWidth={2.4} />
             </button>
@@ -546,7 +554,7 @@ export default function ChatBubble() {
           <div
             ref={scrollRef}
             style={{ ...chatWallpaper, overscrollBehavior: 'contain' }}
-            className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#dbe5df]"
+            className="min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#dbe5df]"
           >
             {mensajes.length === 0 && (
               <div className="mt-10">
@@ -640,7 +648,7 @@ export default function ChatBubble() {
 
           {/* Emoji picker */}
           {showEmoji && (
-            <div className="flex-none bg-white border-t border-slate-100 px-4 py-2.5 grid grid-cols-6 gap-1.5">
+            <div className="bg-white border-t border-slate-100 px-4 py-2.5 grid grid-cols-6 gap-1.5">
               {EMOJIS.map(em => (
                 <button key={em} onClick={() => { setTexto(t => t + em); setShowEmoji(false); }}
                   className="text-[22px] active:scale-90 transition-transform">{em}</button>
@@ -649,7 +657,15 @@ export default function ChatBubble() {
           )}
 
           {/* Input bar */}
-          <div className="flex-none bg-white border-t border-slate-100 px-3 pt-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 10px)' }}>
+          <div
+            className="bg-white border-t border-slate-100 px-3 pt-2"
+            style={{
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 2,
+              paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 10px)',
+            }}
+          >
             {grabando ? (
               <div className="flex items-center gap-3 py-1.5">
                 <button onClick={cancelarGrabacion} className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90 transition-transform">
