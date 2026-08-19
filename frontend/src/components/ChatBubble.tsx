@@ -128,13 +128,19 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
-  // ── Bloquear el scroll del body mientras el chat está abierto ──
+  // ── Bloquear el scroll del body y del html mientras el chat está abierto ──
+  // Bloqueamos ambos (no solo el body) porque en iOS, durante la animación
+  // del teclado, a veces es el <html> el que se desplaza brevemente y deja
+  // ver un frame de la app de atrás detrás del panel fijo.
   useEffect(() => {
     if (!open) return;
-    const previo = document.body.style.overflow;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = previo;
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
     };
   }, [open]);
 
@@ -465,7 +471,16 @@ export default function ChatBubble() {
 
       {/* ── Panel de chat ── */}
       {open && (
-        <div style={{ zIndex: 70, ...panelStyle }} className="fixed left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in">
+        <div
+          style={{
+            zIndex: 70,
+            ...panelStyle,
+            transform: 'translateZ(0)',
+            willChange: 'transform, height, top',
+            transition: 'height 0.15s ease, top 0.15s ease',
+          }}
+          className="fixed left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in"
+        >
           {/* Header */}
           <div className="flex-none bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg">
             <button onClick={() => setOpen(false)} className="text-white/90 active:scale-90 transition-transform">
