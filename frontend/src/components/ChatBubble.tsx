@@ -91,13 +91,14 @@ export default function ChatBubble() {
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const grabacionCanceladaRef = useRef(false);
   const grabacionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const idsVistos = useRef<Set<number>>(new Set());
+  const mensajesRef = useRef<Mensaje[]>([]);
+  useEffect(() => { mensajesRef.current = mensajes; }, [mensajes]);
   // Índice fijo donde va el separador "Mensajes nuevos" — se calcula UNA
   // sola vez al cargar la conversación (no se recalcula con mensajes.length,
   // que crece cada vez que el usuario envía uno propio; si se recalculara
@@ -132,114 +133,22 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
-  // ── Bloquear el scroll de verdad mientras el chat está abierto ──
-  // "overflow: hidden" en el body/html NO funciona en iOS Safari — es un
-  // bug conocido de WebKit: iOS trata html+body como parte del propio
-  // viewport, no como un contenedor de scroll independiente, así que
-  // igual se puede arrastrar y queda un espacio en blanco que al soltar
-  // revela la app de atrás. La técnica que sí funciona: darle a html y
-  // body una ALTURA EXPLÍCITA igual a window.innerHeight (no solo
-  // overflow:hidden) y además fijar el body con position:fixed, quitando
-  // físicamente la posibilidad de desplazarlo. Al cerrar, se restaura la
-  // posición de scroll exacta donde estaba.
-  useEffect(() => {
-    if (!open) return;
-    const scrollYPrevio = window.scrollY;
-    const sincronizarAlto = () => {
-      document.documentElement.style.setProperty('--simac-window-h', `${window.innerHeight}px`);
-    };
-    sincronizarAlto();
-    window.addEventListener('resize', sincronizarAlto);
-
-    const html = document.documentElement;
-    const { body } = document;
-    const prevHtml = { overflow: html.style.overflow, height: html.style.height };
-    const prevBody = {
-      overflow: body.style.overflow, height: body.style.height,
-      position: body.style.position, top: body.style.top, width: body.style.width,
-    };
-    html.style.overflow = 'hidden';
-    html.style.height = 'var(--simac-window-h, 100vh)';
-    body.style.overflow = 'hidden';
-    body.style.height = 'var(--simac-window-h, 100vh)';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollYPrevio}px`;
-    body.style.width = '100%';
-
-    return () => {
-      window.removeEventListener('resize', sincronizarAlto);
-      html.style.overflow = prevHtml.overflow;
-      html.style.height = prevHtml.height;
-      body.style.overflow = prevBody.overflow;
-      body.style.height = prevBody.height;
-      body.style.position = prevBody.position;
-      body.style.top = prevBody.top;
-      body.style.width = prevBody.width;
-      window.scrollTo(0, scrollYPrevio);
-      document.documentElement.style.removeProperty('--simac-window-h');
-    };
-  }, [open]);
-
-  // ── Seguir al teclado en iOS/Android (visualViewport), fluido ──
-  // El meta "interactive-widget=resizes-content" no aplica dentro de la PWA
-  // en modo standalone en todas las versiones de iOS, así que además
-  // ajustamos a mano la altura y posición reales del panel con
-  // visualViewport, mientras el teclado se abre o se cierra (también al
-  // enviar un mensaje, que quita el foco del input).
-  //
-  // Antes esto se hacía con setState + setInterval(80ms): cada tick volvía
-  // a renderizar TODO el componente (mensajes, header, etc.) mientras el
-  // teclado seguía animando — eso era el "trabón". Ahora escribimos el
-  // estilo directo en el DOM (sin pasar por React) dentro de un loop de
-  // requestAnimationFrame, igual que hace cualquier animación nativa fluida:
-  // se sincroniza con cada frame real de pantalla, sin renders de más.
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel) return;
-    if (!open) { panel.style.height = '100dvh'; panel.style.top = '0px'; return; }
-    const vv = window.visualViewport;
-    if (!vv) { panel.style.height = '100dvh'; panel.style.top = '0px'; return; }
-
-    let ultimaAltura = -1;
-    let ultimoTop = -1;
-    const aplicar = () => {
-      const h = vv.height;
-      const t = vv.offsetTop;
-      if (h !== ultimaAltura) { panel.style.height = `${h}px`; ultimaAltura = h; }
-      if (t !== ultimoTop) { panel.style.top = `${t}px`; ultimoTop = t; }
-    };
-    aplicar();
-
-    // Seguimos re-midiendo con requestAnimationFrame mientras el teclado
-    // se anima (~350ms es más que suficiente para cualquier animación de
-    // teclado en iOS/Android), sincronizado con cada frame real.
-    let rafId: number | null = null;
-    const seguirDurante = (ms: number) => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      const limite = performance.now() + ms;
-      const tick = () => {
-        aplicar();
-        if (performance.now() < limite) rafId = requestAnimationFrame(tick);
-        else rafId = null;
-      };
-      rafId = requestAnimationFrame(tick);
-    };
-    const onFocusChange = () => seguirDurante(350);
-
-    vv.addEventListener('resize', aplicar);
-    vv.addEventListener('scroll', aplicar);
-    document.addEventListener('focusin', onFocusChange);
-    document.addEventListener('focusout', onFocusChange);
-    return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      vv.removeEventListener('resize', aplicar);
-      vv.removeEventListener('scroll', aplicar);
-      document.removeEventListener('focusin', onFocusChange);
-      document.removeEventListener('focusout', onFocusChange);
-    };
-  }, [open]);
+  // ── Ajuste al teclado: igual que el resto de la app ──
+  // Todas las demás pantallas donde se escribe (login, registro, etc.)
+  // usan un contenedor NORMAL — "min-h-[100dvh]" sin position:fixed ni
+  // JS — y el teclado se abre sin ningún hueco ni trabón, porque es
+  // simplemente el comportamiento nativo del navegador. Los intentos
+  // anteriores de "ayudar" con visualViewport + bloqueo de scroll a mano
+  // competían contra ese comportamiento nativo y causaban justo los
+  // problemas que se querían evitar. La solución real es dejar de
+  // pelear: el panel usa el mismo patrón que ya funciona en el resto de
+  // la app, sin tocar nada por JS.
 
   // ── Cargar conversación inicial ──
+  // El separador "Mensajes nuevos" NO se calcula aquí: solo debe aparecer
+  // en el momento en que el usuario ABRE el chat y de verdad hay mensajes
+  // sin leer en ese instante (ver `abrir()` más abajo) — igual que
+  // WhatsApp, nunca antes ni con datos ya viejos.
   useEffect(() => {
     if (!esUsuarioFinal) return;
     apiFetch('/chat/mi-conversacion').then(r => r.json()).then(d => {
@@ -247,11 +156,7 @@ export default function ChatBubble() {
       msgs.forEach(m => idsVistos.current.add(m.id));
       setMensajes(msgs);
       const conv = d.conversacion;
-      if (conv?.no_leidos_usuario) {
-        setNoLeidos(conv.no_leidos_usuario);
-        setDivisorNoLeidos(conv.no_leidos_usuario);
-        divisorIndiceRef.current = msgs.length - conv.no_leidos_usuario;
-      }
+      if (conv?.no_leidos_usuario) setNoLeidos(conv.no_leidos_usuario);
       if (conv?.admin_leido_hasta) setAdminLeidoHasta(conv.admin_leido_hasta);
     }).catch(() => {});
   }, [esUsuarioFinal]);
@@ -299,7 +204,20 @@ export default function ChatBubble() {
   const abrir = useCallback(() => {
     desbloquearAudio();
     setOpen(true);
-    setNoLeidos(0);
+    // El separador "Mensajes nuevos" se calcula justo aquí, con lo que
+    // hay sin leer EN ESTE INSTANTE — si no hay nada sin leer, no
+    // aparece; si hay, queda anclado a esa posición fija (no se mueve
+    // después con mensajes que uno mismo envíe).
+    setNoLeidos(prevNoLeidos => {
+      if (prevNoLeidos > 0) {
+        setDivisorNoLeidos(prevNoLeidos);
+        divisorIndiceRef.current = mensajesRef.current.length - prevNoLeidos;
+      } else {
+        setDivisorNoLeidos(0);
+        divisorIndiceRef.current = null;
+      }
+      return 0;
+    });
     apiFetch('/chat/leido', { method: 'PATCH' }).catch(() => {});
   }, []);
   abrirRef.current = abrir;
@@ -550,20 +468,8 @@ export default function ChatBubble() {
       {/* ── Panel de chat ── */}
       {open && (
         <div
-          ref={panelRef}
-          style={{
-            zIndex: 70,
-            height: '100dvh',
-            top: 0,
-            transform: 'translateZ(0)',
-            willChange: 'transform, height, top',
-            // Curva "ease-out" suave, cercana a la animación nativa del
-            // teclado en iOS/Android — así cualquier micro-ajuste que
-            // hagamos por JS se ve como parte del mismo movimiento fluido,
-            // no como un salto aparte.
-            transition: 'height 0.25s cubic-bezier(0.25, 0.1, 0.25, 1), top 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
-          }}
-          className="fixed left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in"
+          style={{ zIndex: 70, height: '100dvh' }}
+          className="fixed inset-0 flex flex-col bg-[#dbe5df] animate-fade-in"
         >
           {/* Header */}
           <div className="flex-none bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg">
