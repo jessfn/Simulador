@@ -10,6 +10,8 @@ interface OptsNotif {
   referenciaTipo?: string;
   datosExtra?: string;
   alertaExternaId?: number;
+  /** Ruta a la que abre la push nativa al tocarla; si se omite usa el mapeo por tipo. */
+  url?: string;
 }
 
 /**
@@ -53,6 +55,7 @@ export async function notificar(opts: OptsNotif): Promise<void> {
         mensaje: opts.mensaje,
         tipo: opts.tipo,
         nivel: 'info',
+        url: opts.url,
       }
     );
   } catch (err) {

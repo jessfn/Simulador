@@ -108,6 +108,18 @@ export default function ChatBubble() {
     return () => window.removeEventListener('simac:abrir-chat', onAbrirGlobal);
   }, []);
 
+  // ── Abrir automáticamente al llegar desde una notificación push (?abrirChat=1) ──
+  useEffect(() => {
+    if (!esUsuarioFinal) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('abrirChat') === '1') {
+      abrirRef.current?.();
+      params.delete('abrirChat');
+      const nueva = window.location.pathname + (params.toString() ? `?${params}` : '');
+      window.history.replaceState({}, '', nueva);
+    }
+  }, [esUsuarioFinal]);
+
   // ── Difundir el contador de no leídos para el botón del header ──
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));

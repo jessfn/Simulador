@@ -196,6 +196,7 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
         mensaje: contenido?.trim() || `Nuevo ${tipo === 'imagen' ? 'imagen' : tipo === 'audio' ? 'audio' : tipo === 'ubicacion' ? 'ubicación' : 'archivo'} recibido`,
         referenciaId: conv.id,
         referenciaTipo: 'chat_ayuda',
+        url: '/admin/chats',
       }).catch(() => {});
     }
 
@@ -363,6 +364,7 @@ adminChatRouter.post('/:id/mensaje', authMiddleware, responderChats, upload.sing
       mensaje: contenido?.trim() || 'Tienes una nueva respuesta del equipo de soporte',
       referenciaId: convId,
       referenciaTipo: 'chat_ayuda',
+      url: conv.rows[0].rol_usuario === 'productor' ? '/productor?abrirChat=1' : '/dashboard?abrirChat=1',
     }).catch(() => {});
 
     res.json({ mensaje: msg.rows[0] });

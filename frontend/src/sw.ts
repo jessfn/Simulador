@@ -26,15 +26,20 @@ self.addEventListener('push', (event: PushEvent) => {
     data = { title: 'SIMAC', body: event.data?.text() ?? 'Nueva notificación' };
   }
 
+  const esChat = data.data?.tipo === 'chat_ayuda';
+
   const title   = data.title  ?? 'SIMAC';
   const options: NotificationOptions = {
     body:    data.body   ?? '',
     icon:    data.icon   ?? '/icono.png',
     badge:   data.badge  ?? '/icono.png',
-    tag:     data.data?.tipo ?? 'simac-notif',
+    // El chat no se agrupa por tag fijo — cada mensaje debe notificar aparte,
+    // igual que en Messenger/WhatsApp (varios mensajes = varias notificaciones).
+    tag:     esChat ? `chat-${Date.now()}` : (data.data?.tipo ?? 'simac-notif'),
     data:    data.data   ?? {},
     // @ts-ignore — vibrate y renotify existen en Chrome/Android pero no en los tipos DOM estándar
-    vibrate: [200, 100, 200],
+    // Patrón corto y repetido (como Messenger) para el chat; el resto de alertas mantiene el patrón largo actual.
+    vibrate: esChat ? [80, 40, 80, 40, 80] : [200, 100, 200],
     renotify: true,
   };
 

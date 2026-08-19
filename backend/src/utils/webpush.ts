@@ -19,6 +19,8 @@ export interface PushPayload {
   mensaje: string;
   tipo:    string;
   nivel?:  string;
+  /** Si se define, se usa en vez de URL_POR_TIPO — necesario cuando el destino depende del rol del receptor. */
+  url?:    string;
 }
 
 // URL a la que abre la app al tocar la notificación, por tipo de evento
@@ -40,7 +42,7 @@ export const enviarPushNativa = async (
 ): Promise<void> => {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
 
-  const url = URL_POR_TIPO[payload.tipo] ?? '/notificaciones';
+  const url = payload.url ?? URL_POR_TIPO[payload.tipo] ?? '/notificaciones';
 
   await webpush.sendNotification(
     {
