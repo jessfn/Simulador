@@ -92,14 +92,18 @@ export default function ChatBubble() {
   const esRef = useRef<EventSource | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const fileImgRef = useRef<HTMLInputElement>(null);
-  const fileDocRef = useRef<HTMLInputElement>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const grabacionCanceladaRef = useRef(false);
   const grabacionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const idsVistos = useRef<Set<number>>(new Set());
+  // Índice fijo donde va el separador "Mensajes nuevos" — se calcula UNA
+  // sola vez al cargar la conversación (no se recalcula con mensajes.length,
+  // que crece cada vez que el usuario envía uno propio; si se recalculara
+  // en vivo el separador "se corre" y parece aparecer sobre tus propios
+  // mensajes en vez de quedarse fijo donde estaban los del admin sin leer).
+  const divisorIndiceRef = useRef<number | null>(null);
   const escribiendoAdminTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ultimoEnvioEscribiendo = useRef(0);
   const abrirRef = useRef<() => void>(() => {});
@@ -243,7 +247,11 @@ export default function ChatBubble() {
       msgs.forEach(m => idsVistos.current.add(m.id));
       setMensajes(msgs);
       const conv = d.conversacion;
-      if (conv?.no_leidos_usuario) { setNoLeidos(conv.no_leidos_usuario); setDivisorNoLeidos(conv.no_leidos_usuario); }
+      if (conv?.no_leidos_usuario) {
+        setNoLeidos(conv.no_leidos_usuario);
+        setDivisorNoLeidos(conv.no_leidos_usuario);
+        divisorIndiceRef.current = msgs.length - conv.no_leidos_usuario;
+      }
       if (conv?.admin_leido_hasta) setAdminLeidoHasta(conv.admin_leido_hasta);
     }).catch(() => {});
   }, [esUsuarioFinal]);
@@ -358,13 +366,36 @@ export default function ChatBubble() {
     finally { setEnviando(false); }
   }
 
-  function onArchivo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  function onArchivo(e: Event) {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
     if (!file) return;
     const fd = new FormData();
     fd.append('archivo', file);
     enviar(fd);
+  }
+
+  // Creamos el <input type="file"> al vuelo en vez de tenerlo montado todo
+  // el tiempo en el DOM: en iOS, cualquier input de formulario presente en
+  // la página (aunque esté oculto) hace que Safari agregue la barra de
+  // accesorios con flechas "anterior/siguiente campo" arriba del teclado,
+  // lo cual ensancha el hueco entre nuestra barra de escribir y el teclado.
+  // Al crearlo solo cuando se necesita y quitarlo justo después, no queda
+  // ningún campo de formulario "extra" que Safari pueda contar.
+  function abrirSelectorArchivo(accept: string) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.tabIndex = -1;
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    input.addEventListener('change', (e) => {
+      onArchivo(e);
+      document.body.removeChild(input);
+    }, { once: true });
+    document.body.appendChild(input);
+    input.click();
   }
 
   async function enviarUbicacionActual() {
@@ -576,7 +607,7 @@ export default function ChatBubble() {
             {mensajes.map((m, idx) => {
               const esMio = m.autor_id === user?.userId;
               const leido = esMio && !!adminLeidoHasta && new Date(m.created_at) <= new Date(adminLeidoHasta);
-              const mostrarDivisor = divisorNoLeidos > 0 && idx === mensajes.length - divisorNoLeidos;
+              const mostrarDivisor = divisorNoLeidos > 0 && divisorIndiceRef.current !== null && idx === divisorIndiceRef.current;
               return (
                 <div key={m.id} className="contents">
                 {mostrarDivisor && (
@@ -686,11 +717,9 @@ export default function ChatBubble() {
                       placeholder="Escribe un mensaje…"
                       className="flex-1 min-w-0 bg-transparent text-[13px] outline-none py-1"
                     />
-                    <button onClick={() => fileImgRef.current?.click()} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={18} /></button>
-                    <button onClick={() => fileDocRef.current?.click()} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={18} /></button>
+                    <button onClick={() => abrirSelectorArchivo('image/*')} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={18} /></button>
+                    <button onClick={() => abrirSelectorArchivo('.pdf,.doc,.docx,.xls,.xlsx')} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={18} /></button>
                     <button onClick={() => setUbicacionSheet(true)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><MapPin size={18} /></button>
-                    <input ref={fileImgRef} type="file" accept="image/*" tabIndex={-1} className="hidden" onChange={onArchivo} />
-                    <input ref={fileDocRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" tabIndex={-1} className="hidden" onChange={onArchivo} />
                   </div>
                   {texto.trim() ? (
                     <button onClick={() => enviar()} disabled={enviando}
