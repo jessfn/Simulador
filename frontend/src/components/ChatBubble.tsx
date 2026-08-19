@@ -360,29 +360,38 @@ export default function ChatBubble() {
     <>
       {/* ── Burbuja flotante ── */}
       {!hidden && !open && (
-        <button
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 60, touchAction: 'none' }}
-          className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-[0_10px_24px_rgba(18,63,39,0.4)] active:scale-95 transition-transform"
-        >
-          <span className="absolute inset-0 rounded-full animate-ping bg-[#1f7a49]/30" />
-          <span className="relative w-full h-full rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center">
-            <MessageCircle size={26} className="text-white" strokeWidth={2} />
-            {noLeidos > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
-                <span className="text-white text-[9.5px] font-black">{noLeidos > 9 ? '9+' : noLeidos}</span>
-              </span>
-            )}
-          </span>
-          <span
-            onClick={ocultarBurbuja}
-            className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center"
+        <div style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 60 }}>
+          {/* Botón que se arrastra / abre el chat — la "×" vive FUERA de este
+              botón (como hermano, no hijo) para que tocarla no dispare
+              también la lógica de arrastre/abrir del botón grande. */}
+          <button
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            style={{ touchAction: 'none' }}
+            className="relative w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-[0_10px_24px_rgba(18,63,39,0.4)] active:scale-95 transition-transform"
           >
-            <X size={10} className="text-slate-500" />
-          </span>
-        </button>
+            <span className="absolute inset-0 rounded-full animate-ping bg-[#1f7a49]/30" />
+            <span className="relative w-full h-full rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center">
+              <MessageCircle size={26} className="text-white" strokeWidth={2} />
+              {noLeidos > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
+                  <span className="text-white text-[9.5px] font-black">{noLeidos > 9 ? '9+' : noLeidos}</span>
+                </span>
+              )}
+            </span>
+          </button>
+
+          <button
+            onClick={ocultarBurbuja}
+            onPointerDown={e => e.stopPropagation()}
+            aria-label="Ocultar burbuja de ayuda"
+            style={{ touchAction: 'manipulation' }}
+            className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center active:scale-90 transition-transform"
+          >
+            <X size={11} className="text-slate-500" />
+          </button>
+        </div>
       )}
 
       {/* ── Acceso discreto cuando está oculta ── */}
