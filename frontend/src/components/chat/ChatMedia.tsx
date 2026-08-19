@@ -70,14 +70,22 @@ export const chatWallpaper: CSSProperties = {
  * para que la curva de la cola continúe exactamente la del rectángulo.
  */
 export function Tail({ esMio, color }: { esMio: boolean; color: string }) {
-  const outer: CSSProperties = esMio
-    ? { position: 'absolute', bottom: 0, right: -8, width: 16, height: 16, overflow: 'hidden', pointerEvents: 'none' }
-    : { position: 'absolute', bottom: 0, left: -8, width: 16, height: 16, overflow: 'hidden', pointerEvents: 'none' };
-  const inner: CSSProperties = esMio
-    ? { position: 'absolute', bottom: -2, left: -7, width: 16, height: 16, background: color, borderRadius: 2, transform: 'rotate(45deg)' }
-    : { position: 'absolute', bottom: -2, right: -7, width: 16, height: 16, background: color, borderRadius: 2, transform: 'rotate(-45deg)' };
+  // Borde recto que se abre desde la esquina de la burbuja hasta una punta
+  // redondeada — geométrico y compacto, como la cola de Telegram (no la
+  // curva tipo "gancho" de WhatsApp).
+  const w = 8, h = 12, redondeo = 5;
+  const path = `M0,0 L${w},${h - redondeo} Q${w},${h} ${w - redondeo},${h} L0,${h} Z`;
   return (
-    <div style={outer}><div style={inner} /></div>
+    <svg
+      width={w} height={h} viewBox={`0 0 ${w} ${h}`}
+      style={{
+        position: 'absolute', bottom: 0,
+        [esMio ? 'right' : 'left']: -w + 2,
+        transform: esMio ? undefined : 'scaleX(-1)',
+      }}
+    >
+      <path d={path} fill={color} />
+    </svg>
   );
 }
 
