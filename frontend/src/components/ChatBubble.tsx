@@ -142,8 +142,13 @@ export default function ChatBubble() {
   // El meta "interactive-widget=resizes-content" no aplica dentro de la PWA
   // en modo standalone en todas las versiones de iOS, así que además
   // ajustamos a mano la altura y posición reales del panel con
-  // visualViewport — igual que hace WhatsApp — sin forzar scrollTo en cada
-  // evento (eso era lo que causaba el salto/hueco).
+  // visualViewport. En WKWebView (app agregada a pantalla de inicio) los
+  // eventos "resize"/"scroll" de visualViewport a veces no llegan a tiempo
+  // mientras el teclado todavía se está animando (deja un hueco en blanco
+  // debajo de la barra, antes de la barra nativa de accesorios de iOS).
+  // Por eso, además de escuchar los eventos, re-medimos varias veces
+  // durante ~1.2s tras cada cambio de foco del input, hasta que el teclado
+  // termina de asentarse.
   useEffect(() => {
     if (!open) { setPanelStyle({ height: '100dvh', top: 0 }); return; }
     const vv = window.visualViewport;
@@ -152,11 +157,28 @@ export default function ChatBubble() {
       setPanelStyle({ height: vv.height, top: vv.offsetTop });
     };
     actualizar();
+
+    let pollId: ReturnType<typeof setInterval> | null = null;
+    const remedirDurante = (ms: number) => {
+      if (pollId) clearInterval(pollId);
+      const limite = Date.now() + ms;
+      pollId = setInterval(() => {
+        actualizar();
+        if (Date.now() > limite && pollId) { clearInterval(pollId); pollId = null; }
+      }, 80);
+    };
+    const onFocusChange = () => remedirDurante(1200);
+
     vv.addEventListener('resize', actualizar);
     vv.addEventListener('scroll', actualizar);
+    document.addEventListener('focusin', onFocusChange);
+    document.addEventListener('focusout', onFocusChange);
     return () => {
+      if (pollId) clearInterval(pollId);
       vv.removeEventListener('resize', actualizar);
       vv.removeEventListener('scroll', actualizar);
+      document.removeEventListener('focusin', onFocusChange);
+      document.removeEventListener('focusout', onFocusChange);
     };
   }, [open]);
 
