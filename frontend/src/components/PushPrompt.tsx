@@ -35,6 +35,39 @@ export default function PushPrompt({ rol }: Props) {
   const [cargando, setCargando] = useState(false);
   const [exito, setExito]       = useState(false);
 
+  // Si el usuario ya había dado permiso antes (posiblemente con una suscripción
+  // rota o de una VAPID key anterior), renovarla en silencio — sin volver a
+  // preguntar — para que el push efectivamente funcione sin acción del usuario.
+  useEffect(() => {
+    if (!pushSoportado()) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    // Solo renovar una vez por cada VAPID key (evita desuscribir/resuscribir en cada carga).
+    const SYNC_KEY = `simac_push_synced_${VAPID_KEY.slice(0, 12)}`;
+    if (localStorage.getItem(SYNC_KEY) === '1') return;
+    (async () => {
+      try {
+        const sw = await navigator.serviceWorker.ready;
+        const existente = await sw.pushManager.getSubscription();
+        if (existente) await existente.unsubscribe();
+        const sub = await sw.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_KEY),
+        });
+        const { endpoint, keys } = sub.toJSON() as any;
+        const token = localStorage.getItem('simac_token');
+        if (!token) return;
+        await fetch(`${BASE}/productor/push/suscribir`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ endpoint, p256dh: keys.p256dh, auth: keys.auth }),
+        });
+        localStorage.setItem(SYNC_KEY, '1');
+      } catch (e) {
+        console.warn('Renovación silenciosa de push falló:', e);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     if (!pushSoportado()) return;
     if (!('Notification' in window)) return;
