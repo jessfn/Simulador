@@ -91,6 +91,7 @@ export default function ChatBubble() {
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const grabacionCanceladaRef = useRef(false);
@@ -133,16 +134,73 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
-  // ── Ajuste al teclado: igual que el resto de la app ──
-  // Todas las demás pantallas donde se escribe (login, registro, etc.)
-  // usan un contenedor NORMAL — "min-h-[100dvh]" sin position:fixed ni
-  // JS — y el teclado se abre sin ningún hueco ni trabón, porque es
-  // simplemente el comportamiento nativo del navegador. Los intentos
-  // anteriores de "ayudar" con visualViewport + bloqueo de scroll a mano
-  // competían contra ese comportamiento nativo y causaban justo los
-  // problemas que se querían evitar. La solución real es dejar de
-  // pelear: el panel usa el mismo patrón que ya funciona en el resto de
-  // la app, sin tocar nada por JS.
+  // ── Anclar el panel al viewport VISIBLE (arregla el header que se pierde) ──
+  //
+  // Bug real de iOS/WebKit: mientras el teclado está abierto, los elementos
+  // "position: fixed" DEJAN de comportarse como fijos y se desplazan junto
+  // con el documento. La secuencia que rompía el header era:
+  //   1. Al enfocar el input, iOS desplaza el documento para revelar el campo
+  //      → window.scrollY deja de ser 0.
+  //   2. Por el bug, el panel "fijo" se va hacia arriba con el documento.
+  //   3. El header (con quién hablas) queda fuera de pantalla por arriba.
+  //
+  // Los intentos anteriores solo usaban visualViewport.offsetTop y NUNCA
+  // compensaban window.scrollY — esa era la pieza que faltaba.
+  //
+  // Aquí compensamos las dos: desplazamos el panel hacia abajo exactamente
+  // lo mismo que el documento se desplazó, así vuelve a quedar clavado al
+  // área realmente visible. Se usa transform:translateY (no "top") porque
+  // se compone en GPU: no provoca recálculo de layout y por eso se ve
+  // fluido en vez de trabado.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!open || !panel) return;
+
+    let ultimoAlto = -1;
+    let ultimoY = -1;
+    const aplicar = () => {
+      const vv = window.visualViewport;
+      const alto = vv ? vv.height : window.innerHeight;
+      // window.scrollY: cuánto se desplazó el documento (bug de iOS).
+      // vv.offsetTop: cuánto se desplazó el viewport visual dentro del layout.
+      const desplazamiento = (window.scrollY || 0) + (vv ? vv.offsetTop : 0);
+      if (alto !== ultimoAlto) { panel.style.height = `${alto}px`; ultimoAlto = alto; }
+      if (desplazamiento !== ultimoY) {
+        panel.style.transform = `translate3d(0, ${desplazamiento}px, 0)`;
+        ultimoY = desplazamiento;
+      }
+    };
+    aplicar();
+
+    // Mientras el teclado se anima, iOS no manda un evento por frame, así
+    // que seguimos midiendo con requestAnimationFrame (sincronizado con la
+    // pantalla) durante el tiempo que dura la animación del teclado.
+    let rafId: number | null = null;
+    const seguirAnimacion = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      const hasta = performance.now() + 600;
+      const tick = () => {
+        aplicar();
+        rafId = performance.now() < hasta ? requestAnimationFrame(tick) : null;
+      };
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', aplicar);
+    vv?.addEventListener('scroll', aplicar);
+    window.addEventListener('scroll', aplicar, { passive: true });
+    document.addEventListener('focusin', seguirAnimacion);
+    document.addEventListener('focusout', seguirAnimacion);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      vv?.removeEventListener('resize', aplicar);
+      vv?.removeEventListener('scroll', aplicar);
+      window.removeEventListener('scroll', aplicar);
+      document.removeEventListener('focusin', seguirAnimacion);
+      document.removeEventListener('focusout', seguirAnimacion);
+    };
+  }, [open]);
 
   // ── Cargar conversación inicial ──
   // El separador "Mensajes nuevos" NO se calcula aquí: solo debe aparecer
@@ -468,8 +526,16 @@ export default function ChatBubble() {
       {/* ── Panel de chat ── */}
       {open && (
         <div
-          style={{ zIndex: 70, height: '100dvh' }}
-          className="fixed inset-0 flex flex-col bg-[#dbe5df] animate-fade-in"
+          ref={panelRef}
+          style={{
+            zIndex: 70,
+            height: '100dvh',
+            // El efecto de arriba sobrescribe height y transform en vivo.
+            // willChange mantiene el panel en su propia capa de GPU para
+            // que el seguimiento del teclado se vea fluido, sin parpadeos.
+            willChange: 'transform, height',
+          }}
+          className="fixed top-0 left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in"
         >
           {/* Header */}
           <div className="flex-none bg-gradient-to-br from-[#14482c] via-[#1A5C38] to-[#1e6b42] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 flex items-center gap-3 shadow-lg">
