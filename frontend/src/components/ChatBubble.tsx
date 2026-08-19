@@ -134,58 +134,85 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
-  // ── Anclar el panel al viewport VISIBLE ──
+  // ── Bloquear el fondo + seguir al teclado ──
   //
-  // IMPORTANTE — error ya cometido, no repetir: NO sumar window.scrollY
-  // aquí. Se intentó una vez asumiendo que iOS desplaza los elementos
-  // "fixed" con el documento, pero si el usuario ya venía con la página
-  // desplazada (dashboard hacia abajo), esa suma empuja el panel fuera de
-  // la pantalla y deja ver la app de fondo. Los elementos position:fixed
-  // NO se desplazan con el documento aquí.
+  // Tres bugs reales que se arreglan aquí, cada uno con su causa:
   //
-  // Lo único correcto es seguir el viewport visual: su altura y su
-  // desplazamiento propio (offsetTop), que es justo lo que cambia cuando
-  // el teclado aparece. Así el header queda siempre visible arriba.
+  // 1) "El header sube y baja al escribir": se estaba moviendo el `top` del
+  //    panel en CADA evento de visualViewport. Al teclear, iOS mueve
+  //    constantemente su offset, así que el header brincaba. Solución: el
+  //    `top` se queda clavado en 0 y NUNCA se toca. Si el top no cambia, el
+  //    header no puede brincar — es imposible por construcción.
+  //
+  // 2) "Si hago scroll en el espacio blanco se ve el inicio de la app": no
+  //    había ningún bloqueo del fondo, el body quedaba libre y se podía
+  //    arrastrar. En iOS `overflow:hidden` NO basta (WebKit trata html+body
+  //    como parte del viewport), hay que fijar el body con position:fixed y
+  //    altura explícita para que no exista nada que desplazar.
+  //
+  // 3) El hueco blanco era consecuencia de los dos anteriores: el panel
+  //    quedaba desplazado y no llegaba hasta el teclado.
+  //
+  // NO sumar window.scrollY aquí (error ya cometido): los elementos
+  // position:fixed no se desplazan con el documento, y sumarlo empuja el
+  // panel fuera de la pantalla si la página venía desplazada.
   useEffect(() => {
+    if (!open) return;
     const panel = panelRef.current;
-    if (!open || !panel) return;
 
+    // ── 1. Bloquear el fondo por completo ──
+    const html = document.documentElement;
+    const { body } = document;
+    const scrollYPrevio = window.scrollY;
+    const previo = {
+      htmlOverflow: html.style.overflow, htmlHeight: html.style.height,
+      bodyOverflow: body.style.overflow, bodyHeight: body.style.height,
+      bodyPosition: body.style.position, bodyTop: body.style.top,
+      bodyLeft: body.style.left, bodyWidth: body.style.width,
+    };
+    html.style.overflow = 'hidden';
+    html.style.height = '100%';
+    body.style.overflow = 'hidden';
+    body.style.height = '100%';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollYPrevio}px`;
+    body.style.left = '0';
+    body.style.width = '100%';
+
+    // ── 2. Seguir al teclado ajustando SOLO la altura ──
+    // Cambiar la altura mueve el borde de abajo (donde está el teclado),
+    // nunca el de arriba, así que el header se queda quieto. Se escucha
+    // únicamente "resize" (el evento que de verdad dispara el teclado);
+    // se quitaron el listener de "scroll" y el bucle por frames porque
+    // eran justamente los que producían el temblor al escribir.
     let ultimoAlto = -1;
-    let ultimoTop = -1;
-    const aplicar = () => {
+    const aplicarAlto = () => {
+      if (!panel) return;
       const vv = window.visualViewport;
-      const alto = vv ? vv.height : window.innerHeight;
-      const arriba = vv ? vv.offsetTop : 0;
-      if (alto !== ultimoAlto) { panel.style.height = `${alto}px`; ultimoAlto = alto; }
-      if (arriba !== ultimoTop) { panel.style.top = `${arriba}px`; ultimoTop = arriba; }
+      const alto = Math.round(vv ? vv.height : window.innerHeight);
+      if (alto !== ultimoAlto) {
+        panel.style.height = `${alto}px`;
+        ultimoAlto = alto;
+      }
     };
-    aplicar();
-
-    // Mientras el teclado se anima, iOS no manda un evento por frame, así
-    // que seguimos midiendo con requestAnimationFrame (sincronizado con la
-    // pantalla) durante el tiempo que dura la animación del teclado.
-    let rafId: number | null = null;
-    const seguirAnimacion = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      const hasta = performance.now() + 600;
-      const tick = () => {
-        aplicar();
-        rafId = performance.now() < hasta ? requestAnimationFrame(tick) : null;
-      };
-      rafId = requestAnimationFrame(tick);
-    };
+    aplicarAlto();
 
     const vv = window.visualViewport;
-    vv?.addEventListener('resize', aplicar);
-    vv?.addEventListener('scroll', aplicar);
-    document.addEventListener('focusin', seguirAnimacion);
-    document.addEventListener('focusout', seguirAnimacion);
+    vv?.addEventListener('resize', aplicarAlto);
+    window.addEventListener('resize', aplicarAlto);
+
     return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      vv?.removeEventListener('resize', aplicar);
-      vv?.removeEventListener('scroll', aplicar);
-      document.removeEventListener('focusin', seguirAnimacion);
-      document.removeEventListener('focusout', seguirAnimacion);
+      vv?.removeEventListener('resize', aplicarAlto);
+      window.removeEventListener('resize', aplicarAlto);
+      html.style.overflow = previo.htmlOverflow;
+      html.style.height = previo.htmlHeight;
+      body.style.overflow = previo.bodyOverflow;
+      body.style.height = previo.bodyHeight;
+      body.style.position = previo.bodyPosition;
+      body.style.top = previo.bodyTop;
+      body.style.left = previo.bodyLeft;
+      body.style.width = previo.bodyWidth;
+      window.scrollTo(0, scrollYPrevio);
     };
   }, [open]);
 
@@ -518,10 +545,10 @@ export default function ChatBubble() {
             zIndex: 70,
             top: 0,
             height: '100dvh',
-            // El efecto de arriba sobrescribe height y top en vivo.
-            // willChange mantiene el panel en su propia capa de GPU para
-            // que el seguimiento del teclado se vea fluido, sin parpadeos.
-            willChange: 'height, top',
+            // Solo la ALTURA se ajusta en vivo (el top nunca se toca, para
+            // que el header no pueda brincar). willChange mantiene el panel
+            // en su propia capa de GPU para que se vea fluido.
+            willChange: 'height',
           }}
           className="fixed top-0 left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in"
         >
