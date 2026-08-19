@@ -15,18 +15,14 @@ const MAPBOX_TOKEN = [
  * para que la curva de la cola continúe exactamente la del rectángulo.
  */
 export function Tail({ esMio, color }: { esMio: boolean; color: string }) {
+  const outer: CSSProperties = esMio
+    ? { position: 'absolute', bottom: 0, right: -8, width: 16, height: 16, overflow: 'hidden', pointerEvents: 'none' }
+    : { position: 'absolute', bottom: 0, left: -8, width: 16, height: 16, overflow: 'hidden', pointerEvents: 'none' };
+  const inner: CSSProperties = esMio
+    ? { position: 'absolute', bottom: -3, left: -9, width: 20, height: 20, background: color, borderRadius: 6, transform: 'rotate(45deg)' }
+    : { position: 'absolute', bottom: -3, right: -9, width: 20, height: 20, background: color, borderRadius: 6, transform: 'rotate(-45deg)' };
   return (
-    <svg
-      width="8" height="13" viewBox="0 0 8 13"
-      style={{
-        position: 'absolute',
-        bottom: -0.5,
-        [esMio ? 'right' : 'left']: -7,
-        transform: esMio ? undefined : 'scaleX(-1)',
-      }}
-    >
-      <path d="M1.533 3.568 8 12.193V0H0v1.245c0 .874.32 1.72.9 2.383z" fill={color} />
-    </svg>
+    <div style={outer}><div style={inner} /></div>
   );
 }
 
