@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MessageCircle, X, Smile, Image as ImageIcon, Mic, Paperclip,
@@ -87,11 +87,11 @@ export default function ChatBubble() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [ubicacionSheet, setUbicacionSheet] = useState(false);
   const [compartiendoEnVivo, setCompartiendoEnVivo] = useState<number | null>(null);
-  const [panelStyle, setPanelStyle] = useState<CSSProperties>({ height: '100dvh', top: 0 });
 
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const fileImgRef = useRef<HTMLInputElement>(null);
   const fileDocRef = useRef<HTMLInputElement>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
@@ -176,45 +176,60 @@ export default function ChatBubble() {
     };
   }, [open]);
 
-  // ── Seguir al teclado en iOS/Android (visualViewport) ──
+  // ── Seguir al teclado en iOS/Android (visualViewport), fluido ──
   // El meta "interactive-widget=resizes-content" no aplica dentro de la PWA
   // en modo standalone en todas las versiones de iOS, así que además
   // ajustamos a mano la altura y posición reales del panel con
-  // visualViewport. En WKWebView (app agregada a pantalla de inicio) los
-  // eventos "resize"/"scroll" de visualViewport a veces no llegan a tiempo
-  // mientras el teclado todavía se está animando (deja un hueco en blanco
-  // debajo de la barra, antes de la barra nativa de accesorios de iOS).
-  // Por eso, además de escuchar los eventos, re-medimos varias veces
-  // durante ~1.2s tras cada cambio de foco del input, hasta que el teclado
-  // termina de asentarse.
+  // visualViewport, mientras el teclado se abre o se cierra (también al
+  // enviar un mensaje, que quita el foco del input).
+  //
+  // Antes esto se hacía con setState + setInterval(80ms): cada tick volvía
+  // a renderizar TODO el componente (mensajes, header, etc.) mientras el
+  // teclado seguía animando — eso era el "trabón". Ahora escribimos el
+  // estilo directo en el DOM (sin pasar por React) dentro de un loop de
+  // requestAnimationFrame, igual que hace cualquier animación nativa fluida:
+  // se sincroniza con cada frame real de pantalla, sin renders de más.
   useEffect(() => {
-    if (!open) { setPanelStyle({ height: '100dvh', top: 0 }); return; }
+    const panel = panelRef.current;
+    if (!panel) return;
+    if (!open) { panel.style.height = '100dvh'; panel.style.top = '0px'; return; }
     const vv = window.visualViewport;
-    if (!vv) { setPanelStyle({ height: '100dvh', top: 0 }); return; }
-    const actualizar = () => {
-      setPanelStyle({ height: vv.height, top: vv.offsetTop });
-    };
-    actualizar();
+    if (!vv) { panel.style.height = '100dvh'; panel.style.top = '0px'; return; }
 
-    let pollId: ReturnType<typeof setInterval> | null = null;
-    const remedirDurante = (ms: number) => {
-      if (pollId) clearInterval(pollId);
-      const limite = Date.now() + ms;
-      pollId = setInterval(() => {
-        actualizar();
-        if (Date.now() > limite && pollId) { clearInterval(pollId); pollId = null; }
-      }, 80);
+    let ultimaAltura = -1;
+    let ultimoTop = -1;
+    const aplicar = () => {
+      const h = vv.height;
+      const t = vv.offsetTop;
+      if (h !== ultimaAltura) { panel.style.height = `${h}px`; ultimaAltura = h; }
+      if (t !== ultimoTop) { panel.style.top = `${t}px`; ultimoTop = t; }
     };
-    const onFocusChange = () => remedirDurante(1200);
+    aplicar();
 
-    vv.addEventListener('resize', actualizar);
-    vv.addEventListener('scroll', actualizar);
+    // Seguimos re-midiendo con requestAnimationFrame mientras el teclado
+    // se anima (~350ms es más que suficiente para cualquier animación de
+    // teclado en iOS/Android), sincronizado con cada frame real.
+    let rafId: number | null = null;
+    const seguirDurante = (ms: number) => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      const limite = performance.now() + ms;
+      const tick = () => {
+        aplicar();
+        if (performance.now() < limite) rafId = requestAnimationFrame(tick);
+        else rafId = null;
+      };
+      rafId = requestAnimationFrame(tick);
+    };
+    const onFocusChange = () => seguirDurante(350);
+
+    vv.addEventListener('resize', aplicar);
+    vv.addEventListener('scroll', aplicar);
     document.addEventListener('focusin', onFocusChange);
     document.addEventListener('focusout', onFocusChange);
     return () => {
-      if (pollId) clearInterval(pollId);
-      vv.removeEventListener('resize', actualizar);
-      vv.removeEventListener('scroll', actualizar);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      vv.removeEventListener('resize', aplicar);
+      vv.removeEventListener('scroll', aplicar);
       document.removeEventListener('focusin', onFocusChange);
       document.removeEventListener('focusout', onFocusChange);
     };
@@ -504,12 +519,18 @@ export default function ChatBubble() {
       {/* ── Panel de chat ── */}
       {open && (
         <div
+          ref={panelRef}
           style={{
             zIndex: 70,
-            ...panelStyle,
+            height: '100dvh',
+            top: 0,
             transform: 'translateZ(0)',
             willChange: 'transform, height, top',
-            transition: 'height 0.15s ease, top 0.15s ease',
+            // Curva "ease-out" suave, cercana a la animación nativa del
+            // teclado en iOS/Android — así cualquier micro-ajuste que
+            // hagamos por JS se ve como parte del mismo movimiento fluido,
+            // no como un salto aparte.
+            transition: 'height 0.25s cubic-bezier(0.25, 0.1, 0.25, 1), top 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
           }}
           className="fixed left-0 right-0 flex flex-col bg-[#dbe5df] animate-fade-in"
         >
