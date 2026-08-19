@@ -128,19 +128,51 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
-  // ── Bloquear el scroll del body y del html mientras el chat está abierto ──
-  // Bloqueamos ambos (no solo el body) porque en iOS, durante la animación
-  // del teclado, a veces es el <html> el que se desplaza brevemente y deja
-  // ver un frame de la app de atrás detrás del panel fijo.
+  // ── Bloquear el scroll de verdad mientras el chat está abierto ──
+  // "overflow: hidden" en el body/html NO funciona en iOS Safari — es un
+  // bug conocido de WebKit: iOS trata html+body como parte del propio
+  // viewport, no como un contenedor de scroll independiente, así que
+  // igual se puede arrastrar y queda un espacio en blanco que al soltar
+  // revela la app de atrás. La técnica que sí funciona: darle a html y
+  // body una ALTURA EXPLÍCITA igual a window.innerHeight (no solo
+  // overflow:hidden) y además fijar el body con position:fixed, quitando
+  // físicamente la posibilidad de desplazarlo. Al cerrar, se restaura la
+  // posición de scroll exacta donde estaba.
   useEffect(() => {
     if (!open) return;
-    const prevBody = document.body.style.overflow;
-    const prevHtml = document.documentElement.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
+    const scrollYPrevio = window.scrollY;
+    const sincronizarAlto = () => {
+      document.documentElement.style.setProperty('--simac-window-h', `${window.innerHeight}px`);
+    };
+    sincronizarAlto();
+    window.addEventListener('resize', sincronizarAlto);
+
+    const html = document.documentElement;
+    const { body } = document;
+    const prevHtml = { overflow: html.style.overflow, height: html.style.height };
+    const prevBody = {
+      overflow: body.style.overflow, height: body.style.height,
+      position: body.style.position, top: body.style.top, width: body.style.width,
+    };
+    html.style.overflow = 'hidden';
+    html.style.height = 'var(--simac-window-h, 100vh)';
+    body.style.overflow = 'hidden';
+    body.style.height = 'var(--simac-window-h, 100vh)';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollYPrevio}px`;
+    body.style.width = '100%';
+
     return () => {
-      document.body.style.overflow = prevBody;
-      document.documentElement.style.overflow = prevHtml;
+      window.removeEventListener('resize', sincronizarAlto);
+      html.style.overflow = prevHtml.overflow;
+      html.style.height = prevHtml.height;
+      body.style.overflow = prevBody.overflow;
+      body.style.height = prevBody.height;
+      body.style.position = prevBody.position;
+      body.style.top = prevBody.top;
+      body.style.width = prevBody.width;
+      window.scrollTo(0, scrollYPrevio);
+      document.documentElement.style.removeProperty('--simac-window-h');
     };
   }, [open]);
 
