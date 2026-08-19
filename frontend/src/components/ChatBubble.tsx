@@ -69,7 +69,10 @@ export default function ChatBubble() {
     try { return JSON.parse(localStorage.getItem(POS_KEY) || 'null') || { x: window.innerWidth - 78, y: window.innerHeight - 190 }; }
     catch { return { x: window.innerWidth - 78, y: window.innerHeight - 190 }; }
   });
-  const [hidden, setHidden] = useState(() => localStorage.getItem(HIDDEN_KEY) === '1');
+  // sessionStorage (no localStorage): si la ocultan con la "×" se queda oculta
+  // mientras sigan usando la app, pero al cerrarla por completo y volver a
+  // abrirla la burbuja reaparece sola — solo se re-oculta si vuelven a tocar la "×".
+  const [hidden, setHidden] = useState(() => sessionStorage.getItem(HIDDEN_KEY) === '1');
   const [open, setOpen] = useState(false);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [noLeidos, setNoLeidos] = useState(0);
@@ -218,12 +221,12 @@ export default function ChatBubble() {
   function ocultarBurbuja(e: React.MouseEvent) {
     e.stopPropagation();
     setHidden(true);
-    localStorage.setItem(HIDDEN_KEY, '1');
+    sessionStorage.setItem(HIDDEN_KEY, '1');
   }
 
   function mostrarBurbuja() {
     setHidden(false);
-    localStorage.removeItem(HIDDEN_KEY);
+    sessionStorage.removeItem(HIDDEN_KEY);
   }
 
   // ── Envío de mensajes ──
