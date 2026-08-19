@@ -7,22 +7,13 @@ import { useAuthStore } from '../../store/auth';
 import { apiFetch, BASE } from '../../services/api';
 import ErrorConexionBanner from '../../components/admin/ErrorConexionBanner';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../../utils/chatSounds';
-import { AudioPlayer, ImageLightbox, LocationPreview } from '../../components/chat/ChatMedia';
+import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius } from '../../components/chat/ChatMedia';
 
 /** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
 function SendIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 1.5 }}>
       <path d="M3.4 20.4 21 12 3.4 3.6c-.6-.3-1.3.2-1.2.9L4 11.2c.05.35.33.62.68.66L14 13l-9.32 1.12c-.35.04-.63.31-.68.66l-1.8 6.7c-.1.7.6 1.2 1.2.9Z" />
-    </svg>
-  );
-}
-
-/** Cola de la burbuja, estilo WhatsApp. */
-function Tail({ esMio }: { esMio: boolean }) {
-  return (
-    <svg width="9" height="11" viewBox="0 0 9 11" className={`absolute bottom-0 ${esMio ? '-right-[7px]' : '-left-[7px] scale-x-[-1]'}`}>
-      <path d="M0 0 L9 0 L9 11 Q4 11 0 4 Z" fill={esMio ? '#17603a' : '#ffffff'} />
     </svg>
   );
 }
@@ -366,10 +357,10 @@ export default function ChatsAdminPage() {
                   const alinearDerecha = m.autor_id !== seleccionada.usuario_id;
                   return (
                     <div key={m.id} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
-                      <div className={`relative max-w-[55%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
-                        alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a] rounded-br-md' : 'bg-white rounded-bl-md'
+                      <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] px-3.5 py-2.5 shadow-sm ${
+                        alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
                       }`}>
-                        <Tail esMio={alinearDerecha} />
+                        <Tail esMio={alinearDerecha} color={alinearDerecha ? '#17603a' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && (
                           <img src={`${BASE.replace('/api', '')}${m.archivo_url}`} onClick={() => setLightboxSrc(`${BASE.replace('/api', '')}${m.archivo_url}`)}
                             className="rounded-xl max-w-[260px] mb-1.5 cursor-pointer" />

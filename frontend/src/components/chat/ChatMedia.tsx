@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Navigation } from 'lucide-react';
 
@@ -7,6 +7,35 @@ const MAPBOX_TOKEN = [
   'LCJhIjoiY202emV3MDhhMDN6Y',
   'jJscHVqaXExdGpjMyJ9.F_ACoKzS_4e280lD0XndEw',
 ].join('');
+
+/**
+ * Cola de burbuja estilo WhatsApp — la misma forma que usa WhatsApp Web,
+ * fundida en la esquina de la burbuja (sin hueco ni desfase): la esquina
+ * correspondiente de la burbuja debe llevar radio 0 (ver `bubbleRadius`)
+ * para que la curva de la cola continúe exactamente la del rectángulo.
+ */
+export function Tail({ esMio, color }: { esMio: boolean; color: string }) {
+  return (
+    <svg
+      width="8" height="13" viewBox="0 0 8 13"
+      style={{
+        position: 'absolute',
+        bottom: -0.5,
+        [esMio ? 'right' : 'left']: -7,
+        transform: esMio ? undefined : 'scaleX(-1)',
+      }}
+    >
+      <path d="M1.533 3.568 8 12.193V0H0v1.245c0 .874.32 1.72.9 2.383z" fill={color} />
+    </svg>
+  );
+}
+
+/** Radio de esquinas para una burbuja con cola: recta del lado de la cola. */
+export function bubbleRadius(esMio: boolean): CSSProperties {
+  return esMio
+    ? { borderRadius: 16, borderBottomRightRadius: 2 }
+    : { borderRadius: 16, borderBottomLeftRadius: 2 };
+}
 
 /* ─────────────────────────── Reproductor de audio ─────────────────────────── */
 /** Reproductor de nota de voz estilo WhatsApp: botón circular + barras + duración. */

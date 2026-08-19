@@ -7,16 +7,7 @@ import {
 import { useAuthStore } from '../store/auth';
 import { apiFetch, BASE } from '../services/api';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../utils/chatSounds';
-import { AudioPlayer, ImageLightbox, LocationPreview } from './chat/ChatMedia';
-
-/** Cola de la burbuja, estilo WhatsApp — un pequeño triángulo pegado a la esquina. */
-function Tail({ esMio }: { esMio: boolean }) {
-  return (
-    <svg width="9" height="11" viewBox="0 0 9 11" className={`absolute bottom-0 ${esMio ? '-right-[7px]' : '-left-[7px] scale-x-[-1]'}`}>
-      <path d="M0 0 L9 0 L9 11 Q4 11 0 4 Z" fill={esMio ? '#17603a' : '#ffffff'} />
-    </svg>
-  );
-}
+import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius } from './chat/ChatMedia';
 
 /** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
 function SendIcon({ size = 18 }: { size?: number }) {
@@ -435,10 +426,10 @@ export default function ChatBubble() {
                   </div>
                 )}
                 <div className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
-                  <div className={`relative max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
-                    esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a] rounded-br-md' : 'bg-white rounded-bl-md'
+                  <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] px-3.5 py-2.5 shadow-sm ${
+                    esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
                   }`}>
-                    <Tail esMio={esMio} />
+                    <Tail esMio={esMio} color={esMio ? '#17603a' : '#ffffff'} />
                     {m.tipo === 'imagen' && m.archivo_url && (
                       <img src={`${BASE.replace('/api', '')}${m.archivo_url}`} onClick={() => setLightboxSrc(`${BASE.replace('/api', '')}${m.archivo_url}`)}
                         className="rounded-xl max-w-[220px] mb-1.5 cursor-pointer" />
