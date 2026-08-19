@@ -566,6 +566,16 @@ export default function ChatBubble() {
             // un salto/tirón en vez de fluido. Seguimos 1:1, en vivo, el
             // valor real que reporta el sistema — así de fluido se ve.
             willChange: 'top, height',
+            // translateZ(0): fuerza a que el panel viva en su PROPIA capa
+            // de composición GPU. Sin esto, cada cambio de top/height
+            // dispara un repintado normal, y en iOS durante ese repintado
+            // a veces se alcanza a ver un cuadro de lo que hay DETRÁS
+            // (el video lo confirmó: se veía el dashboard un instante
+            // durante la transición). Con su propia capa, iOS actualiza
+            // el panel de forma aislada sin tener que redibujar lo que
+            // está debajo, así que ese cuadro "fantasma" desaparece.
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
           }}
           className="fixed top-0 left-0 right-0 bg-[#dbe5df] animate-fade-in"
         >
