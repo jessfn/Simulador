@@ -2,11 +2,21 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MessageCircle, X, Smile, Image as ImageIcon, Mic, Paperclip,
-  MapPin, Square, ChevronLeft,
+  MapPin, ChevronLeft, Trash2, Navigation,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { apiFetch, BASE } from '../services/api';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../utils/chatSounds';
+import { AudioPlayer, ImageLightbox, LocationPreview } from './chat/ChatMedia';
+
+/** Cola de la burbuja, estilo WhatsApp — un pequeño triángulo pegado a la esquina. */
+function Tail({ esMio }: { esMio: boolean }) {
+  return (
+    <svg width="9" height="11" viewBox="0 0 9 11" className={`absolute bottom-0 ${esMio ? '-right-[7px]' : '-left-[7px] scale-x-[-1]'}`}>
+      <path d="M0 0 L9 0 L9 11 Q4 11 0 4 Z" fill={esMio ? '#17603a' : '#ffffff'} />
+    </svg>
+  );
+}
 
 /** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
 function SendIcon({ size = 18 }: { size?: number }) {
@@ -42,13 +52,14 @@ interface Mensaje {
   id: number;
   autor_id: number;
   autor_rol: string;
-  tipo: 'texto' | 'imagen' | 'audio' | 'archivo' | 'ubicacion';
+  tipo: 'texto' | 'imagen' | 'audio' | 'archivo' | 'ubicacion' | 'ubicacion_vivo';
   contenido: string | null;
   archivo_url: string | null;
   archivo_mime: string | null;
   archivo_nombre: string | null;
   lat: number | null;
   lng: number | null;
+  activo_hasta: string | null;
   created_at: string;
 }
 
@@ -76,9 +87,13 @@ export default function ChatBubble() {
   const [enviando, setEnviando] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [grabando, setGrabando] = useState(false);
+  const [grabacionSegundos, setGrabacionSegundos] = useState(0);
   const [adminLeidoHasta, setAdminLeidoHasta] = useState<string | null>(null);
   const [divisorNoLeidos, setDivisorNoLeidos] = useState(0);
   const [adminEscribiendo, setAdminEscribiendo] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [ubicacionSheet, setUbicacionSheet] = useState(false);
+  const [compartiendoEnVivo, setCompartiendoEnVivo] = useState<number | null>(null);
 
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
   const esRef = useRef<EventSource | null>(null);
@@ -87,6 +102,9 @@ export default function ChatBubble() {
   const fileDocRef = useRef<HTMLInputElement>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const grabacionCanceladaRef = useRef(false);
+  const grabacionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const watchIdRef = useRef<number | null>(null);
   const idsVistos = useRef<Set<number>>(new Set());
   const escribiendoAdminTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ultimoEnvioEscribiendo = useRef(0);
@@ -142,6 +160,10 @@ export default function ChatBubble() {
           setAdminEscribiendo(true);
           if (escribiendoAdminTimeoutRef.current) clearTimeout(escribiendoAdminTimeoutRef.current);
           escribiendoAdminTimeoutRef.current = setTimeout(() => setAdminEscribiendo(false), 4000);
+        } else if (payload.tipo === 'ubicacion') {
+          setMensajes(prev => prev.map(m => m.id === payload.mensajeId ? { ...m, lat: payload.lat, lng: payload.lng } : m));
+        } else if (payload.tipo === 'ubicacion-fin') {
+          setMensajes(prev => prev.map(m => m.id === payload.mensajeId ? { ...m, activo_hasta: new Date(0).toISOString() } : m));
         }
       } catch { /* ignore */ }
     };
@@ -151,7 +173,7 @@ export default function ChatBubble() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [mensajes, open]);
+  }, [mensajes, open, adminEscribiendo]);
 
   const abrir = useCallback(() => {
     desbloquearAudio();
@@ -232,7 +254,8 @@ export default function ChatBubble() {
     enviar(fd);
   }
 
-  function enviarUbicacion() {
+  async function enviarUbicacionActual() {
+    setUbicacionSheet(false);
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition((posGeo) => {
       const fd = new FormData();
@@ -242,28 +265,90 @@ export default function ChatBubble() {
     }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
   }
 
-  async function toggleGrabar() {
-    if (grabando) {
-      mediaRecRef.current?.stop();
-      setGrabando(false);
-      return;
+  async function compartirUbicacionEnVivo() {
+    setUbicacionSheet(false);
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async (posGeo) => {
+      const fd = new FormData();
+      fd.append('lat', String(posGeo.coords.latitude));
+      fd.append('lng', String(posGeo.coords.longitude));
+      fd.append('en_vivo', 'true');
+      const res = await apiFetch('/chat/mensaje', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok || !d.mensaje) return;
+      idsVistos.current.add(d.mensaje.id);
+      setMensajes(prev => [...prev, d.mensaje]);
+      playSentSound();
+      setCompartiendoEnVivo(d.mensaje.id);
+
+      watchIdRef.current = navigator.geolocation.watchPosition((p) => {
+        apiFetch(`/chat/mensaje/${d.mensaje.id}/ubicacion`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        }).catch(() => {});
+        setMensajes(prev => prev.map(m => m.id === d.mensaje.id ? { ...m, lat: p.coords.latitude, lng: p.coords.longitude } : m));
+      }, () => {}, { enableHighAccuracy: true });
+
+      // Se detiene sola a los 15 minutos, igual que el backend.
+      setTimeout(() => detenerUbicacionEnVivo(d.mensaje.id), 15 * 60 * 1000);
+    }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
+  }
+
+  function detenerUbicacionEnVivo(mensajeId: number) {
+    if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; }
+    setCompartiendoEnVivo(null);
+    apiFetch(`/chat/mensaje/${mensajeId}/detener`, { method: 'PATCH' }).catch(() => {});
+    setMensajes(prev => prev.map(m => m.id === mensajeId ? { ...m, activo_hasta: new Date(0).toISOString() } : m));
+  }
+
+  useEffect(() => () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); }, []);
+
+  function mimeGrabacionSoportado(): string {
+    const candidatos = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'];
+    for (const c of candidatos) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(c)) return c;
     }
+    return '';
+  }
+
+  async function iniciarGrabacion() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
+      const mimeType = mimeGrabacionSoportado();
+      const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
+      grabacionCanceladaRef.current = false;
       rec.ondataavailable = (ev) => chunksRef.current.push(ev.data);
       rec.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        if (grabacionTimerRef.current) clearInterval(grabacionTimerRef.current);
+        if (grabacionCanceladaRef.current) { chunksRef.current = []; return; }
+        const tipoFinal = rec.mimeType || mimeType || 'audio/webm';
+        const ext = tipoFinal.includes('mp4') ? 'm4a' : tipoFinal.includes('ogg') ? 'ogg' : 'webm';
+        const blob = new Blob(chunksRef.current, { type: tipoFinal });
         const fd = new FormData();
-        fd.append('archivo', blob, `audio_${Date.now()}.webm`);
+        fd.append('archivo', blob, `audio_${Date.now()}.${ext}`);
         enviar(fd);
       };
       mediaRecRef.current = rec;
       rec.start();
       setGrabando(true);
+      setGrabacionSegundos(0);
+      grabacionTimerRef.current = setInterval(() => setGrabacionSegundos(s => s + 1), 1000);
     } catch { /* micrófono no disponible o permiso denegado */ }
+  }
+
+  function detenerYEnviarGrabacion() {
+    grabacionCanceladaRef.current = false;
+    mediaRecRef.current?.stop();
+    setGrabando(false);
+  }
+
+  function cancelarGrabacion() {
+    grabacionCanceladaRef.current = true;
+    mediaRecRef.current?.stop();
+    setGrabando(false);
   }
 
   if (!esUsuarioFinal) return null;
@@ -349,15 +434,17 @@ export default function ChatBubble() {
                     <div className="flex-1 h-px bg-rose-200" />
                   </div>
                 )}
-                <div className={`flex flex-col ${esMio ? 'items-end' : 'items-start'}`}>
-                  <div className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
+                <div className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
+                  <div className={`relative max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
                     esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a] rounded-br-md' : 'bg-white rounded-bl-md'
                   }`}>
+                    <Tail esMio={esMio} />
                     {m.tipo === 'imagen' && m.archivo_url && (
-                      <img src={`${BASE.replace('/api', '')}${m.archivo_url}`} className="rounded-xl max-w-[220px] mb-1.5" />
+                      <img src={`${BASE.replace('/api', '')}${m.archivo_url}`} onClick={() => setLightboxSrc(`${BASE.replace('/api', '')}${m.archivo_url}`)}
+                        className="rounded-xl max-w-[220px] mb-1.5 cursor-pointer" />
                     )}
                     {m.tipo === 'audio' && m.archivo_url && (
-                      <audio controls src={`${BASE.replace('/api', '')}${m.archivo_url}`} className="max-w-[220px] mb-1" />
+                      <AudioPlayer src={`${BASE.replace('/api', '')}${m.archivo_url}`} tono={esMio ? 'propio' : 'ajeno'} />
                     )}
                     {m.tipo === 'archivo' && m.archivo_url && (
                       <a href={`${BASE.replace('/api', '')}${m.archivo_url}`} target="_blank" rel="noreferrer"
@@ -365,11 +452,9 @@ export default function ChatBubble() {
                         <Paperclip size={13} /> {m.archivo_nombre || 'Archivo adjunto'}
                       </a>
                     )}
-                    {m.tipo === 'ubicacion' && m.lat && m.lng && (
-                      <a href={`https://www.google.com/maps?q=${m.lat},${m.lng}`} target="_blank" rel="noreferrer"
-                        className={`flex items-center gap-1.5 text-[12px] font-bold ${esMio ? 'text-white' : 'text-[#1A5C38]'}`}>
-                        <MapPin size={14} /> Ver ubicación
-                      </a>
+                    {(m.tipo === 'ubicacion' || m.tipo === 'ubicacion_vivo') && m.lat && m.lng && (
+                      <LocationPreview lat={m.lat} lng={m.lng} enVivo={m.tipo === 'ubicacion_vivo'} activoHasta={m.activo_hasta}
+                        puedeDetener={esMio && compartiendoEnVivo === m.id} onDetener={() => detenerUbicacionEnVivo(m.id)} />
                     )}
                     {m.contenido && (
                       <div className={`text-[13px] leading-[1.45] ${esMio ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
@@ -404,31 +489,71 @@ export default function ChatBubble() {
 
           {/* Input bar */}
           <div className="flex-none bg-white border-t border-slate-100 px-3 pt-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 10px)' }}>
-            <div className="flex items-center gap-1.5 mb-2 pl-1">
-              <button onClick={() => setShowEmoji(v => !v)} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><Smile size={20} /></button>
-              <button onClick={() => fileImgRef.current?.click()} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={20} /></button>
-              <button onClick={toggleGrabar} className={`p-1.5 active:scale-90 transition-transform ${grabando ? 'text-rose-500' : 'text-slate-500'}`}>
-                {grabando ? <Square size={20} /> : <Mic size={20} />}
-              </button>
-              <button onClick={enviarUbicacion} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><MapPin size={20} /></button>
-              <button onClick={() => fileDocRef.current?.click()} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={20} /></button>
-              <input ref={fileImgRef} type="file" accept="image/*" className="hidden" onChange={onArchivo} />
-              <input ref={fileDocRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={onArchivo} />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                value={texto}
-                onChange={e => onCambiarTexto(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') enviar(); }}
-                placeholder={grabando ? 'Grabando audio…' : 'Escribe un mensaje…'}
-                disabled={grabando}
-                className="flex-1 bg-slate-100 rounded-full px-4 py-2.5 text-[13px] outline-none disabled:opacity-50"
-              />
-              <button onClick={() => enviar()} disabled={enviando || !texto.trim()}
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 active:scale-90 transition-transform">
-                <SendIcon size={17} />
-              </button>
-            </div>
+            {grabando ? (
+              <div className="flex items-center gap-3 py-1.5">
+                <button onClick={cancelarGrabacion} className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90 transition-transform">
+                  <Trash2 size={17} />
+                </button>
+                <div className="flex-1 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                  <span className="text-[13px] font-bold text-slate-700 tabular-nums">
+                    {Math.floor(grabacionSegundos / 60)}:{(grabacionSegundos % 60).toString().padStart(2, '0')}
+                  </span>
+                  <span className="text-[11px] text-slate-400">Grabando audio…</span>
+                </div>
+                <button onClick={detenerYEnviarGrabacion}
+                  className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 text-white active:scale-90 transition-transform">
+                  <SendIcon size={17} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5 mb-2 pl-1">
+                  <button onClick={() => setShowEmoji(v => !v)} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><Smile size={20} /></button>
+                  <button onClick={() => fileImgRef.current?.click()} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={20} /></button>
+                  <button onClick={iniciarGrabacion} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><Mic size={20} /></button>
+                  <button onClick={() => setUbicacionSheet(true)} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><MapPin size={20} /></button>
+                  <button onClick={() => fileDocRef.current?.click()} className="p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={20} /></button>
+                  <input ref={fileImgRef} type="file" accept="image/*" className="hidden" onChange={onArchivo} />
+                  <input ref={fileDocRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={onArchivo} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={texto}
+                    onChange={e => onCambiarTexto(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') enviar(); }}
+                    placeholder="Escribe un mensaje…"
+                    className="flex-1 bg-slate-100 rounded-full px-4 py-2.5 text-[13px] outline-none"
+                  />
+                  <button onClick={() => enviar()} disabled={enviando || !texto.trim()}
+                    className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 active:scale-90 transition-transform">
+                    <SendIcon size={17} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+
+      {/* ── Selector de tipo de ubicación ── */}
+      {ubicacionSheet && (
+        <div className="fixed inset-0 flex items-end justify-center" style={{ zIndex: 90 }} onClick={() => setUbicacionSheet(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div onClick={e => e.stopPropagation()}
+            className="relative w-full max-w-md bg-white rounded-t-3xl p-4 animate-sheet-up"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 16px)' }}>
+            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
+            <button onClick={enviarUbicacionActual} className="w-full flex items-center gap-3 px-3 py-3.5 rounded-2xl active:bg-slate-50 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-[#eef8f2] flex items-center justify-center flex-shrink-0"><MapPin size={18} className="text-[#1A5C38]" /></div>
+              <div className="text-left"><p className="text-[13.5px] font-bold text-slate-800">Ubicación actual</p><p className="text-[11px] text-slate-400">Comparte tu punto exacto una sola vez</p></div>
+            </button>
+            <button onClick={compartirUbicacionEnVivo} className="w-full flex items-center gap-3 px-3 py-3.5 rounded-2xl active:bg-slate-50 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center flex-shrink-0"><Navigation size={18} className="text-rose-600" /></div>
+              <div className="text-left"><p className="text-[13.5px] font-bold text-slate-800">Ubicación en tiempo real</p><p className="text-[11px] text-slate-400">Se actualiza mientras te mueves, por 15 minutos</p></div>
+            </button>
           </div>
         </div>
       )}

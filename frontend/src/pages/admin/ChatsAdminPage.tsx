@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Search, MessageCircle, Paperclip, Image as ImageIcon, MapPin,
+  Search, MessageCircle, Paperclip, Image as ImageIcon,
   Smile, RefreshCw,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { apiFetch, BASE } from '../../services/api';
 import ErrorConexionBanner from '../../components/admin/ErrorConexionBanner';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../../utils/chatSounds';
+import { AudioPlayer, ImageLightbox, LocationPreview } from '../../components/chat/ChatMedia';
 
 /** Ícono de enviar estilo Telegram — avión de papel, perfectamente centrado. */
 function SendIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 1.5 }}>
       <path d="M3.4 20.4 21 12 3.4 3.6c-.6-.3-1.3.2-1.2.9L4 11.2c.05.35.33.62.68.66L14 13l-9.32 1.12c-.35.04-.63.31-.68.66l-1.8 6.7c-.1.7.6 1.2 1.2.9Z" />
+    </svg>
+  );
+}
+
+/** Cola de la burbuja, estilo WhatsApp. */
+function Tail({ esMio }: { esMio: boolean }) {
+  return (
+    <svg width="9" height="11" viewBox="0 0 9 11" className={`absolute bottom-0 ${esMio ? '-right-[7px]' : '-left-[7px] scale-x-[-1]'}`}>
+      <path d="M0 0 L9 0 L9 11 Q4 11 0 4 Z" fill={esMio ? '#17603a' : '#ffffff'} />
     </svg>
   );
 }
@@ -65,6 +75,7 @@ interface Mensaje {
   archivo_nombre: string | null;
   lat: number | null;
   lng: number | null;
+  activo_hasta: string | null;
   created_at: string;
 }
 
@@ -102,6 +113,7 @@ export default function ChatsAdminPage() {
   const [enviando, setEnviando] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [usuarioLeidoHasta, setUsuarioLeidoHasta] = useState<string | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [escribiendoIds, setEscribiendoIds] = useState<Set<number>>(new Set());
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -154,6 +166,14 @@ export default function ChatsAdminPage() {
           }, 4000));
           return;
         }
+        if (payload.tipo === 'ubicacion') {
+          setMensajes(prev => prev.map(m => m.id === payload.mensajeId ? { ...m, lat: payload.lat, lng: payload.lng } : m));
+          return;
+        }
+        if (payload.tipo === 'ubicacion-fin') {
+          setMensajes(prev => prev.map(m => m.id === payload.mensajeId ? { ...m, activo_hasta: new Date(0).toISOString() } : m));
+          return;
+        }
         if (payload.tipo !== 'mensaje') return;
         const { conversacionId, mensaje } = payload;
         cargarLista();
@@ -173,7 +193,7 @@ export default function ChatsAdminPage() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [mensajes]);
+  }, [mensajes, seleccionada && escribiendoIds.has(seleccionada.id)]);
 
   async function abrirConversacion(c: Conversacion) {
     desbloquearAudio();
@@ -345,15 +365,17 @@ export default function ChatsAdminPage() {
                   // los del productor/bodeguero (dueño de la conversación) a la izquierda.
                   const alinearDerecha = m.autor_id !== seleccionada.usuario_id;
                   return (
-                    <div key={m.id} className={`flex flex-col ${alinearDerecha ? 'items-end' : 'items-start'}`}>
-                      <div className={`max-w-[55%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
+                    <div key={m.id} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
+                      <div className={`relative max-w-[55%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
                         alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a] rounded-br-md' : 'bg-white rounded-bl-md'
                       }`}>
+                        <Tail esMio={alinearDerecha} />
                         {m.tipo === 'imagen' && m.archivo_url && (
-                          <img src={`${BASE.replace('/api', '')}${m.archivo_url}`} className="rounded-xl max-w-[260px] mb-1.5" />
+                          <img src={`${BASE.replace('/api', '')}${m.archivo_url}`} onClick={() => setLightboxSrc(`${BASE.replace('/api', '')}${m.archivo_url}`)}
+                            className="rounded-xl max-w-[260px] mb-1.5 cursor-pointer" />
                         )}
                         {m.tipo === 'audio' && m.archivo_url && (
-                          <audio controls src={`${BASE.replace('/api', '')}${m.archivo_url}`} className="max-w-[260px] mb-1" />
+                          <AudioPlayer src={`${BASE.replace('/api', '')}${m.archivo_url}`} tono={alinearDerecha ? 'propio' : 'ajeno'} />
                         )}
                         {m.tipo === 'archivo' && m.archivo_url && (
                           <a href={`${BASE.replace('/api', '')}${m.archivo_url}`} target="_blank" rel="noreferrer"
@@ -361,11 +383,8 @@ export default function ChatsAdminPage() {
                             <Paperclip size={13} /> {m.archivo_nombre || 'Archivo adjunto'}
                           </a>
                         )}
-                        {m.tipo === 'ubicacion' && m.lat && m.lng && (
-                          <a href={`https://www.google.com/maps?q=${m.lat},${m.lng}`} target="_blank" rel="noreferrer"
-                            className={`flex items-center gap-1.5 text-[12px] font-bold ${alinearDerecha ? 'text-white' : 'text-[#1A5C38]'}`}>
-                            <MapPin size={14} /> Ver ubicación
-                          </a>
+                        {(m.tipo === 'ubicacion' || m.tipo === 'ubicacion_vivo') && m.lat && m.lng && (
+                          <LocationPreview lat={m.lat} lng={m.lng} enVivo={m.tipo === 'ubicacion_vivo'} activoHasta={m.activo_hasta} />
                         )}
                         {m.contenido && (
                           <div className={`text-[13px] leading-[1.5] ${alinearDerecha ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
@@ -424,6 +443,8 @@ export default function ChatsAdminPage() {
           )}
         </div>
       </div>
+
+      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
     </div>
   );
 }

@@ -156,6 +156,15 @@ body {
   animation: auth-fade-in 0.35s ease both;
 }
 
+/* Burbuja de chat: entra deslizando y creciendo desde su esquina, como WhatsApp */
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-msg-in {
+  animation: msg-in 0.22s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
 /* Bottom sheet: deslizar desde abajo */
 @keyframes sheet-up {
   from { transform: translateY(100%); }

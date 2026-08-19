@@ -138,13 +138,14 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
     const rolUsuario = req.user!.rol;
     const conv = await obtenerOCrearConversacion(usuarioId, rolUsuario);
 
-    const { contenido, lat, lng } = req.body as { contenido?: string; lat?: string; lng?: string };
+    const { contenido, lat, lng, en_vivo } = req.body as { contenido?: string; lat?: string; lng?: string; en_vivo?: string };
     const archivo = (req as any).file as Express.Multer.File | undefined;
 
     let tipo = 'texto';
     let archivoUrl: string | null = null;
     let archivoMime: string | null = null;
     let archivoNombre: string | null = null;
+    let activoHasta: string | null = null;
 
     if (archivo) {
       tipo = tipoPorMime(archivo.mimetype);
@@ -152,7 +153,12 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
       archivoMime = archivo.mimetype;
       archivoNombre = archivo.originalname;
     } else if (lat && lng) {
-      tipo = 'ubicacion';
+      if (en_vivo === 'true') {
+        tipo = 'ubicacion_vivo';
+        activoHasta = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      } else {
+        tipo = 'ubicacion';
+      }
     }
 
     if (!archivo && !contenido?.trim() && !(lat && lng)) {
@@ -161,10 +167,10 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
     }
 
     const msg = await pool.query(
-      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido, archivo_url, archivo_mime, archivo_nombre, lat, lng)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido, archivo_url, archivo_mime, archivo_nombre, lat, lng, activo_hasta)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [conv.id, usuarioId, rolUsuario, tipo, contenido?.trim() || null, archivoUrl, archivoMime, archivoNombre,
-       lat ? Number(lat) : null, lng ? Number(lng) : null]
+       lat ? Number(lat) : null, lng ? Number(lng) : null, activoHasta]
     );
 
     await pool.query(
@@ -197,6 +203,39 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
   } catch (err: any) {
     console.error('POST /chat/mensaje:', err);
     res.status(500).json({ error: err?.message || 'Error al enviar el mensaje' });
+  }
+});
+
+router.patch('/mensaje/:id/ubicacion', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lat, lng } = req.body as { lat?: number; lng?: number };
+    const { rows } = await pool.query(
+      `UPDATE chat_mensajes SET lat = $1, lng = $2 WHERE id = $3 AND autor_id = $4 AND tipo = 'ubicacion_vivo' AND activo_hasta > now()
+       RETURNING id, conversacion_id`,
+      [lat, lng, req.params.id, req.user!.userId]
+    );
+    if (rows.length) {
+      emitirAAdmins({ tipo: 'ubicacion', mensajeId: rows[0].id, conversacionId: rows[0].conversacion_id, lat, lng });
+    }
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Error al actualizar la ubicación' });
+  }
+});
+
+router.patch('/mensaje/:id/detener', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE chat_mensajes SET activo_hasta = now() WHERE id = $1 AND autor_id = $2 AND tipo = 'ubicacion_vivo'
+       RETURNING id, conversacion_id`,
+      [req.params.id, req.user!.userId]
+    );
+    if (rows.length) {
+      emitirAAdmins({ tipo: 'ubicacion-fin', mensajeId: rows[0].id, conversacionId: rows[0].conversacion_id });
+    }
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Error al detener la ubicación' });
   }
 });
 
