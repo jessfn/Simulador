@@ -134,62 +134,38 @@ export default function ChatBubble() {
     window.dispatchEvent(new CustomEvent('simac:chat-unread', { detail: noLeidos }));
   }, [noLeidos]);
 
-  // ── Bloquear el fondo + seguir al teclado ──
+  // ── Tamaño del panel frente al teclado ──
   //
-  // Tres bugs reales que se arreglan aquí, cada uno con su causa:
+  // REGLA DE ORO (aprendida rompiendo esto dos veces): NUNCA tocar los
+  // estilos de <body> ni de <html>. El panel se inyecta con un portal
+  // DENTRO del body, así que cualquier cosa que le hagamos al body
+  // (position:fixed, top negativo, etc.) se lleva el panel con él y
+  // termina mostrando la app de fondo. Tampoco sumar window.scrollY.
   //
-  // 1) "El header sube y baja al escribir": se estaba moviendo el `top` del
-  //    panel en CADA evento de visualViewport. Al teclear, iOS mueve
-  //    constantemente su offset, así que el header brincaba. Solución: el
-  //    `top` se queda clavado en 0 y NUNCA se toca. Si el top no cambia, el
-  //    header no puede brincar — es imposible por construcción.
+  // El modelo de tamaño es puramente geométrico y se apoya en dos datos
+  // del viewport visual:
+  //   offsetTop → dónde empieza el área visible dentro del layout
+  //   height    → qué tan alta es esa área visible
   //
-  // 2) "Si hago scroll en el espacio blanco se ve el inicio de la app": no
-  //    había ningún bloqueo del fondo, el body quedaba libre y se podía
-  //    arrastrar. En iOS `overflow:hidden` NO basta (WebKit trata html+body
-  //    como parte del viewport), hay que fijar el body con position:fixed y
-  //    altura explícita para que no exista nada que desplazar.
-  //
-  // 3) El hueco blanco era consecuencia de los dos anteriores: el panel
-  //    quedaba desplazado y no llegaba hasta el teclado.
-  //
-  // NO sumar window.scrollY aquí (error ya cometido): los elementos
-  // position:fixed no se desplazan con el documento, y sumarlo empuja el
-  // panel fuera de la pantalla si la página venía desplazada.
+  // El panel se fija en top:0 y su altura es (offsetTop + height), es
+  // decir, se estira desde el borde del layout hasta el borde INFERIOR
+  // de lo visible. Eso da las tres garantías a la vez:
+  //   · El borde de abajo llega siempre justo hasta el teclado → no queda
+  //     el espacio en blanco por el que se alcanzaba a ver el inicio.
+  //   · El "top" nunca cambia → el header no puede temblar al escribir.
+  //   · El panel cubre todo lo visible → no hay nada del fondo que tocar
+  //     ni arrastrar, sin necesidad de bloquear el body.
   useEffect(() => {
     if (!open) return;
     const panel = panelRef.current;
+    if (!panel) return;
 
-    // ── 1. Bloquear el fondo por completo ──
-    const html = document.documentElement;
-    const { body } = document;
-    const scrollYPrevio = window.scrollY;
-    const previo = {
-      htmlOverflow: html.style.overflow, htmlHeight: html.style.height,
-      bodyOverflow: body.style.overflow, bodyHeight: body.style.height,
-      bodyPosition: body.style.position, bodyTop: body.style.top,
-      bodyLeft: body.style.left, bodyWidth: body.style.width,
-    };
-    html.style.overflow = 'hidden';
-    html.style.height = '100%';
-    body.style.overflow = 'hidden';
-    body.style.height = '100%';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollYPrevio}px`;
-    body.style.left = '0';
-    body.style.width = '100%';
-
-    // ── 2. Seguir al teclado ajustando SOLO la altura ──
-    // Cambiar la altura mueve el borde de abajo (donde está el teclado),
-    // nunca el de arriba, así que el header se queda quieto. Se escucha
-    // únicamente "resize" (el evento que de verdad dispara el teclado);
-    // se quitaron el listener de "scroll" y el bucle por frames porque
-    // eran justamente los que producían el temblor al escribir.
     let ultimoAlto = -1;
     const aplicarAlto = () => {
-      if (!panel) return;
       const vv = window.visualViewport;
-      const alto = Math.round(vv ? vv.height : window.innerHeight);
+      const alto = vv
+        ? Math.round(vv.offsetTop + vv.height)
+        : window.innerHeight;
       if (alto !== ultimoAlto) {
         panel.style.height = `${alto}px`;
         ultimoAlto = alto;
@@ -197,22 +173,17 @@ export default function ChatBubble() {
     };
     aplicarAlto();
 
+    // Solo "resize" y "scroll" del viewport visual: son los eventos que
+    // de verdad dispara el teclado. Sin bucles por frames — ese bucle era
+    // lo que hacía que se viera trabado al escribir.
     const vv = window.visualViewport;
     vv?.addEventListener('resize', aplicarAlto);
+    vv?.addEventListener('scroll', aplicarAlto);
     window.addEventListener('resize', aplicarAlto);
-
     return () => {
       vv?.removeEventListener('resize', aplicarAlto);
+      vv?.removeEventListener('scroll', aplicarAlto);
       window.removeEventListener('resize', aplicarAlto);
-      html.style.overflow = previo.htmlOverflow;
-      html.style.height = previo.htmlHeight;
-      body.style.overflow = previo.bodyOverflow;
-      body.style.height = previo.bodyHeight;
-      body.style.position = previo.bodyPosition;
-      body.style.top = previo.bodyTop;
-      body.style.left = previo.bodyLeft;
-      body.style.width = previo.bodyWidth;
-      window.scrollTo(0, scrollYPrevio);
     };
   }, [open]);
 
@@ -572,7 +543,11 @@ export default function ChatBubble() {
           </div>
 
           {/* Mensajes */}
-          <div ref={scrollRef} style={chatWallpaper} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#dbe5df]">
+          <div
+            ref={scrollRef}
+            style={{ ...chatWallpaper, overscrollBehavior: 'contain' }}
+            className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#dbe5df]"
+          >
             {mensajes.length === 0 && (
               <div className="mt-10">
                 <div className="text-center text-[12px] text-slate-400 mb-4">
