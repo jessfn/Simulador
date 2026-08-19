@@ -559,8 +559,13 @@ export default function ChatBubble() {
             gridTemplateRows: 'auto minmax(0, 1fr) auto',
             overflow: 'auto',
             overscrollBehavior: 'contain',
+            // SIN transition en top/height: el sistema operativo YA anima el
+            // teclado con su propia curva. Si además le ponemos una
+            // transición CSS encima de un valor que ya se mueve solo, las
+            // dos animaciones compiten entre sí y el resultado se ve como
+            // un salto/tirón en vez de fluido. Seguimos 1:1, en vivo, el
+            // valor real que reporta el sistema — así de fluido se ve.
             willChange: 'top, height',
-            transition: 'top 0.15s ease-out, height 0.15s ease-out',
           }}
           className="fixed top-0 left-0 right-0 bg-[#dbe5df] animate-fade-in"
         >
