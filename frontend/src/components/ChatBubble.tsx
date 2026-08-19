@@ -54,7 +54,6 @@ const MENSAJES_SUGERIDOS = [
   'Hola, necesito ayuda',
   'Tengo un problema con mi parcela',
   'No puedo iniciar sesión en mi cuenta',
-  'Tengo una duda sobre mis pagos',
 ];
 
 function fmtHora(iso: string) {
