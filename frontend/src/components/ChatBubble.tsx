@@ -86,6 +86,14 @@ export default function ChatBubble() {
   const [adminEscribiendo, setAdminEscribiendo] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [ubicacionSheet, setUbicacionSheet] = useState(false);
+  // ── Vista previa de imágenes antes de enviar (estilo WhatsApp) ──
+  // Se seleccionan una o varias imágenes, se pueden quitar antes de
+  // mandar, y se puede escribir un mensaje junto a ellas — nada se
+  // envía hasta que el usuario confirma explícitamente.
+  const [imagenesPendientes, setImagenesPendientes] = useState<{ file: File; url: string }[]>([]);
+  const [indiceActivo, setIndiceActivo] = useState(0);
+  const [captionPendiente, setCaptionPendiente] = useState('');
+  const [enviandoImagenes, setEnviandoImagenes] = useState(false);
   const [compartiendoEnVivo, setCompartiendoEnVivo] = useState<number | null>(null);
 
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
@@ -368,6 +376,8 @@ export default function ChatBubble() {
     finally { setEnviando(false); }
   }
 
+  // Documentos (paperclip): se mandan directo, como antes — no necesitan
+  // vista previa porque no se "recortan" ni llevan pie de foto.
   function onArchivo(e: Event) {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
@@ -377,6 +387,18 @@ export default function ChatBubble() {
     enviar(fd);
   }
 
+  // Imágenes: en vez de mandarlas directo, se abren en la vista previa
+  // (como WhatsApp) donde el usuario puede quitar alguna, agregar más o
+  // escribir un mensaje junto a ellas antes de confirmar el envío.
+  function onImagenesSeleccionadas(e: Event) {
+    const target = e.target as HTMLInputElement;
+    const files = Array.from(target.files || []);
+    if (files.length === 0) return;
+    const nuevas = files.map(file => ({ file, url: URL.createObjectURL(file) }));
+    setImagenesPendientes(prev => [...prev, ...nuevas]);
+    setIndiceActivo(0);
+  }
+
   // Creamos el <input type="file"> al vuelo en vez de tenerlo montado todo
   // el tiempo en el DOM: en iOS, cualquier input de formulario presente en
   // la página (aunque esté oculto) hace que Safari agregue la barra de
@@ -384,20 +406,61 @@ export default function ChatBubble() {
   // lo cual ensancha el hueco entre nuestra barra de escribir y el teclado.
   // Al crearlo solo cuando se necesita y quitarlo justo después, no queda
   // ningún campo de formulario "extra" que Safari pueda contar.
-  function abrirSelectorArchivo(accept: string) {
+  function abrirSelectorArchivo(accept: string, multiple: boolean, onChange: (e: Event) => void) {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = accept;
+    input.multiple = multiple;
     input.tabIndex = -1;
     input.style.position = 'fixed';
     input.style.opacity = '0';
     input.style.pointerEvents = 'none';
     input.addEventListener('change', (e) => {
-      onArchivo(e);
+      onChange(e);
       document.body.removeChild(input);
     }, { once: true });
     document.body.appendChild(input);
     input.click();
+  }
+
+  function quitarImagenPendiente(idx: number) {
+    setImagenesPendientes(prev => {
+      const quitada = prev[idx];
+      if (quitada) URL.revokeObjectURL(quitada.url);
+      const restante = prev.filter((_, i) => i !== idx);
+      // El índice activo se recalcula contra la longitud YA actualizada
+      // (restante.length), no la de antes de quitar la imagen.
+      setIndiceActivo(i => Math.max(0, Math.min(i, restante.length - 1)));
+      return restante;
+    });
+  }
+
+  function cancelarImagenesPendientes() {
+    imagenesPendientes.forEach(img => URL.revokeObjectURL(img.url));
+    setImagenesPendientes([]);
+    setCaptionPendiente('');
+    setIndiceActivo(0);
+  }
+
+  async function confirmarEnvioImagenes() {
+    if (imagenesPendientes.length === 0 || enviandoImagenes) return;
+    setEnviandoImagenes(true);
+    try {
+      for (let i = 0; i < imagenesPendientes.length; i++) {
+        const fd = new FormData();
+        fd.append('archivo', imagenesPendientes[i].file);
+        // El pie de foto se manda solo con la primera imagen del lote,
+        // igual que WhatsApp cuando envías varias fotos con un mensaje.
+        if (i === 0 && captionPendiente.trim()) fd.append('contenido', captionPendiente.trim());
+        await enviar(fd);
+      }
+    } finally {
+      imagenesPendientes.forEach(img => URL.revokeObjectURL(img.url));
+      setImagenesPendientes([]);
+      setCaptionPendiente('');
+      setIndiceActivo(0);
+      setEnviandoImagenes(false);
+    }
   }
 
   async function enviarUbicacionActual() {
@@ -746,8 +809,8 @@ export default function ChatBubble() {
                       placeholder="Escribe un mensaje…"
                       className="flex-1 min-w-0 bg-transparent text-[13px] outline-none py-1"
                     />
-                    <button onClick={() => abrirSelectorArchivo('image/*')} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={18} /></button>
-                    <button onClick={() => abrirSelectorArchivo('.pdf,.doc,.docx,.xls,.xlsx')} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={18} /></button>
+                    <button onClick={() => abrirSelectorArchivo('image/*', true, onImagenesSeleccionadas)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={18} /></button>
+                    <button onClick={() => abrirSelectorArchivo('.pdf,.doc,.docx,.xls,.xlsx', false, onArchivo)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={18} /></button>
                     <button onClick={() => setUbicacionSheet(true)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><MapPin size={18} /></button>
                   </div>
                   {texto.trim() ? (
@@ -770,6 +833,74 @@ export default function ChatBubble() {
       )}
 
       {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+
+      {/* ── Vista previa de imágenes antes de enviar (estilo WhatsApp) ── */}
+      {imagenesPendientes.length > 0 && (
+        <div className="fixed inset-0 flex flex-col bg-black" style={{ zIndex: 95 }}>
+          {/* Barra superior: cerrar + contador */}
+          <div className="flex-none flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3">
+            <button onClick={cancelarImagenesPendientes} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform">
+              <X size={20} />
+            </button>
+            {imagenesPendientes.length > 1 && (
+              <span className="text-white/80 text-[13px] font-semibold">{indiceActivo + 1} / {imagenesPendientes.length}</span>
+            )}
+            <button onClick={() => quitarImagenPendiente(indiceActivo)} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform">
+              <Trash2 size={18} />
+            </button>
+          </div>
+
+          {/* Imagen grande activa */}
+          <div className="flex-1 min-h-0 flex items-center justify-center px-2">
+            {imagenesPendientes[indiceActivo] && (
+              <img
+                src={imagenesPendientes[indiceActivo].url}
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            )}
+          </div>
+
+          {/* Tira de miniaturas (si hay más de una) — tocar cambia cuál se ve grande, la "×" la quita */}
+          {imagenesPendientes.length > 1 && (
+            <div className="flex-none flex items-center gap-2 px-3 py-2 overflow-x-auto">
+              {imagenesPendientes.map((img, idx) => (
+                <div key={img.url} className="relative flex-shrink-0">
+                  <button
+                    onClick={() => setIndiceActivo(idx)}
+                    className={`w-14 h-14 rounded-lg overflow-hidden border-2 ${idx === indiceActivo ? 'border-[#1f7a49]' : 'border-transparent opacity-60'}`}
+                  >
+                    <img src={img.url} className="w-full h-full object-cover" />
+                  </button>
+                  <button
+                    onClick={() => quitarImagenPendiente(idx)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-white active:scale-90 transition-transform"
+                  >
+                    <X size={11} strokeWidth={3} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pie de foto + enviar */}
+          <div className="flex-none flex items-center gap-2 px-3 pt-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 10px)' }}>
+            <input
+              value={captionPendiente}
+              onChange={e => setCaptionPendiente(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') confirmarEnvioImagenes(); }}
+              placeholder="Escribe un mensaje…"
+              className="flex-1 min-w-0 bg-white/10 text-white placeholder:text-white/50 rounded-full px-4 py-2.5 text-[13px] outline-none"
+            />
+            <button
+              onClick={confirmarEnvioImagenes}
+              disabled={enviandoImagenes}
+              className="flex-shrink-0 w-11 h-11 rounded-full bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center text-white disabled:opacity-40 active:scale-90 transition-transform"
+            >
+              <SendIcon size={18} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Selector de tipo de ubicación ── */}
       {ubicacionSheet && (
