@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Navigation } from 'lucide-react';
+import { X, Navigation, Download, Loader2 } from 'lucide-react';
 
 /**
  * Ícono de enviar — avión de papel estilo Telegram. El path oficial no está
@@ -198,16 +198,67 @@ export function AudioPlayer({ src, tono }: { src: string; tono: 'propio' | 'ajen
 }
 
 /* ─────────────────────────── Visor de imagen a pantalla completa ─────────────────────────── */
+// Estilo WhatsApp: barra superior con "×" para cerrar y un botón para
+// guardar/compartir la imagen. En iOS/Android, si el navegador soporta la
+// API nativa de compartir con archivos, tocar el botón abre el mismo menú
+// del sistema que usa WhatsApp (con "Guardar imagen" entre las opciones).
+// Si el dispositivo no la soporta, se descarga el archivo directamente o,
+// como último recurso, se abre en una pestaña nueva para guardarla desde
+// ahí (mantener presionada la imagen).
 export function ImageLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardarImagen() {
+    if (guardando) return;
+    setGuardando(true);
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const nombre = src.split('/').pop()?.split('?')[0] || 'imagen.jpg';
+      const file = new File([blob], nombre, { type: blob.type || 'image/jpeg' });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+
+      // Sin Web Share API con archivos (algunos navegadores de escritorio):
+      // forzamos la descarga directa con un enlace temporal.
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = nombre;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // El usuario canceló el menú de compartir, o algo falló al bajar el
+      // archivo — último recurso: abrir la imagen en una pestaña nueva
+      // para que la guarde manteniéndola presionada.
+      window.open(src, '_blank');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   return createPortal(
     <div
       className="fixed inset-0 bg-black/92 flex items-center justify-center animate-fade-in"
       style={{ zIndex: 200 }}
       onClick={onClose}
     >
-      <button onClick={onClose} className="absolute top-[calc(env(safe-area-inset-top,0px)+14px)] right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform">
-        <X size={20} />
-      </button>
+      <div
+        className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-3 bg-gradient-to-b from-black/60 to-transparent"
+        onClick={e => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform">
+          <X size={20} />
+        </button>
+        <button onClick={guardarImagen} disabled={guardando} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform disabled:opacity-50">
+          {guardando ? <Loader2 size={19} className="animate-spin" /> : <Download size={19} />}
+        </button>
+      </div>
       <img src={src} className="max-w-[94vw] max-h-[88vh] object-contain" onClick={e => e.stopPropagation()} />
     </div>,
     document.body
