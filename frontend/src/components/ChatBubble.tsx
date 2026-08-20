@@ -169,27 +169,30 @@ export default function ChatBubble() {
     };
   }, [open]);
 
-  // ── Seguir al viewport VISIBLE (top + altura) ──
+  // ── Seguir al teclado sin tocar el layout del panel (cero apagones) ──
   //
-  // Corrección de un error de geometría anterior: se dejaba "top" fijo
-  // en 0 y solo se crecía la altura hasta (offsetTop + height). Eso
-  // dejaba el panel bien DIMENSIONADO pero mal UBICADO: cuando iOS
-  // desplaza la ventana visual hacia abajo (offsetTop > 0, algo que pasa
-  // todo el tiempo al escribir), el header —que vive arriba del panel—
-  // quedaba por ENCIMA del área que de verdad se ve. El panel cubría el
-  // tamaño correcto, pero en el lugar equivocado.
+  // Diagnóstico con video real (533 cuadros analizados): aunque el panel
+  // ya vivía en su propia capa GPU (transform:translateZ(0)), seguía
+  // pareciendo apagarse/bajar un instante al abrir el teclado. La causa
+  // de fondo: se actualizaban "top" y "height" en cada evento, y esas
+  // dos propiedades OBLIGAN al navegador a recalcular el LAYOUT del
+  // panel (no solo repintar) — en iOS, recalcular el layout de un
+  // elemento position:fixed en pleno vuelo de la animación del teclado
+  // es justo lo que produce esos cortes.
   //
-  // La corrección real: el panel sigue tanto el "top" como la altura del
-  // visualViewport, así su borde de arriba SIEMPRE coincide con donde
-  // empieza lo visible (ahí vive el header) y su borde de abajo con
-  // donde termina (justo encima del teclado).
-  //
-  // Por qué esto no repite el temblor original: el temblor venía de
-  // actualizar el estilo dentro de un bucle por frames (requestAnimation-
-  // Frame) disparando muchas escrituras por segundo. Aquí se escribe UNA
-  // sola vez por cada evento real "resize"/"scroll" del viewport visual
-  // — nada de bucles — así que el navegador nunca ve más cambios de los
-  // que el propio sistema operativo ya está aplicando.
+  // Ahora "top" y "height" del panel se fijan UNA sola vez al abrir y
+  // JAMÁS se vuelven a tocar (cero recálculo de layout después de eso).
+  // El seguimiento del teclado usa solo dos cosas que la GPU mueve sin
+  // pasar por layout:
+  //   · transform: translateY(offsetTop) — para que el borde de arriba
+  //     (el header) siempre coincida con donde empieza lo visible.
+  //   · padding-bottom en el propio panel (box-sizing: border-box, así
+  //     que el padding se descuenta del alto FIJO en vez de agrandarlo)
+  //     — empuja el contenido para que el borde de abajo (la barra de
+  //     escribir) coincida con donde el teclado empieza a tapar.
+  // Ninguna de las dos obliga a recalcular el tamaño ni la posición real
+  // del panel frente al resto de la página: todo el ajuste ocurre DENTRO
+  // de la capa ya aislada del panel.
   //
   // El panel se inyecta con un portal DENTRO del body. Regla aprendida
   // rompiendo esto dos veces: nunca DESPLAZAR la caja del body
@@ -200,25 +203,35 @@ export default function ChatBubble() {
     const panel = panelRef.current;
     if (!panel) return;
 
-    let ultimoAlto = -1;
-    let ultimoTop = -1;
+    // Alto de referencia FIJO — se mide una sola vez al abrir y nunca se
+    // vuelve a tocar. Todo el ajuste posterior es relativo a este valor.
+    const altoFijo = window.innerHeight;
+    panel.style.height = `${altoFijo}px`;
+
+    let ultimoTranslate = -1;
+    let ultimoPadding = -1;
     const aplicar = () => {
       const vv = window.visualViewport;
-      const alto = Math.round(vv ? vv.height : window.innerHeight);
       const arriba = Math.round(vv ? vv.offsetTop : 0);
-      if (alto !== ultimoAlto) { panel.style.height = `${alto}px`; ultimoAlto = alto; }
-      if (arriba !== ultimoTop) { panel.style.top = `${arriba}px`; ultimoTop = arriba; }
+      const alturaVisible = Math.round(vv ? vv.height : altoFijo);
+      const relleno = Math.max(0, altoFijo - alturaVisible);
+      if (arriba !== ultimoTranslate) {
+        panel.style.transform = `translateY(${arriba}px) translateZ(0)`;
+        ultimoTranslate = arriba;
+      }
+      if (relleno !== ultimoPadding) {
+        panel.style.paddingBottom = `${relleno}px`;
+        ultimoPadding = relleno;
+      }
     };
     aplicar();
 
     const vv = window.visualViewport;
     vv?.addEventListener('resize', aplicar);
     vv?.addEventListener('scroll', aplicar);
-    window.addEventListener('resize', aplicar);
     return () => {
       vv?.removeEventListener('resize', aplicar);
       vv?.removeEventListener('scroll', aplicar);
-      window.removeEventListener('resize', aplicar);
     };
   }, [open]);
 
@@ -551,6 +564,11 @@ export default function ChatBubble() {
             zIndex: 70,
             top: 0,
             height: '100dvh',
+            // "top" y "height" son el punto de partida antes de que el
+            // efecto los fije a un valor estable — después de eso NUNCA
+            // se vuelven a tocar (el seguimiento del teclado usa solo
+            // transform + padding-bottom, ver el efecto de arriba).
+            boxSizing: 'border-box',
             // Rejilla de 3 filas: header (auto) · mensajes (todo el resto) ·
             // barra de escribir (auto). El contenedor es desplazable y
             // "contiene" su scroll para que iOS pueda reacomodarlo por
@@ -559,21 +577,13 @@ export default function ChatBubble() {
             gridTemplateRows: 'auto minmax(0, 1fr) auto',
             overflow: 'auto',
             overscrollBehavior: 'contain',
-            // SIN transition en top/height: el sistema operativo YA anima el
-            // teclado con su propia curva. Si además le ponemos una
-            // transición CSS encima de un valor que ya se mueve solo, las
-            // dos animaciones compiten entre sí y el resultado se ve como
-            // un salto/tirón en vez de fluido. Seguimos 1:1, en vivo, el
-            // valor real que reporta el sistema — así de fluido se ve.
-            willChange: 'top, height',
-            // translateZ(0): fuerza a que el panel viva en su PROPIA capa
-            // de composición GPU. Sin esto, cada cambio de top/height
-            // dispara un repintado normal, y en iOS durante ese repintado
-            // a veces se alcanza a ver un cuadro de lo que hay DETRÁS
-            // (el video lo confirmó: se veía el dashboard un instante
-            // durante la transición). Con su propia capa, iOS actualiza
-            // el panel de forma aislada sin tener que redibujar lo que
-            // está debajo, así que ese cuadro "fantasma" desaparece.
+            // SIN transition: el sistema operativo YA anima el teclado con
+            // su propia curva; una transición CSS encima competiría con
+            // ella. willChange + backface-visibility mantienen al panel
+            // en su propia capa de composición GPU para que el
+            // transform/padding no obliguen a redibujar lo que hay
+            // detrás (ese redibujado era lo que causaba el apagón).
+            willChange: 'transform, padding-bottom',
             transform: 'translateZ(0)',
             backfaceVisibility: 'hidden',
           }}
