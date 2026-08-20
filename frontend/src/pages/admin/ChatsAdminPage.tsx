@@ -95,7 +95,7 @@ export default function ChatsAdminPage() {
   const [enviando, setEnviando] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [usuarioLeidoHasta, setUsuarioLeidoHasta] = useState<string | null>(null);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxImg, setLightboxImg] = useState<{ url: string; alinearDerecha: boolean; fecha: string; caption: string | null } | null>(null);
   const [escribiendoIds, setEscribiendoIds] = useState<Set<number>>(new Set());
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -356,7 +356,7 @@ export default function ChatsAdminPage() {
                         <Tail esMio={alinearDerecha} color={alinearDerecha ? '#17603a' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
-                            <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-[10px] max-w-[260px] block cursor-pointer" />
+                            <img src={url} onClick={() => setLightboxImg({ url, alinearDerecha, fecha: m.created_at, caption: m.contenido })} className="rounded-[10px] max-w-[260px] block cursor-pointer" />
                             <div className="absolute bottom-1 right-1 flex items-center gap-1 bg-black/40 rounded-full pl-2 pr-1.5 py-0.5">
                               <span className="text-[9px] text-white/95">{fmtHora(m.created_at)}</span>
                               {alinearDerecha && (
@@ -366,7 +366,7 @@ export default function ChatsAdminPage() {
                           </div>
                         )}
                         {m.tipo === 'imagen' && m.archivo_url && !esSoloImagen && (
-                          <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-xl max-w-[260px] mb-1.5 cursor-pointer" />
+                          <img src={url} onClick={() => setLightboxImg({ url, alinearDerecha, fecha: m.created_at, caption: m.contenido })} className="rounded-xl max-w-[260px] mb-1.5 cursor-pointer" />
                         )}
                         {m.tipo === 'audio' && m.archivo_url && (
                           <AudioPlayer src={url} tono={alinearDerecha ? 'propio' : 'ajeno'} />
@@ -440,7 +440,15 @@ export default function ChatsAdminPage() {
         </div>
       </div>
 
-      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {lightboxImg && (
+        <ImageLightbox
+          src={lightboxImg.url}
+          onClose={() => setLightboxImg(null)}
+          remitente={lightboxImg.alinearDerecha ? 'Tú' : seleccionada?.nombre_completo}
+          fecha={lightboxImg.fecha}
+          caption={lightboxImg.caption}
+        />
+      )}
     </div>
   );
 }

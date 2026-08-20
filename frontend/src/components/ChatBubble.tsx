@@ -84,7 +84,7 @@ export default function ChatBubble() {
   const [adminLeidoHasta, setAdminLeidoHasta] = useState<string | null>(null);
   const [divisorNoLeidos, setDivisorNoLeidos] = useState(0);
   const [adminEscribiendo, setAdminEscribiendo] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxImg, setLightboxImg] = useState<{ url: string; esMio: boolean; fecha: string; caption: string | null } | null>(null);
   const [ubicacionSheet, setUbicacionSheet] = useState(false);
   // ── Vista previa de imágenes antes de enviar (estilo WhatsApp) ──
   // Se seleccionan una o varias imágenes, se pueden quitar antes de
@@ -712,7 +712,7 @@ export default function ChatBubble() {
                         <Tail esMio={esMio} color={esMio ? '#17603a' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
-                            <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-[10px] max-w-[220px] block cursor-pointer" />
+                            <img src={url} onClick={() => setLightboxImg({ url, esMio, fecha: m.created_at, caption: m.contenido })} className="rounded-[10px] max-w-[220px] block cursor-pointer" />
                             <div className="absolute bottom-1 right-1 flex items-center gap-1 bg-black/40 rounded-full pl-2 pr-1.5 py-0.5">
                               <span className="text-[9px] text-white/95">{fmtHora(m.created_at)}</span>
                               {esMio && <Ticks dobles leido={leido} />}
@@ -720,7 +720,7 @@ export default function ChatBubble() {
                           </div>
                         )}
                         {m.tipo === 'imagen' && m.archivo_url && !esSoloImagen && (
-                          <img src={url} onClick={() => setLightboxSrc(url)} className="rounded-xl max-w-[220px] mb-1.5 cursor-pointer" />
+                          <img src={url} onClick={() => setLightboxImg({ url, esMio, fecha: m.created_at, caption: m.contenido })} className="rounded-xl max-w-[220px] mb-1.5 cursor-pointer" />
                         )}
                         {m.tipo === 'audio' && m.archivo_url && (
                           <AudioPlayer src={url} tono={esMio ? 'propio' : 'ajeno'} />
@@ -832,7 +832,15 @@ export default function ChatBubble() {
         </div>
       )}
 
-      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {lightboxImg && (
+        <ImageLightbox
+          src={lightboxImg.url}
+          onClose={() => setLightboxImg(null)}
+          remitente={lightboxImg.esMio ? 'Tú' : 'Ayuda y soporte SIMAC'}
+          fecha={lightboxImg.fecha}
+          caption={lightboxImg.caption}
+        />
+      )}
 
       {/* ── Vista previa de imágenes antes de enviar (estilo WhatsApp) ── */}
       {imagenesPendientes.length > 0 && (

@@ -205,8 +205,23 @@ export function AudioPlayer({ src, tono }: { src: string; tono: 'propio' | 'ajen
 // Si el dispositivo no la soporta, se descarga el archivo directamente o,
 // como último recurso, se abre en una pestaña nueva para guardarla desde
 // ahí (mantener presionada la imagen).
-export function ImageLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+interface ImageLightboxProps {
+  src: string;
+  onClose: () => void;
+  /** Quién la envió ("Tú" o el nombre del otro lado) — como en la barra
+   * superior del visor de WhatsApp. */
+  remitente?: string;
+  /** Fecha/hora ISO del mensaje. */
+  fecha?: string;
+  /** Pie de foto del mensaje, si lo tiene — se muestra abajo, como WhatsApp. */
+  caption?: string | null;
+}
+
+export function ImageLightbox({ src, onClose, remitente, fecha, caption }: ImageLightboxProps) {
   const [guardando, setGuardando] = useState(false);
+  const fechaTexto = fecha
+    ? new Date(fecha).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : null;
 
   async function guardarImagen() {
     if (guardando) return;
@@ -249,17 +264,33 @@ export function ImageLightbox({ src, onClose }: { src: string; onClose: () => vo
       onClick={onClose}
     >
       <div
-        className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-3 bg-gradient-to-b from-black/60 to-transparent"
+        className="absolute top-0 left-0 right-0 flex items-center gap-3 px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-3 bg-gradient-to-b from-black/60 to-transparent"
         onClick={e => e.stopPropagation()}
       >
-        <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform">
+        <button onClick={onClose} className="flex-shrink-0 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform">
           <X size={20} />
         </button>
-        <button onClick={guardarImagen} disabled={guardando} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform disabled:opacity-50">
+        {/* Quién la envió y cuándo — igual que la barra superior del visor de WhatsApp. */}
+        {(remitente || fechaTexto) && (
+          <div className="flex-1 min-w-0">
+            {remitente && <div className="text-white text-[13.5px] font-semibold truncate">{remitente}</div>}
+            {fechaTexto && <div className="text-white/70 text-[11px]">{fechaTexto}</div>}
+          </div>
+        )}
+        <button onClick={guardarImagen} disabled={guardando} className="flex-shrink-0 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform disabled:opacity-50">
           {guardando ? <Loader2 size={19} className="animate-spin" /> : <Download size={19} />}
         </button>
       </div>
       <img src={src} className="max-w-[94vw] max-h-[88vh] object-contain" onClick={e => e.stopPropagation()} />
+      {/* Pie de foto — igual que WhatsApp lo muestra pegado abajo de la imagen. */}
+      {caption && (
+        <div
+          className="absolute bottom-0 left-0 right-0 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] bg-gradient-to-t from-black/70 to-transparent"
+          onClick={e => e.stopPropagation()}
+        >
+          <p className="text-white text-[14px] leading-snug">{caption}</p>
+        </div>
+      )}
     </div>,
     document.body
   );
