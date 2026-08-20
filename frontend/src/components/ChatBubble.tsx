@@ -170,27 +170,28 @@ export default function ChatBubble() {
     };
   }, [open]);
 
-  // ── Seguir al teclado sin dejar huecos ni recalcular layout ──
+  // ── Seguir al teclado con datos SIEMPRE en vivo (sin referencias viejas) ──
   //
-  // SEGUNDO defecto encontrado (el primero fue top/height forzando
-  // recálculo de layout — ya resuelto). Este es un error de diseño mío:
-  // usaba transform:translateY() para "mover" el panel completo hacia
-  // abajo cuando el teclado desplaza el área visible. Pero mover una
-  // caja con transform no la agranda, solo la desplaza — y deja VACÍO
-  // exactamente el espacio de donde salió. Ahí se colaba el dashboard
-  // de atrás (confirmado con la segunda captura del usuario).
+  // TERCER defecto encontrado, investigado a fondo: quedaba un hueco
+  // enorme entre la barra de escribir y el teclado real. Causa (bug
+  // documentado de WKWebView en apps agregadas a inicio en iOS):
+  // "window.innerHeight" puede quedarse ATASCADO en un valor viejo tras
+  // la primera vez que se abre el teclado en la sesión, y NO se
+  // recupera hasta cerrar la app por completo. El cálculo anterior
+  // capturaba "window.innerHeight" UNA sola vez al abrir el panel para
+  // usarlo como referencia y de ahí restar la altura visible del
+  // teclado — si esa captura ocurría después de que el bug ya se había
+  // disparado (por ejemplo, tras escribir un mensaje antes en la misma
+  // sesión), la referencia quedaba mal para el resto de la sesión y
+  // sobraba relleno de más: el hueco.
   //
-  // Diseño correcto: separar "la cortina" del "contenido que se mueve".
-  //   · panelRef (la cortina): fondo sólido fijo, SIEMPRE cubre desde
-  //     arriba hasta abajo de toda la pantalla. JAMÁS se toca por JS —
-  //     ni top, ni height, ni transform. Por construcción no puede
-  //     dejar ver nada de atrás, porque nunca se mueve ni se achica.
-  //   · contentRef (header + mensajes + barra, vive DENTRO de la
-  //     cortina): este es el que se desplaza con transform:translateY()
-  //     y padding-bottom para seguir al teclado. Como está completamente
-  //     contenido dentro de la cortina sólida, aunque se desplace nunca
-  //     revela nada — como mucho se recorta contra el propio fondo del
-  //     panel, que es invisible porque es del mismo color.
+  // La solución real es dejar de depender de cualquier valor "guardado"
+  // por completo. Ahora la altura del contenido se fija directamente a
+  // "visualViewport.height", que es SIEMPRE el dato en vivo del área
+  // realmente visible en ese instante — nunca una referencia vieja. Esto
+  // es seguro ahora (no repite el bug del apagón) porque la cortina de
+  // afuera (panelRef) nunca se toca y sigue cubriendo toda la pantalla
+  // pase lo que pase con el tamaño del contenido de adentro.
   //
   // El panel se inyecta con un portal DENTRO del body. Regla aprendida
   // rompiendo esto dos veces: nunca DESPLAZAR la caja del body
@@ -201,24 +202,19 @@ export default function ChatBubble() {
     const content = contentRef.current;
     if (!content) return;
 
-    // Alto de referencia FIJO — se mide una sola vez al abrir y nunca se
-    // vuelve a tocar. Todo el ajuste posterior es relativo a este valor.
-    const altoFijo = window.innerHeight;
-
     let ultimoTranslate = -1;
-    let ultimoPadding = -1;
+    let ultimaAltura = -1;
     const aplicar = () => {
       const vv = window.visualViewport;
       const arriba = Math.round(vv ? vv.offsetTop : 0);
-      const alturaVisible = Math.round(vv ? vv.height : altoFijo);
-      const relleno = Math.max(0, altoFijo - alturaVisible);
+      const alto = Math.round(vv ? vv.height : window.innerHeight);
       if (arriba !== ultimoTranslate) {
         content.style.transform = `translateY(${arriba}px) translateZ(0)`;
         ultimoTranslate = arriba;
       }
-      if (relleno !== ultimoPadding) {
-        content.style.paddingBottom = `${relleno}px`;
-        ultimoPadding = relleno;
+      if (alto !== ultimaAltura) {
+        content.style.height = `${alto}px`;
+        ultimaAltura = alto;
       }
     };
     aplicar();
@@ -578,7 +574,7 @@ export default function ChatBubble() {
               // SIN transition: el sistema operativo YA anima el teclado
               // con su propia curva. willChange + backface-visibility
               // mantienen esta capa aislada en su propia capa GPU.
-              willChange: 'transform, padding-bottom',
+              willChange: 'transform, height',
               transform: 'translateZ(0)',
               backfaceVisibility: 'hidden',
             }}
