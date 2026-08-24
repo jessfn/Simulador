@@ -220,6 +220,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
     // Generar JWT — P-01: expira en 8h, P-02: sin fallback inseguro
     const secret = process.env.JWT_SECRET;
     if (!secret) throw new Error('FATAL: JWT_SECRET no está definida en las variables de entorno.');
+    const jti = crypto.randomUUID();
     const token = jwt.sign(
       {
         userId:            usuario.id,
@@ -228,7 +229,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
         estado_asignado:   usuario.estado_asignado  ?? null,
         debe_cambiar_pass: !!usuario.debe_cambiar_pass,
         es_panel_usuario:  !!usuario.es_panel_usuario,
-        jti:               crypto.randomUUID(),
+        jti,
       },
       secret,
       { expiresIn: '8h' }
@@ -237,6 +238,14 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
     // Actualizar último login para usuarios del panel
     if (usuario.es_panel_usuario) {
       pool.query('UPDATE usuarios SET ultimo_login=NOW() WHERE id=$1', [usuario.id]).catch(() => {});
+    }
+
+    // Sesión única por cuenta (Fase 1b, propuesta COFECE): el login más
+    // reciente invalida cualquier sesión previa del mismo usuario. Se
+    // excluye admin/responsable porque el panel de soporte legítimamente
+    // usa varias pestañas/dispositivos a la vez.
+    if (!['admin', 'responsable'].includes(usuario.rol)) {
+      pool.query('UPDATE usuarios SET sesion_activa_jti=$1 WHERE id=$2', [jti, usuario.id]).catch(() => {});
     }
 
     res.json({

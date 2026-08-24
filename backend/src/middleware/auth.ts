@@ -32,6 +32,18 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
       }
     }
 
+    // Sesión única por cuenta (Fase 1b, propuesta COFECE): un login nuevo
+    // invalida cualquier sesión previa. Excluye admin/responsable (panel de
+    // soporte con varias pestañas es un caso de uso legítimo).
+    if (decoded.jti && !['admin', 'responsable'].includes(decoded.rol)) {
+      const sesion = await pool.query('SELECT sesion_activa_jti FROM usuarios WHERE id = $1', [decoded.userId]);
+      const jtiActivo = sesion.rows[0]?.sesion_activa_jti;
+      if (jtiActivo && jtiActivo !== decoded.jti) {
+        res.status(401).json({ error: 'Tu sesión se cerró porque iniciaste sesión en otro dispositivo' });
+        return;
+      }
+    }
+
     req.user = decoded;
     next();
   } catch {

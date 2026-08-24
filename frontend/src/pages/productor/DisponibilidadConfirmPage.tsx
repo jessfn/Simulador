@@ -18,6 +18,10 @@ export default function DisponibilidadConfirmPage() {
   const fechaDesde = sessionStorage.getItem('disp_fecha_desde') || '';
   const fechaHasta = sessionStorage.getItem('disp_fecha_hasta') || '';
 
+  const [humedad, setHumedad] = useState('');
+  const [impurezas, setImpurezas] = useState('');
+  const [granoQuebrado, setGranoQuebrado] = useState('');
+
   const enviar = async () => {
     setLoading(true);
     setError('');
@@ -36,6 +40,9 @@ export default function DisponibilidadConfirmPage() {
           volumen_estimado_ton: Number(volumen),
           fecha_disponible_desde: fechaDesde,
           fecha_disponible_hasta: fechaHasta,
+          humedad_pct: humedad || null,
+          impurezas_pct: impurezas || null,
+          grano_quebrado_pct: granoQuebrado || null,
         }),
       });
       if (!res.ok) {
@@ -106,6 +113,27 @@ export default function DisponibilidadConfirmPage() {
                 {' — '}
                 {fechaHasta ? new Date(fechaHasta + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
               </span>
+            </div>
+          </div>
+
+          <div className="mt-4 bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 space-y-3 shadow-sm ring-1 ring-zinc-100">
+            <p className="text-[13px] font-bold text-gray-400 uppercase tracking-widest">Calidad (opcional)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs text-zinc-500 font-medium">Humedad (%)</label>
+                <input type="number" value={humedad} onChange={e => setHumedad(e.target.value)} step="0.1" placeholder="14.5"
+                  className="w-full bg-[#eef8f2] rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#1A5C38]/30" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 font-medium">Impurezas (%)</label>
+                <input type="number" value={impurezas} onChange={e => setImpurezas(e.target.value)} step="0.1" placeholder="2"
+                  className="w-full bg-[#eef8f2] rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#1A5C38]/30" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 font-medium">Q. quebrado (%)</label>
+                <input type="number" value={granoQuebrado} onChange={e => setGranoQuebrado(e.target.value)} step="0.1" placeholder="3"
+                  className="w-full bg-[#eef8f2] rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#1A5C38]/30" />
+              </div>
             </div>
           </div>
 

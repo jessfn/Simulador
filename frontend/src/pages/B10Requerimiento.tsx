@@ -32,6 +32,7 @@ export default function B10Requerimiento() {
     vigencia_fin: '',
     radio_km: '200',
     municipio: municipioPre,
+    humedad_max_pct: '', impurezas_max_pct: '', grano_quebrado_max_pct: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -88,7 +89,7 @@ export default function B10Requerimiento() {
         vigencia: 'rango',
       });
       toast('Requerimiento publicado. Los productores en el radio serán notificados.', 'success');
-      setForm(f => ({ ...f, tipo_maiz: '', variedad_code: '', volumen_ton: '', precio_ofrecido: '', vigencia_fin: '' }));
+      setForm(f => ({ ...f, tipo_maiz: '', variedad_code: '', volumen_ton: '', precio_ofrecido: '', vigencia_fin: '', humedad_max_pct: '', impurezas_max_pct: '', grano_quebrado_max_pct: '' }));
       setVarSeleccionadas([]); setVarLibres({});
       cargarRequerimientos();
     } catch (err: any) {
@@ -204,6 +205,25 @@ export default function B10Requerimiento() {
             <div>
               <label className={labelClass}>Precio ofrecido (MXN/ton)</label>
               <input type="number" value={form.precio_ofrecido} onChange={e => set('precio_ofrecido', e.target.value)} required step="1" placeholder="6200" className={inputClass} />
+            </div>
+          </div>
+        </div>
+
+        {/* Calidad aceptada (opcional) */}
+        <div className="bg-white rounded-[1.5rem] shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-black/[0.04] p-6 space-y-5">
+          <p className="text-[13px] font-bold text-gray-400 uppercase tracking-widest">Calidad aceptada (opcional)</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelClass}>Humedad máx (%)</label>
+              <input type="number" value={form.humedad_max_pct} onChange={e => set('humedad_max_pct', e.target.value)} step="0.1" placeholder="14.5" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Impurezas máx (%)</label>
+              <input type="number" value={form.impurezas_max_pct} onChange={e => set('impurezas_max_pct', e.target.value)} step="0.1" placeholder="2" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Grano quebrado máx (%)</label>
+              <input type="number" value={form.grano_quebrado_max_pct} onChange={e => set('grano_quebrado_max_pct', e.target.value)} step="0.1" placeholder="3" className={inputClass} />
             </div>
           </div>
         </div>

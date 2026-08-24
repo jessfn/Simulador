@@ -16,6 +16,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     ventana_venta,
     fecha_disponible_desde, fecha_disponible_hasta,
     precio_minimo_ton,
+    humedad_pct, impurezas_pct, grano_quebrado_pct,
   } = req.body;
 
   if (!tipo_maiz) {
@@ -103,14 +104,17 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
     const precioMin = precio_minimo_ton != null && precio_minimo_ton !== ''
       ? Number(precio_minimo_ton) : null;
+    const numOrNull = (v: any) => (v != null && v !== '' ? Number(v) : null);
 
     const result = await pool.query(
       `INSERT INTO disponibilidad_productor
          (producer_id, up_id, tipo_maiz, variedad_code, variedad_libre, ciclo_id,
-          volumen_estimado_ton, ventana_venta, fecha_vencimiento, precio_minimo_ton)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+          volumen_estimado_ton, ventana_venta, fecha_vencimiento, precio_minimo_ton,
+          humedad_pct, impurezas_pct, grano_quebrado_pct)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [producer_id, up_id, tipo_maiz, variedadFinal, variedad_libre || null, ciclo_id || null,
-       volumenFinal, ventanaFinal, fechaVenc, precioMin]
+       volumenFinal, ventanaFinal, fechaVenc, precioMin,
+       numOrNull(humedad_pct), numOrNull(impurezas_pct), numOrNull(grano_quebrado_pct)]
     );
 
     // Notificar bodegas cercanas usando el centroide de la UP (radio 200 km, Haversine)

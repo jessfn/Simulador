@@ -154,7 +154,10 @@ router.get('/exportar', authMiddleware, async (req: AuthRequest, res: Response):
 // POST /api/transacciones
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
-  const { bodega_id, producer_id, nombre_productor_libre, tipo_maiz, variedad_code, volumen_ton, precio_ton, fecha, notas } = req.body;
+  const {
+    bodega_id, producer_id, nombre_productor_libre, tipo_maiz, variedad_code, volumen_ton, precio_ton, fecha, notas,
+    humedad_pct, impurezas_pct, grano_quebrado_pct,
+  } = req.body;
 
   if (!bodega_id || !tipo_maiz || !volumen_ton || !precio_ton || !fecha) {
     res.status(400).json({ error: 'Campos requeridos: bodega_id, tipo_maiz, volumen_ton, precio_ton, fecha' });
@@ -165,10 +168,14 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     const result = await pool.query(
       `INSERT INTO transacciones
          (bodega_id, usuario_bodeguero, producer_id, nombre_productor_libre,
-          tipo_maiz, variedad_code, volumen_ton, precio_ton, fecha, notas)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+          tipo_maiz, variedad_code, volumen_ton, precio_ton, fecha, notas,
+          humedad_pct, impurezas_pct, grano_quebrado_pct)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [bodega_id, userId, producer_id || null, nombre_productor_libre || null,
-       tipo_maiz, variedad_code || null, volumen_ton, precio_ton, fecha, notas || null]
+       tipo_maiz, variedad_code || null, volumen_ton, precio_ton, fecha, notas || null,
+       humedad_pct != null && humedad_pct !== '' ? Number(humedad_pct) : null,
+       impurezas_pct != null && impurezas_pct !== '' ? Number(impurezas_pct) : null,
+       grano_quebrado_pct != null && grano_quebrado_pct !== '' ? Number(grano_quebrado_pct) : null]
     );
 
     const tx = result.rows[0];

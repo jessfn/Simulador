@@ -32,7 +32,8 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
   const { bodega_id, tipo_maiz, variedad_code, volumen_ton, precio_ofrecido, radio_km,
-          vigencia, vigencia_inicio, vigencia_fin, variedades } = req.body;
+          vigencia, vigencia_inicio, vigencia_fin, variedades,
+          humedad_max_pct, impurezas_max_pct, grano_quebrado_max_pct } = req.body;
 
   if (!bodega_id || !tipo_maiz || !precio_ofrecido) {
     res.status(400).json({ error: 'Campos requeridos: bodega_id, tipo_maiz, precio_ofrecido' });
@@ -70,15 +71,19 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     const vigenciaDb = vigencia === 'rango' || vigencia === 'esta_semana' ? vigencia
       : '15_dias';
 
+    const numOrNull = (v: any) => (v != null && v !== '' ? Number(v) : null);
+
     const result = await pool.query(
       `INSERT INTO senales_compra
          (bodega_id, usuario_id, tipo_maiz, variedad_code, volumen_ton, precio_ofrecido,
-          radio_km, vigencia, vigencia_inicio, fecha_vencimiento)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          radio_km, vigencia, vigencia_inicio, fecha_vencimiento,
+          humedad_max_pct, impurezas_max_pct, grano_quebrado_max_pct)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [bodega_id, userId, tipo_maiz, variedad_code || null, volumen_ton || null,
        precio_ofrecido, radio_km || 50, vigenciaDb,
-       vigencia_inicio || null, fechaVenc]
+       vigencia_inicio || null, fechaVenc,
+       numOrNull(humedad_max_pct), numOrNull(impurezas_max_pct), numOrNull(grano_quebrado_max_pct)]
     );
 
     const senal = result.rows[0];

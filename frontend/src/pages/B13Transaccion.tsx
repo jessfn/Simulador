@@ -29,6 +29,7 @@ export default function B13Transaccion() {
     bodega_id: '', producer_id: '', nombre_productor_libre: '', tipo_maiz: '', variedad_code: '',
     volumen_ton: '', precio_ton: '',
     fecha: new Date().toISOString().slice(0, 10), notas: '',
+    humedad_pct: '', impurezas_pct: '', grano_quebrado_pct: '',
   });
   const [loading, setLoading] = useState(false);
   const [busqueda, setBusqueda] = useState('');
@@ -221,6 +222,23 @@ export default function B13Transaccion() {
             <label className={labelClass}>Notas</label>
             <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={2}
               className={`${inputClass} resize-none`} />
+          </div>
+          <div>
+            <p className="text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-3">Calidad (opcional)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className={labelClass}>Humedad (%)</label>
+                <input type="number" value={form.humedad_pct} onChange={e => set('humedad_pct', e.target.value)} step="0.1" placeholder="14.5" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Impurezas (%)</label>
+                <input type="number" value={form.impurezas_pct} onChange={e => set('impurezas_pct', e.target.value)} step="0.1" placeholder="2" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Grano quebrado (%)</label>
+                <input type="number" value={form.grano_quebrado_pct} onChange={e => set('grano_quebrado_pct', e.target.value)} step="0.1" placeholder="3" className={inputClass} />
+              </div>
+            </div>
           </div>
         </div>
 
