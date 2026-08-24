@@ -213,7 +213,9 @@ export const api = {
     create: (data: any) => request('/propuestas', { method: 'POST', body: JSON.stringify(data) }),
     cancel: (id: number) => request(`/propuestas/${id}`, { method: 'DELETE' }),
     disponibles: (params?: { bodega_id?: number; tipo_maiz?: string; volumen_min?: number; radio_km?: number }) => {
-      const qs = new URLSearchParams(params as any).toString();
+      const clean: Record<string, string> = {};
+      Object.entries(params || {}).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') clean[k] = String(v); });
+      const qs = new URLSearchParams(clean).toString();
       return request(`/propuestas/disponibles${qs ? '?' + qs : ''}`);
     },
     ofertas: (id: number | string) => request(`/propuestas/${id}/ofertas`),
