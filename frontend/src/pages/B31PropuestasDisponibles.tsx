@@ -3,7 +3,7 @@ import { PageBanner } from '../components/Layout';
 import { api } from '../services/api';
 import { formatNum } from '../utils/format';
 import { useToast } from '../components/Toast';
-import { MapPin, Wheat, Send } from 'lucide-react';
+import { MapPin, Wheat, Send, Bell, X } from 'lucide-react';
 
 const TIPOS_MAIZ = [
   { code: '', label: 'Todos' },
@@ -31,6 +31,15 @@ interface Propuesta {
   ya_oferte: boolean;
 }
 
+interface FiltroGuardado {
+  id: number;
+  bodega_id: number;
+  bodega_nombre: string;
+  tipo_maiz: string | null;
+  radio_km: number;
+  activo: boolean;
+}
+
 export default function B31PropuestasDisponibles() {
   const { toast } = useToast();
   const [bodegas, setBodegas] = useState<{ id: number; nombre: string }[]>([]);
@@ -40,6 +49,9 @@ export default function B31PropuestasDisponibles() {
   const [loading, setLoading] = useState(true);
   const [abiertaId, setAbiertaId] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [filtros, setFiltros] = useState<FiltroGuardado[]>([]);
+  const [guardandoFiltro, setGuardandoFiltro] = useState(false);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   const [form, setForm] = useState({
     precio_ofrecido_ton: '',
@@ -55,7 +67,41 @@ export default function B31PropuestasDisponibles() {
       setBodegas(lista);
       if (lista.length > 0) setBodegaId(String(lista[0].id));
     }).catch(() => {});
+    cargarFiltros();
   }, []);
+
+  const cargarFiltros = () => {
+    api.filtrosGuardados.list()
+      .then((r: any) => setFiltros(Array.isArray(r) ? r : []))
+      .catch(() => setFiltros([]));
+  };
+
+  const guardarFiltro = async () => {
+    if (!bodegaId) { toast('Selecciona una bodega', 'error'); return; }
+    setGuardandoFiltro(true);
+    try {
+      await api.filtrosGuardados.create({
+        bodega_id: Number(bodegaId),
+        tipo_maiz: tipoMaiz || null,
+        radio_km: 100,
+      });
+      toast('Alerta guardada. Te avisaremos cuando publiquen maíz que calce.', 'success');
+      cargarFiltros();
+    } catch (err: any) {
+      toast(err.message || 'Error al guardar la alerta', 'error');
+    } finally {
+      setGuardandoFiltro(false);
+    }
+  };
+
+  const eliminarFiltro = async (id: number) => {
+    try {
+      await api.filtrosGuardados.remove(id);
+      cargarFiltros();
+    } catch (err: any) {
+      toast(err.message || 'Error al eliminar', 'error');
+    }
+  };
 
   const cargar = () => {
     setLoading(true);
@@ -130,7 +176,34 @@ export default function B31PropuestasDisponibles() {
                 {TIPOS_MAIZ.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
               </select>
             </div>
+            <div className="sm:col-span-2 flex items-center gap-2 pt-1">
+              <button onClick={guardarFiltro} disabled={guardandoFiltro}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold ring-1 ring-zinc-200 text-gray-700 hover:bg-[#eef8f2] flex items-center justify-center gap-1.5 disabled:opacity-50">
+                <Bell size={15} /> {guardandoFiltro ? 'Guardando...' : 'Avisarme con estos filtros'}
+              </button>
+              {filtros.length > 0 && (
+                <button onClick={() => setMostrarFiltros(v => !v)}
+                  className="py-2.5 px-3 rounded-xl text-sm font-medium text-[#1A5C38] hover:bg-emerald-50">
+                  {mostrarFiltros ? 'Ocultar' : `Mis alertas (${filtros.length})`}
+                </button>
+              )}
+            </div>
           </div>
+
+          {mostrarFiltros && filtros.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
+              {filtros.map(f => (
+                <div key={f.id} className="flex items-center justify-between gap-2 text-sm py-1.5">
+                  <span className="text-gray-700">
+                    {f.bodega_nombre} · {f.tipo_maiz ? TIPOS_MAIZ.find(t => t.code === f.tipo_maiz)?.label || f.tipo_maiz : 'Cualquier tipo'} · {f.radio_km} km
+                  </span>
+                  <button onClick={() => eliminarFiltro(f.id)} className="text-red-400 hover:text-red-600 shrink-0">
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {loading && (
             <div className="flex justify-center py-12">

@@ -61,7 +61,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     const producerId = prodR.rows[0].producer_id;
 
     const dispR = await pool.query(
-      `SELECT id, tipo_maiz, volumen_estimado_ton FROM disponibilidad_productor
+      `SELECT id, tipo_maiz, volumen_estimado_ton, up_id, humedad_pct, impurezas_pct, grano_quebrado_pct
+       FROM disponibilidad_productor
        WHERE id = $1 AND producer_id = $2 AND activa = TRUE`,
       [disponibilidad_id, producerId]
     );
@@ -87,7 +88,61 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
        volumenFinal, volumen_minimo_comprador || null, lugar_entrega || null, vigencia_hasta]
     );
 
-    res.status(201).json({ ...result.rows[0], alerta });
+    const propuesta = result.rows[0];
+
+    // Fase 3: cruzar contra filtros guardados activos de bodegas y notificar
+    // a las que calzan (tipo_maiz, volumen mínimo, calidad máxima, radio).
+    // Mismo mecanismo de notificación que el resto del sistema — nunca
+    // bloquea la respuesta al productor si falla.
+    try {
+      const filtrosR = await pool.query(
+        `SELECT fg.id, fg.bodega_id, fg.usuario_id, fg.radio_km,
+                b.latitud, b.longitud
+         FROM filtros_guardados_bodega fg
+         JOIN bodegas b ON b.id = fg.bodega_id
+         WHERE fg.activo = TRUE
+           AND (fg.tipo_maiz IS NULL OR fg.tipo_maiz = $1)
+           AND (fg.volumen_min_ton IS NULL OR fg.volumen_min_ton <= $2)
+           AND (fg.humedad_max_pct IS NULL OR $3::numeric IS NULL OR fg.humedad_max_pct >= $3)
+           AND (fg.impurezas_max_pct IS NULL OR $4::numeric IS NULL OR fg.impurezas_max_pct >= $4)
+           AND (fg.grano_quebrado_max_pct IS NULL OR $5::numeric IS NULL OR fg.grano_quebrado_max_pct >= $5)
+           AND b.latitud IS NOT NULL AND b.longitud IS NOT NULL`,
+        [disp.tipo_maiz, volumenFinal, disp.humedad_pct, disp.impurezas_pct, disp.grano_quebrado_pct]
+      );
+
+      if (filtrosR.rows.length > 0) {
+        const upR = await pool.query(
+          `SELECT ST_Y(centroid::geometry) AS lat, ST_X(centroid::geometry) AS lng
+           FROM up WHERE up_id = $1 AND centroid IS NOT NULL`,
+          [disp.up_id]
+        );
+        if (upR.rows.length > 0) {
+          const { lat, lng } = upR.rows[0];
+          for (const f of filtrosR.rows) {
+            const distR = await pool.query(
+              `SELECT (ST_Distance(
+                  ST_SetSRID(ST_Point($1, $2), 4326)::geography,
+                  ST_SetSRID(ST_Point($3, $4), 4326)::geography
+                ) / 1000) AS distancia_km`,
+              [f.longitud, f.latitud, lng, lat]
+            );
+            const distanciaKm = parseFloat(distR.rows[0]?.distancia_km ?? '999999');
+            if (distanciaKm <= Number(f.radio_km)) {
+              notificar({
+                usuarioId: f.usuario_id,
+                tipo: 'filtro_guardado_match',
+                titulo: '🔔 Nueva propuesta que calza con tu filtro',
+                mensaje: `Un productor publicó maíz ${disp.tipo_maiz} a ${Math.round(distanciaKm)} km de tu bodega, $${Number(precio_solicitado_ton).toLocaleString()}/ton. Entra a "Propuestas disponibles" para ofertar.`,
+                referenciaId: propuesta.id,
+                referenciaTipo: 'propuestas_negociacion',
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+    } catch (_) { /* best-effort */ }
+
+    res.status(201).json({ ...propuesta, alerta });
   } catch (err: any) {
     console.error('Error en POST propuestas:', err);
     res.status(500).json({ error: err.message });

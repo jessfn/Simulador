@@ -201,6 +201,13 @@ export const api = {
   precios: {
     dashboard: () => request('/precios/dashboard'),
   },
+  filtrosGuardados: {
+    list: () => request('/filtros-guardados'),
+    create: (data: any) => request('/filtros-guardados', { method: 'POST', body: JSON.stringify(data) }),
+    toggle: (id: number, activo: boolean) =>
+      request(`/filtros-guardados/${id}`, { method: 'PATCH', body: JSON.stringify({ activo }) }),
+    remove: (id: number) => request(`/filtros-guardados/${id}`, { method: 'DELETE' }),
+  },
   propuestas: {
     mias: () => request('/propuestas/mias'),
     create: (data: any) => request('/propuestas', { method: 'POST', body: JSON.stringify(data) }),
