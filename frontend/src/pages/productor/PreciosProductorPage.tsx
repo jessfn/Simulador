@@ -102,13 +102,42 @@ export default function PreciosProductorPage() {
               </div>
             </div>
             <h1 className="text-[19px] sm:text-[22px] font-black text-white leading-tight tracking-tight">Análisis de Precios</h1>
-            <p className="text-[12px] font-medium text-white/60 mt-0.5">Referencia internacional y rentabilidad</p>
+            <p className="text-[12px] font-medium text-white/60 mt-0.5">Te ayuda a saber si el precio que te ofrecen es justo</p>
           </div>
         </div>
       </div>
 
       {/* ── CONTENIDO ── */}
       <div className="w-full max-w-[700px] mx-auto px-4 sm:px-6 pt-5 space-y-4">
+
+      {/* ── ¿CÓMO SE CALCULA? — transparencia de la metodología ── */}
+      <details className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] group">
+        <summary className="flex items-center gap-2.5 p-4 cursor-pointer select-none list-none">
+          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 shrink-0">
+            <BookOpen size={15} />
+          </div>
+          <span className="flex-1 text-[13px] font-bold text-slate-800">¿Cómo se calcula esto?</span>
+          <span className="text-slate-400 text-[11px] font-bold group-open:rotate-180 transition-transform">▾</span>
+        </summary>
+        <div className="px-4 pb-4 pt-1 text-[12px] text-slate-600 leading-relaxed space-y-2 border-t border-slate-100">
+          <p className="pt-3">
+            Tomamos como base el precio del maíz en el mercado internacional (Chicago),
+            lo convertimos a pesos con el tipo de cambio del día, y le sumamos un bono
+            por maíz blanco. Ese resultado es tu <strong>margen de negociación</strong> —
+            el punto de partida que usas para saber si el precio que te ofrecen es justo.
+          </p>
+          <p>
+            Al precio que te paga la bodega le sumamos lo que te cobra por sus servicios
+            (limpieza, secado, almacenamiento) para llegar al <strong>total que te ofrecen</strong>.
+            Comparamos ese total contra tu margen de negociación para saber si tienes
+            espacio para pedir un precio más alto.
+          </p>
+          <p className="text-slate-400">
+            Estos cálculos se actualizan todos los días con datos reales de mercado —
+            no son precios fijos ni garantizados, solo una referencia para ayudarte a negociar.
+          </p>
+        </div>
+      </details>
 
       {/* ── SELECTOR DE MODO: estatal vs bodega específica ── */}
       <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
@@ -234,10 +263,10 @@ export default function PreciosProductorPage() {
           </div>
           <div>
             <p className="font-bold text-slate-900 text-[14px] tracking-tight">
-              Referencia internacional
+              Cuánto vale el maíz en el mercado mundial
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5 font-medium leading-relaxed max-w-lg">
-              Calculado en tiempo real (Chicago + TC + Bono).
+              Se actualiza todos los días. Te sirve como punto de partida para negociar con la bodega.
             </p>
           </div>
         </div>
@@ -254,7 +283,7 @@ export default function PreciosProductorPage() {
             </p>
             <div className="flex items-center gap-2 mt-2">
               <span className="bg-green-500/20 text-green-300 text-[9px] font-bold px-2 py-1 rounded border border-green-400/20 uppercase tracking-wider">
-                Margen de negociación
+                Tu margen para negociar
               </span>
               <span className="text-slate-400 text-[9px] font-bold tracking-wider uppercase">MXN/ton</span>
             </div>
@@ -262,9 +291,9 @@ export default function PreciosProductorPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 relative z-10">
             {[
-              { icon: TrendingUp, label: 'Futuro Chicago', value: tieneChicago ? `$${chicago} USD/bu` : 'Sin datos' },
-              { icon: DollarSign, label: 'Dólar FIX', value: tipoCambio != null ? `$${tipoCambio} MXN` : 'Sin datos' },
-              { icon: Tag, label: 'Bono maíz', value: `+$${BONO_MAIZ_BLANCO_USD} USD` },
+              { icon: TrendingUp, label: 'Precio en EE.UU. (Chicago)', value: tieneChicago ? `$${chicago} USD/bu` : 'Sin datos' },
+              { icon: DollarSign, label: 'Tipo de cambio', value: tipoCambio != null ? `$${tipoCambio} MXN` : 'Sin datos' },
+              { icon: Tag, label: 'Bono por maíz blanco', value: `+$${BONO_MAIZ_BLANCO_USD} USD` },
             ].map((item) => (
               <div key={item.label} className="bg-white/[0.04] border border-white/10 rounded-xl p-2.5 flex items-center sm:flex-col sm:items-start sm:justify-between transition-colors hover:bg-white/[0.08]">
                 <div className="w-[28px] h-[28px] bg-white/[0.08] text-white rounded-md flex items-center justify-center shrink-0 mr-3 sm:mr-0 sm:mb-2">
@@ -285,7 +314,7 @@ export default function PreciosProductorPage() {
           <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex items-center gap-2 relative z-10">
             <Calculator size={12} className="text-slate-400 shrink-0" />
             <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium">
-              <span className="text-white/60">(Futuro × 39.368 × dólar) + bono =</span> <span className="text-green-400 font-bold ml-1">Margen</span>
+              <span className="text-white/60">(Precio en EE.UU. × 39.368 × tipo de cambio) + bono =</span> <span className="text-green-400 font-bold ml-1">tu margen para negociar</span>
             </p>
           </div>
         </div>
@@ -300,10 +329,10 @@ export default function PreciosProductorPage() {
             </div>
             <div>
               <p className="font-bold text-slate-900 text-[14px] tracking-tight">
-                Precio de compra
+                Lo que te paga la bodega
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5 font-medium leading-relaxed">
-                Pago de la bodega más servicios.
+                Lo que te ofrece por tu maíz, más lo que te cobra por sus servicios.
               </p>
             </div>
           </div>
@@ -319,7 +348,7 @@ export default function PreciosProductorPage() {
               </div>
               <div>
                 <p className="text-[9px] text-[#1A5C38] font-bold uppercase tracking-wider mb-0.5">
-                  Pago bodega (PO)
+                  Lo que te paga
                 </p>
                 <p className="text-[18px] sm:text-[20px] font-black text-[#1A5C38] tracking-tight leading-none">
                   {tienePO ? `$${po.toLocaleString('es-MX')}` : <span className="text-[14px] text-slate-400 font-medium tracking-normal">Sin datos</span>}
@@ -336,8 +365,9 @@ export default function PreciosProductorPage() {
               </div>
               <div>
                 <p className="text-[9px] text-blue-700 font-bold uppercase tracking-wider mb-0.5">
-                  Servicios (S)
+                  Servicios de la bodega
                 </p>
+                <p className="text-[8px] text-blue-500 font-medium -mt-0.5 mb-0.5">Limpieza, secado, almacenamiento…</p>
                 <p className="text-[18px] sm:text-[20px] font-black text-blue-700 tracking-tight leading-none">
                   {tieneServicios ? `$${servicios.toLocaleString('es-MX')}` : <span className="text-[13px] text-slate-400 font-medium tracking-normal">Sin tarifario activo</span>}
                 </p>
@@ -353,7 +383,7 @@ export default function PreciosProductorPage() {
               </div>
               <div>
                 <p className="text-[9px] text-slate-300 font-bold uppercase tracking-wider mb-0.5">
-                  Total Compra
+                  Total que te ofrecen
                 </p>
                 <p className="text-[18px] sm:text-[20px] font-black text-white tracking-tight leading-none">
                   {precioCompra != null ? `$${precioCompra.toLocaleString('es-MX', { maximumFractionDigits: 0 })}` : <span className="text-[14px] text-slate-400 font-medium tracking-normal">Sin datos</span>}
@@ -372,10 +402,10 @@ export default function PreciosProductorPage() {
           </div>
           <div>
             <p className="font-bold text-slate-900 text-[14px] tracking-tight">
-              Precio de venta
+              ¿Te conviene el precio?
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5 font-medium leading-relaxed">
-              Neto resultante al restar el margen a la compra.
+              Comparamos lo que te ofrece la bodega contra la referencia internacional.
             </p>
           </div>
         </div>
@@ -383,7 +413,7 @@ export default function PreciosProductorPage() {
         <div className="px-4 pb-4">
           <div className="bg-[#eef8f2] rounded-2xl p-4 mb-4 border border-slate-100 shadow-sm">
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-3">
-              Versión 1 — Productor con servicios
+              Comparación
             </p>
             <div className="space-y-2 mb-3">
               <div className="flex items-center justify-between text-[13px]">
@@ -407,7 +437,7 @@ export default function PreciosProductorPage() {
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
                 <span className="font-black text-slate-900 flex items-center gap-2 text-[14px]">
-                  <Award size={16} className="text-amber-500"/> Diferencial de venta
+                  <Award size={16} className="text-amber-500"/> Diferencia contra la referencia
                 </span>
                 <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-slate-100 w-fit">
                   <span className={`text-[18px] sm:text-[20px] font-black tracking-tight leading-none
@@ -434,7 +464,7 @@ export default function PreciosProductorPage() {
             {precioVenta != null && !esFavorable && (
               <div className="flex items-start gap-2 text-[11px] text-rose-700 bg-rose-50 border border-rose-200/60 rounded-xl p-3 font-medium mt-3 shadow-sm">
                 <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                <p>Alerta: El precio de compra actual se encuentra por debajo del margen de negociación sugerido.</p>
+                <p>El precio que te ofrece la bodega está por debajo de la referencia internacional — tienes espacio para pedir un precio más alto.</p>
               </div>
             )}
           </div>
@@ -442,14 +472,14 @@ export default function PreciosProductorPage() {
           <div className="border border-dashed border-slate-200 rounded-2xl p-4 bg-[#eef8f2]/50">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
               <p className="text-[12px] font-bold text-slate-600">
-                Versión 2 — Precio CEDIS
+                Otra forma de calcularlo (Centrales de Abasto)
               </p>
               <span className="bg-amber-100 text-amber-800 text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-md w-fit">
                 En desarrollo
               </span>
             </div>
             <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-              Precio en Centrales de Abasto menos el Margen de Negociación. 
+              Usa el precio del maíz en Centrales de Abasto en vez del precio internacional.
               Se habilitará cuando el administrador configure los módulos.
             </p>
           </div>

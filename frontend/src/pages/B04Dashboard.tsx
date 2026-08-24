@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, FileText, Package, Tag, Eye, PenLine, ChevronRight, Warehouse, Activity, BadgeCheck, Factory, Sun, Sunset, Moon } from 'lucide-react';
+import { FileText, Package, Tag, Eye, PenLine, ChevronRight, Warehouse, Activity, BadgeCheck, Factory, Sun, Sunset, Moon } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import BannerCanvas from '../components/BannerCanvas';
 import { useAuthStore } from '../store/auth';
@@ -171,41 +171,11 @@ export default function B04Dashboard() {
             )}
 
             {/* KPIs: 2 cols mobile → 4 cols desktop */}
+            {/* Se retiró la tarjeta "Precio promedio de maíz al productor hoy": mostraba
+                el precio propio comparado contra el promedio regional entre bodegas, lo
+                cual facilita que las bodegas alineen o anticipen precios entre sí — señalado
+                explícitamente por COFECE. Ver plan de rediseño (Fase 0, punto 1). */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <KPICard
-                title="Precio promedio de maíz al productor hoy"
-                value={stats.precio_promedio_regional ? `$${formatNum(stats.precio_promedio_regional, 2)}` : (stats.ultimo_precio ? `$${formatNum(stats.ultimo_precio, 2)}` : '—')}
-                subtitle={(() => {
-                  const miPrecio = stats.ultimo_precio || 0;
-                  const promedio = stats.precio_promedio_regional || 0;
-                  const bodegas = stats.bodegas_en_calculo || 0;
-                  const base = promedio && bodegas >= 3
-                    ? `MXN/ton · promedio regional · ${bodegas} bodegas`
-                    : bodegas > 0 && bodegas < 3
-                      ? 'Sin suficientes datos regionales'
-                      : 'MXN/ton · último publicado';
-
-                  if (bodegas < 3 || promedio === 0) {
-                    return <>{base}<p className="text-[10px] text-gray-400 mt-0.5">Sin suficientes datos regionales hoy</p></>;
-                  }
-                  if (miPrecio === 0) {
-                    return <>{base}<p className="text-[10px] text-gray-400 mt-0.5">Sin precio publicado hoy</p></>;
-                  }
-                  const diferencia = miPrecio - promedio;
-                  const esArriba = diferencia >= 0;
-                  return (
-                    <>
-                      {base}
-                      <p className={`text-[10px] font-medium mt-0.5 ${esArriba ? 'text-green-600' : 'text-red-500'}`}>
-                        {esArriba ? '↑' : '↓'} Tu precio está ${formatNum(Math.abs(diferencia), 0)} {esArriba ? 'por encima' : 'por debajo'} del promedio regional
-                      </p>
-                    </>
-                  );
-                })()}
-                icon={<DollarSign size={18} />}
-                color="green"
-                onClick={() => navigate('/precio-diario')}
-              />
               {stats.tiene_ventanilla ? (
                 <KPICard
                   title="Solicitudes a ventanillas"

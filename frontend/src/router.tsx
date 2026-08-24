@@ -121,6 +121,18 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return <RequireBodeguero><Layout>{children}</Layout></RequireBodeguero>;
 }
 
+// Bloquea "Precios de mercado" para bodegas incluso por URL directa (no basta
+// con quitar el enlace del menú "Más"): mostraba el precio promedio entre
+// bodegas competidoras, lo cual facilita que se alineen o anticipen precios
+// entre sí — señalado por COFECE. Redirige a /dashboard en vez de a
+// /admin/login (el usuario ya está autenticado como bodeguero, no tiene
+// sentido mandarlo al login de admin). Ver plan de rediseño (Fase 0, punto 2).
+function BloquearPreciosMercadoParaBodega({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore();
+  if (!isAdminPanelUser(user)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
@@ -259,7 +271,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/precios-mercado',
-    element: <ProtectedLayout><B22PreciosMercado /></ProtectedLayout>,
+    element: <RequireAuth><BloquearPreciosMercadoParaBodega><B22PreciosMercado /></BloquearPreciosMercadoParaBodega></RequireAuth>,
   },
   {
     path: '/notificaciones',

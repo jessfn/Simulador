@@ -458,21 +458,16 @@ router.get('/brechas/estados', authMiddleware, async (req: AuthRequest, res: Res
       else if (brecha < -500) nivel = 'ALTA';
       else if (brecha < -100) nivel = 'MEDIA';
       else nivel = 'BAJA';
-      return { estado: row.estado, brecha, nivel_criticidad: nivel, txns: parseInt(row.txns) };
+      return { estado: row.estado, po_real: poReal, brecha, nivel_criticidad: nivel, txns: parseInt(row.txns) };
     });
 
-    // Si no hay datos, usar datos ilustrativos del mockup
+    // Sin datos reales suficientes: nunca servir números inventados como si
+    // fueran reales (antes se devolvía aquí un dataset "ilustrativo" del
+    // mockup original, indistinguible de datos reales para quien consume
+    // este endpoint). Se devuelve la lista vacía con un aviso explícito en
+    // su lugar. Ver plan de rediseño (Fase 0, punto 5).
     if (brechas.length === 0) {
-      res.json({
-        brechas: [
-          { estado: 'Michoacán',  brecha: -1853, nivel_criticidad: 'CRITICA', txns: 45 },
-          { estado: 'Guanajuato', brecha: -1481, nivel_criticidad: 'CRITICA', txns: 62 },
-          { estado: 'Jalisco',    brecha: -803,  nivel_criticidad: 'ALTA',    txns: 38 },
-          { estado: 'Sinaloa',    brecha: -738,  nivel_criticidad: 'ALTA',    txns: 29 },
-          { estado: 'Querétaro',  brecha: -320,  nivel_criticidad: 'MEDIA',   txns: 15 },
-          { estado: 'Colima',     brecha: -198,  nivel_criticidad: 'BAJA',    txns: 11 },
-        ],
-      });
+      res.json({ brechas: [], aviso: 'Sin datos suficientes para calcular brechas por estado en los últimos 7 días' });
       return;
     }
 

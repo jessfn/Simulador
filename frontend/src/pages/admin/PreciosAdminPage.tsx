@@ -30,6 +30,7 @@ interface Discrepancia {
 
 interface Brecha {
   estado: string;
+  po_real: number;
   brecha: number;
   nivel_criticidad: string;
   txns: number;
@@ -110,20 +111,41 @@ export default function PreciosAdminPage() {
         }
       }
 
-      // 3. Cargar bodegas hoy
-      const resBodegas = await fetch(`${BASE}/bodegas`, { headers: HDR() });
-      if (resBodegas.ok) {
+      // 3. Cargar bodegas con precio REAL publicado hoy (antes se fabricaba un
+      // precio/hora/desviación con aritmética basada en el id cuando no
+      // existía "precio_hoy" en /api/bodegas — que nunca existe ahí, así que
+      // esta tabla mostraba 100% datos inventados siempre. Ahora se usan los
+      // registros reales de la tabla `precios` (tipo_precio='bodega', fecha
+      // de hoy) — si ninguna bodega publicó hoy, la tabla queda vacía en vez
+      // de simular actividad que no ocurrió. Ver plan de rediseño (Fase 0,
+      // punto 5, aplicado también aquí por ser el mismo problema).
+      const hoyISO = new Date().toISOString().slice(0, 10);
+      const [resBodegas, resPreciosHoy] = await Promise.all([
+        fetch(`${BASE}/bodegas`, { headers: HDR() }),
+        fetch(`${BASE}/precios?tipo_precio=bodega&fecha_inicio=${hoyISO}&fecha_fin=${hoyISO}`, { headers: HDR() }),
+      ]);
+      if (resBodegas.ok && resPreciosHoy.ok) {
         const bd = await resBodegas.json();
-        // Filtrar bodegas con precio publicado hoy
-        const publicadas = (bd.bodegas || bd || []).map((b: any) => ({
-          nombre: b.nombre,
-          municipio: b.municipio,
-          estado: b.estado,
-          precio: b.precio_hoy || 4680 + (b.id % 2 === 0 ? 50 : -30),
-          tipo_maiz: 'Maíz Blanco',
-          hora: '09:30',
-          desviacion: b.id % 2 === 0 ? 1.1 : -0.6
-        }));
+        const pr = await resPreciosHoy.json();
+        const bodegasPorId = new Map((bd.bodegas || bd || []).map((b: any) => [b.id, b]));
+        const preciosDelDia: any[] = pr.precios || [];
+        const promedioHoy = preciosDelDia.length > 0
+          ? preciosDelDia.reduce((sum, p) => sum + Number(p.precio), 0) / preciosDelDia.length
+          : 0;
+        const publicadas = preciosDelDia.map((p: any) => {
+          const b: any = bodegasPorId.get(p.bodega_id) || {};
+          const desviacion = promedioHoy > 0
+            ? Math.round(((Number(p.precio) - promedioHoy) / promedioHoy) * 1000) / 10
+            : 0;
+          return {
+            nombre: b.nombre || 'Bodega',
+            municipio: p.municipio || b.municipio,
+            estado: p.estado || b.estado,
+            precio: Number(p.precio),
+            tipo_maiz: p.tipo_maiz || '—',
+            desviacion,
+          };
+        });
         setBodegasHoy(publicadas.slice(0, 5));
       }
 
@@ -456,6 +478,9 @@ export default function PreciosAdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-gray-700">
+                  {bodegasHoy.length === 0 && (
+                    <tr><td colSpan={5} className="py-6 text-center text-gray-400">Ninguna bodega ha publicado su precio hoy todavía</td></tr>
+                  )}
                   {bodegasHoy.map((b, idx) => (
                     <tr key={idx} className="hover:bg-[#eef8f2]">
                       <td className="py-3 font-bold text-gray-900">{b.nombre}</td>
@@ -606,10 +631,13 @@ export default function PreciosAdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-700">
+              {brechas.length === 0 && (
+                <tr><td colSpan={6} className="py-6 text-center text-gray-400">Sin datos suficientes para calcular brechas por estado en los últimos 7 días</td></tr>
+              )}
               {brechas.map((br, idx) => (
                 <tr key={idx} className="hover:bg-[#eef8f2]">
                   <td className="py-3 font-bold text-gray-900">{br.estado}</td>
-                  <td className="py-3 font-bold">${((preciosHoy?.po ?? 0) + (idx % 2 === 0 ? 50 : -20)).toLocaleString()}</td>
+                  <td className="py-3 font-bold">{fmt(br.po_real)}</td>
                   <td className="py-3 font-bold">{fmt(preciosHoy?.precio_venta ?? 0)}</td>
                   <td className="py-3 text-red-600 font-black">{fmt(br.brecha)} MXN/t</td>
                   <td className="py-3">

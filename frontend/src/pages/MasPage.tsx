@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Receipt, Tag, Store, FileText, Warehouse, TrendingUp, UserCircle2 } from 'lucide-react';
+import { ChevronRight, Receipt, Tag, Store, FileText, Warehouse, UserCircle2 } from 'lucide-react';
 import { api } from '../services/api';
 
+// Se retiró el acceso a "Precios de mercado" (/precios-mercado) para bodegas:
+// exponía el precio promedio entre bodegas competidoras, lo cual facilita que
+// se alineen o anticipen precios entre sí — señalado por COFECE. La página
+// sigue existiendo para admin/gobierno, solo se quitó el acceso desde aquí.
+// Ver plan de rediseño (Fase 0, punto 2).
 const ACCIONES = [
   { icon: UserCircle2, label: 'Mi perfil',                    desc: 'Ver y editar tu cuenta',          path: '/perfil',         iconBg: 'bg-[#1A5C38]/[0.08]', iconColor: 'text-[#1A5C38]', primary: true },
   { icon: Tag,         label: 'Publicar precio del día',       desc: 'Precio diario al productor',      path: '/precio-diario',  iconBg: 'bg-emerald-50',        iconColor: 'text-emerald-600' },
@@ -10,7 +15,6 @@ const ACCIONES = [
   { icon: Store,       label: 'Tarifario de servicios',        desc: 'Precios de servicios',            path: '/tarifario',      iconBg: 'bg-purple-50',         iconColor: 'text-purple-600' },
   { icon: Warehouse,   label: 'Mis ventanillas',               desc: null,                              path: '/ventanillas',    iconBg: 'bg-orange-50',         iconColor: 'text-orange-500' },
   { icon: FileText,    label: 'Requerimientos de maíz',        desc: 'Notifica a productores',          path: '/senales/nueva',  iconBg: 'bg-cyan-50',           iconColor: 'text-cyan-600' },
-  { icon: TrendingUp,  label: 'Precios de mercado',            desc: 'Bodega vs gobierno vs mercado',   path: '/precios-mercado',iconBg: 'bg-indigo-50',         iconColor: 'text-indigo-600' },
 ];
 
 export default function MasPage() {
