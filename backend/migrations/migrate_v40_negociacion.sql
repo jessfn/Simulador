@@ -10,6 +10,17 @@
 -- No reemplaza disponibilidad_productor ni senales_compra — ambas tablas
 -- siguen funcionando exactamente igual. Este es un tercer objeto nuevo.
 
+-- disponibilidad_productor.id nunca tuvo PRIMARY KEY (solo era una columna
+-- SERIAL sin constraint) — se necesita para poder referenciarla con FK.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conrelid = 'disponibilidad_productor'::regclass AND contype = 'p'
+  ) THEN
+    ALTER TABLE disponibilidad_productor ADD PRIMARY KEY (id);
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS propuestas_negociacion (
   id SERIAL PRIMARY KEY,
   disponibilidad_id INT NOT NULL REFERENCES disponibilidad_productor(id),
