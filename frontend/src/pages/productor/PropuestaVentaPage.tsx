@@ -41,6 +41,7 @@ export default function PropuestaVentaPage() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paso, setPaso] = useState<Paso>('cargando');
+  const [publicarNegociacion, setPublicarNegociacion] = useState(true);
 
   useEffect(() => {
     const cargar = async () => {
@@ -97,6 +98,10 @@ export default function PropuestaVentaPage() {
     if (!volumen || Number(volumen) <= 0) { setError('Ingresa las toneladas que ofreces.'); return; }
     if (!fechaDesde || !fechaHasta) { setError('Selecciona el período de disponibilidad.'); return; }
     if (!upSeleccionada || !cicloSeleccionado) { setError('Error: no hay UP o ciclo seleccionado.'); return; }
+    if (publicarNegociacion && (!precioMinimo || Number(precioMinimo) <= 0)) {
+      setError('Para publicar como negociación abierta necesitas indicar un precio por tonelada.');
+      return;
+    }
 
     setEnviando(true);
     setError(null);
@@ -121,7 +126,29 @@ export default function PropuestaVentaPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Error al publicar la propuesta.'); return; }
-      navigate('/productor', { state: { mensaje: '¡Propuesta de venta publicada!' } });
+
+      let mensaje = '¡Propuesta de venta publicada!';
+      if (publicarNegociacion && data?.id) {
+        try {
+          const resProp = await fetch(`${BASE}/propuestas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              disponibilidad_id: data.id,
+              precio_solicitado_ton: Number(precioMinimo),
+              volumen_ton: Number(volumen),
+              vigencia_hasta: fechaHasta,
+            }),
+          });
+          const propData = await resProp.json();
+          if (resProp.ok && propData?.alerta) {
+            mensaje = 'Publicado. Tu precio está por debajo de la referencia de mercado — aun así, las bodegas ya pueden verlo y ofertar.';
+          } else if (resProp.ok) {
+            mensaje = '¡Listo! Las bodegas ya pueden ver tu propuesta y mandarte ofertas.';
+          }
+        } catch { /* la disponibilidad ya se publicó; la negociación es best-effort */ }
+      }
+      navigate('/productor', { state: { mensaje } });
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
@@ -242,6 +269,18 @@ export default function PropuestaVentaPage() {
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">MXN/ton</span>
               </div>
               <p className="text-xs text-gray-400 mt-1.5">Las bodegas verán este precio como punto de partida para negociar.</p>
+
+              <label className="flex items-start gap-3 mt-4 pt-4 border-t border-gray-100 cursor-pointer">
+                <input type="checkbox" checked={publicarNegociacion}
+                  onChange={e => setPublicarNegociacion(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-[#1A5C38]" />
+                <span className="text-sm text-gray-700">
+                  <span className="font-medium">Publicar como negociación abierta a bodegas</span>
+                  <span className="block text-xs text-gray-400 mt-0.5">
+                    Las bodegas cercanas podrán mandarte ofertas por este precio o mejor. Tú decides cuál aceptar desde "Mis propuestas". Recomendado.
+                  </span>
+                </span>
+              </label>
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">

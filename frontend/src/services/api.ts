@@ -201,6 +201,23 @@ export const api = {
   precios: {
     dashboard: () => request('/precios/dashboard'),
   },
+  propuestas: {
+    mias: () => request('/propuestas/mias'),
+    create: (data: any) => request('/propuestas', { method: 'POST', body: JSON.stringify(data) }),
+    cancel: (id: number) => request(`/propuestas/${id}`, { method: 'DELETE' }),
+    disponibles: (params?: { bodega_id?: number; tipo_maiz?: string; volumen_min?: number; radio_km?: number }) => {
+      const qs = new URLSearchParams(params as any).toString();
+      return request(`/propuestas/disponibles${qs ? '?' + qs : ''}`);
+    },
+    ofertas: (id: number | string) => request(`/propuestas/${id}/ofertas`),
+    miOferta: (id: number | string) => request(`/propuestas/${id}/mi-oferta`),
+    ofertar: (id: number | string, data: any) =>
+      request(`/propuestas/${id}/ofertas`, { method: 'POST', body: JSON.stringify(data) }),
+    retirarOferta: (id: number | string, ofertaId: number | string) =>
+      request(`/propuestas/${id}/ofertas/${ofertaId}`, { method: 'DELETE' }),
+    aceptar: (id: number | string, oferta_id: number) =>
+      request(`/propuestas/${id}/aceptar`, { method: 'POST', body: JSON.stringify({ oferta_id }) }),
+  },
   home: {
     stats: () => request('/home/stats'),
   },

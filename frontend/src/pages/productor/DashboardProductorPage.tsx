@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, ChevronRight, Wheat, AlertTriangle, ArrowUpRight, ArrowDownRight, BadgeCheck, CalendarCheck } from 'lucide-react';
+import { MapPin, ChevronRight, Wheat, AlertTriangle, ArrowUpRight, ArrowDownRight, BadgeCheck, CalendarCheck, Handshake } from 'lucide-react';
 import { formatNum } from '../../utils/format';
 import { useAuthStore } from '../../store/auth';
 import HistorialVentasSection from './HistorialVentasSection';
@@ -321,6 +321,14 @@ export default function DashboardProductorPage() {
           >
             <Wheat size={24} />
             Propuesta de venta
+          </button>
+          <button
+            onClick={() => navigate('/productor/mis-propuestas')}
+            className="w-full mt-3 py-3.5 rounded-2xl text-[#1A5C38] text-sm font-semibold
+              ring-2 ring-[#1A5C38] flex items-center justify-center gap-2 hover:bg-emerald-50 active:scale-[0.98] transition-all duration-200"
+          >
+            <Handshake size={18} />
+            Mis propuestas y ofertas
           </button>
           {!isPendiente && (
             <button

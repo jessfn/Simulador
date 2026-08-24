@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Receipt, Tag, Store, FileText, Warehouse, UserCircle2 } from 'lucide-react';
+import { ChevronRight, Receipt, Tag, Store, FileText, Warehouse, UserCircle2, Handshake } from 'lucide-react';
 import { api } from '../services/api';
 
 // Se retiró el acceso a "Precios de mercado" (/precios-mercado) para bodegas:
@@ -15,6 +15,7 @@ const ACCIONES = [
   { icon: Store,       label: 'Tarifario de servicios',        desc: 'Precios de servicios',            path: '/tarifario',      iconBg: 'bg-purple-50',         iconColor: 'text-purple-600' },
   { icon: Warehouse,   label: 'Mis ventanillas',               desc: null,                              path: '/ventanillas',    iconBg: 'bg-orange-50',         iconColor: 'text-orange-500' },
   { icon: FileText,    label: 'Requerimientos de maíz',        desc: 'Notifica a productores',          path: '/senales/nueva',  iconBg: 'bg-cyan-50',           iconColor: 'text-cyan-600' },
+  { icon: Handshake,   label: 'Propuestas disponibles',        desc: 'Oferta por maíz publicado',       path: '/propuestas-disponibles', iconBg: 'bg-lime-50',   iconColor: 'text-lime-600' },
 ];
 
 export default function MasPage() {

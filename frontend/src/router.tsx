@@ -26,6 +26,7 @@ import CompletarUbicacionPage from './pages/productor/CompletarUbicacionPage';
 import CicloProductivoPage from './pages/productor/CicloProductivoPage';
 import PreciosProductorPage from './pages/productor/PreciosProductorPage';
 import PropuestaVentaPage from './pages/productor/PropuestaVentaPage';
+import MisPropuestasPage from './pages/productor/MisPropuestasPage';
 import AgregarUPPage from './pages/productor/AgregarUPPage';
 import ConfirmarTransaccionPage from './pages/productor/ConfirmarTransaccionPage';
 import AlertasPage from './pages/productor/AlertasPage';
@@ -41,6 +42,7 @@ import B07Inventario from './pages/B07Inventario';
 import B08Semaforo from './pages/B08Semaforo';
 import B09PrecioCompra from './pages/B09PrecioCompra';
 import B10Requerimiento from './pages/B10Requerimiento';
+import B31PropuestasDisponibles from './pages/B31PropuestasDisponibles';
 import B11OfertaTabla from './pages/B11OfertaTabla';
 import B13Transaccion from './pages/B13Transaccion';
 import B14HistorialTransacciones from './pages/B14HistorialTransacciones';
@@ -222,6 +224,10 @@ export const router = createBrowserRouter([
     element: <ProtectedLayout><B11OfertaTabla /></ProtectedLayout>,
   },
   {
+    path: '/propuestas-disponibles',
+    element: <ProtectedLayout><B31PropuestasDisponibles /></ProtectedLayout>,
+  },
+  {
     path: '/oferta/mis-intereses',
     element: <ProtectedLayout><B30MisInteresesOferta /></ProtectedLayout>,
   },
@@ -308,6 +314,7 @@ export const router = createBrowserRouter([
       { path: 'ciclo', element: <CicloProductivoPage /> },
       { path: 'precios', element: <PreciosProductorPage /> },
       { path: 'propuesta-venta', element: <PropuestaVentaPage /> },
+      { path: 'mis-propuestas', element: <MisPropuestasPage /> },
       { path: 'ups/nueva', element: <AgregarUPPage /> },
       { path: 'transaccion/:id/confirmar', element: <ConfirmarTransaccionPage /> },
       { path: 'alertas', element: <AlertasPage /> },
