@@ -148,7 +148,7 @@ export default function MisPropuestasPage() {
                   {p.precio_referencia_ton != null && (
                     <p className="text-xs text-gray-400 mt-0.5">Referencia de mercado: ${formatNum(p.precio_referencia_ton)}/ton</p>
                   )}
-                  <p className="text-xs text-gray-400 mt-1">Vigente hasta {new Date(p.vigencia_hasta + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-xs text-gray-400 mt-1">Vigente hasta {new Date(p.vigencia_hasta).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                 </div>
                 {p.estatus === 'abierta' && (
                   <div className="text-right shrink-0">

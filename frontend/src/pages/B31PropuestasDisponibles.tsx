@@ -229,7 +229,7 @@ export default function B31PropuestasDisponibles() {
                       {p.distancia_km != null && ` · ${formatNum(p.distancia_km, 0)} km`}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {p.volumen_ton} ton · vigente hasta {new Date(p.vigencia_hasta + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                      {p.volumen_ton} ton · vigente hasta {new Date(p.vigencia_hasta).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                     </p>
                     {(p.humedad_pct != null || p.impurezas_pct != null || p.grano_quebrado_pct != null) && (
                       <p className="text-xs text-gray-400 mt-0.5">
