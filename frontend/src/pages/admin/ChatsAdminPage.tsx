@@ -112,6 +112,11 @@ export default function ChatsAdminPage() {
   const idsVistos = useRef<Set<number>>(new Set());
   const escribiendoTimeouts = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const ultimoEnvioEscribiendo = useRef(0);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  function ajustarAlturaTextarea(el: HTMLTextAreaElement) {
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
 
   async function cargarLista() {
     setLoading(true);
@@ -276,6 +281,7 @@ export default function ChatsAdminPage() {
           setMensajes(prev => [...prev, d.mensaje]);
         }
         setTexto('');
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
         playSentSound();
         cargarLista();
         setSeleccionada(s => s ? { ...s, bot_activo: false } : s);
@@ -464,7 +470,7 @@ export default function ChatsAdminPage() {
                           <LocationPreview lat={m.lat} lng={m.lng} enVivo={m.tipo === 'ubicacion_vivo'} activoHasta={m.activo_hasta} />
                         )}
                         {m.contenido && (
-                          <div className={`text-[13px] leading-[1.5] ${esBot ? 'text-slate-800' : alinearDerecha ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
+                          <div className={`text-[13px] leading-[1.5] whitespace-pre-wrap break-words ${esBot ? 'text-slate-800' : alinearDerecha ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
                         )}
                         {!esSoloImagen && (
                           <div className={`flex items-center justify-end gap-1 mt-1 ${alinearDerecha ? 'text-white/65' : 'text-slate-300'}`}>
@@ -515,12 +521,16 @@ export default function ChatsAdminPage() {
                     <input ref={fileImgRef} type="file" accept="image/*" className="hidden" onChange={onArchivo} />
                     <input ref={fileDocRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={onArchivo} />
                   </div>
-                  <input
+                  <textarea
+                    ref={textareaRef}
                     value={texto}
-                    onChange={e => onCambiarTexto(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') enviar(); }}
-                    placeholder={`Responder a ${seleccionada.nombre_completo?.split(' ')[0] || 'usuario'}…`}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-[12.5px] outline-none focus:border-[#1A5C38]/40"
+                    onChange={e => { onCambiarTexto(e.target.value); ajustarAlturaTextarea(e.target); }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); enviar(); }
+                    }}
+                    placeholder={`Responder a ${seleccionada.nombre_completo?.split(' ')[0] || 'usuario'}… (Ctrl+Enter para enviar)`}
+                    rows={1}
+                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-[12.5px] outline-none focus:border-[#1A5C38]/40 resize-none max-h-32 overflow-y-auto leading-[1.4]"
                   />
                   <button onClick={() => enviar()} disabled={enviando || !texto.trim()}
                     className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1f7a49] to-[#123f27] flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 active:scale-95 transition-transform">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { usePermisosSSE } from '../../hooks/usePermisosSSE';
@@ -10,7 +10,7 @@ import {
   Sprout, BarChart3, Settings, Leaf, KeyRound, CircleUserRound, Layers,
   MessageCircle,
 } from 'lucide-react';
-import { apiFetch } from '../../services/api';
+import { apiFetch, BASE } from '../../services/api';
 
 interface SidebarItem {
   label: string;
@@ -53,8 +53,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // admin y responsable tienen permisos totales; OREF carga sus permisos individuales
   usePermisosSSE(user?.userId, esAdminOResponsable);
 
-  // Badge de conversaciones de soporte sin leer en el ítem "Chats de Ayuda"
+  // Badge de conversaciones de soporte sin leer en el ítem "Chats de Ayuda".
+  // Reactivo en vivo via SSE (no solo un polling cada rato) — se actualiza
+  // en cuanto llega un mensaje nuevo aunque el admin esté en otra pantalla.
   const [chatsNoLeidos, setChatsNoLeidos] = useState(0);
+  const chatsSseRef = useRef<EventSource | null>(null);
   useEffect(() => {
     if (!puedeVerVista('chats_ayuda')) return;
     const cargar = () => {
@@ -64,8 +67,22 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       }).catch(() => {});
     };
     cargar();
+
+    const token = localStorage.getItem('simac_token');
+    if (!token) return;
+    const es = new EventSource(`${BASE}/admin/chats/stream?token=${encodeURIComponent(token)}`);
+    chatsSseRef.current = es;
+    es.onmessage = (e) => {
+      try {
+        const { tipo } = JSON.parse(e.data);
+        if (tipo === 'mensaje' || tipo === 'leido') cargar();
+      } catch { /* ignore */ }
+    };
+    es.onerror = () => es.close();
+
+    // Respaldo por si la conexión SSE se cae silenciosamente.
     const interval = setInterval(cargar, 30000);
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); es.close(); chatsSseRef.current = null; };
   }, [puedeVerVista]);
 
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);

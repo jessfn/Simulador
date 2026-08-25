@@ -86,6 +86,11 @@ export default function ChatBubble() {
   const [adminEscribiendo, setAdminEscribiendo] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<{ url: string; esMio: boolean; fecha: string; caption: string | null } | null>(null);
   const [ubicacionSheet, setUbicacionSheet] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  function ajustarAlturaTextarea(el: HTMLTextAreaElement) {
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
   // ── Vista previa de imágenes antes de enviar (estilo WhatsApp) ──
   // Se seleccionan una o varias imágenes, se pueden quitar antes de
   // mandar, y se puede escribir un mensaje junto a ellas — nada se
@@ -370,6 +375,7 @@ export default function ChatBubble() {
         idsVistos.current.add(d.mensaje.id);
         setMensajes(prev => [...prev, d.mensaje]);
         setTexto('');
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
         playSentSound();
       }
     } catch { /* ignore — el guard global ya avisa si es problema de conexión */ }
@@ -742,7 +748,7 @@ export default function ChatBubble() {
                             puedeDetener={esMio && compartiendoEnVivo === m.id} onDetener={() => detenerUbicacionEnVivo(m.id)} />
                         )}
                         {m.contenido && (
-                          <div className={`text-[13px] leading-[1.45] ${esMio ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
+                          <div className={`text-[13px] leading-[1.45] whitespace-pre-wrap break-words ${esMio ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
                         )}
                         {!esSoloImagen && (
                           <div className={`flex items-center justify-end gap-1 mt-1 ${esMio ? 'text-white/65' : 'text-slate-300'}`}>
@@ -806,14 +812,18 @@ export default function ChatBubble() {
             ) : (
               <>
                 <div className="flex items-end gap-1.5">
-                  <button onClick={() => setShowEmoji(v => !v)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><Smile size={21} /></button>
-                  <div className="flex-1 flex items-center gap-0.5 bg-slate-100 rounded-full pl-3.5 pr-1 py-1">
-                    <input
+                  <button onClick={() => setShowEmoji(v => !v)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform mb-1"><Smile size={21} /></button>
+                  <div className="flex-1 flex items-end gap-0.5 bg-slate-100 rounded-[22px] pl-3.5 pr-1 py-1">
+                    <textarea
+                      ref={textareaRef}
                       value={texto}
-                      onChange={e => onCambiarTexto(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') enviar(); }}
+                      onChange={e => { onCambiarTexto(e.target.value); ajustarAlturaTextarea(e.target); }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); enviar(); }
+                      }}
                       placeholder="Escribe un mensaje…"
-                      className="flex-1 min-w-0 bg-transparent text-[13px] outline-none py-1"
+                      rows={1}
+                      className="flex-1 min-w-0 bg-transparent text-[13px] outline-none py-1 resize-none max-h-28 overflow-y-auto leading-[1.4]"
                     />
                     <button onClick={() => abrirSelectorArchivo('image/*', true, onImagenesSeleccionadas)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><ImageIcon size={18} /></button>
                     <button onClick={() => abrirSelectorArchivo('.pdf,.doc,.docx,.xls,.xlsx', false, onArchivo)} className="flex-shrink-0 p-1.5 text-slate-500 active:scale-90 transition-transform"><Paperclip size={18} /></button>
