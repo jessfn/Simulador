@@ -437,8 +437,8 @@ adminChatRouter.patch('/:id/resolver', authMiddleware, responderChats, async (re
     // Al resolver, se reactiva el asistente automático para el próximo mensaje
     // del usuario — es un ciclo nuevo, no una conversación en curso con un admin.
     await pool.query(
-      `UPDATE chat_conversaciones SET estatus = $2, bot_activo = ($2 = 'resuelta') WHERE id = $1`,
-      [req.params.id, nuevoEstatus]
+      `UPDATE chat_conversaciones SET estatus = $2, bot_activo = $3 WHERE id = $1`,
+      [req.params.id, nuevoEstatus, nuevoEstatus === 'resuelta']
     );
     res.json({ ok: true });
   } catch {
