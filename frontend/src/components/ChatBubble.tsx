@@ -751,7 +751,7 @@ export default function ChatBubble() {
                           <div className={`text-[13px] leading-[1.45] whitespace-pre-wrap break-words ${esMio ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
                         )}
                         {!esSoloImagen && (
-                          <div className={`flex items-center justify-end gap-1 mt-1 ${esMio ? 'text-white/65' : esBot ? 'text-indigo-400' : 'text-slate-400'}`}>
+                          <div className={`flex items-center justify-end gap-1 mt-1 ${esMio ? 'text-white/65' : 'text-slate-400'}`}>
                             <span className="text-[9px]">{fmtHora(m.created_at)}</span>
                             {esMio && <Ticks dobles leido={leido} />}
                           </div>
