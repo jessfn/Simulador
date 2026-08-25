@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MessageCircle, X, Smile, Image as ImageIcon, Mic, Paperclip,
-  MapPin, ChevronLeft, Trash2, Navigation,
+  MapPin, ChevronLeft, Trash2, Navigation, Sparkles,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { apiFetch, BASE } from '../services/api';
@@ -690,6 +690,7 @@ export default function ChatBubble() {
             )}
             {mensajes.map((m, idx) => {
               const esMio = m.autor_id === user?.userId;
+              const esBot = m.autor_rol === 'bot';
               const leido = esMio && !!adminLeidoHasta && new Date(m.created_at) <= new Date(adminLeidoHasta);
               const mostrarDivisor = divisorNoLeidos > 0 && divisorIndiceRef.current !== null && idx === divisorIndiceRef.current;
               return (
@@ -706,10 +707,15 @@ export default function ChatBubble() {
                   const esSoloImagen = m.tipo === 'imagen' && !!m.archivo_url && !m.contenido;
                   return (
                     <div style={bubbleShadow} className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
+                      {esBot && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 mb-0.5 ml-1">
+                          <Sparkles size={11} /> Asistente SIMAC
+                        </span>
+                      )}
                       <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
-                        esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
+                        esMio ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : esBot ? 'bg-indigo-50 ring-1 ring-indigo-100' : 'bg-white'
                       }`}>
-                        <Tail esMio={esMio} color={esMio ? '#17603a' : '#ffffff'} />
+                        <Tail esMio={esMio} color={esMio ? '#17603a' : esBot ? '#eef2ff' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
                             <img src={url} onClick={() => setLightboxImg({ url, esMio, fecha: m.created_at, caption: m.contenido })} className="rounded-[10px] max-w-[220px] block cursor-pointer" />

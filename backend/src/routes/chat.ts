@@ -8,6 +8,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { checkPermiso } from './admin-permisos';
 import { JwtPayload } from '../types';
 import { notificar } from '../utils/notificacion';
+import { generarRespuestaBot, obtenerBotUserId } from '../services/chatBotService';
 
 const verChats = checkPermiso('chats_ayuda', 'ver');
 const responderChats = checkPermiso('chats_ayuda', 'responder');
@@ -201,6 +202,31 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
     }
 
     res.json({ mensaje: msg.rows[0] });
+
+    // Asistente automático (best-effort, nunca bloquea ni retrasa la respuesta
+    // al usuario): solo para mensajes de texto de productor/bodeguero, y solo
+    // si un admin no ha tomado ya la conversación (conv.bot_activo).
+    if (tipo === 'texto' && contenido?.trim() && conv.bot_activo && ['productor', 'bodeguero'].includes(rolUsuario)) {
+      generarRespuestaBot({ usuarioId, rol: rolUsuario, mensaje: contenido.trim() })
+        .then(async (respuesta) => {
+          if (!respuesta) return;
+          const botUserId = await obtenerBotUserId();
+          if (!botUserId) return;
+
+          const botMsg = await pool.query(
+            `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido)
+             VALUES ($1,$2,'bot','texto',$3) RETURNING *`,
+            [conv.id, botUserId, respuesta.respuesta]
+          );
+          await pool.query(
+            `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_usuario = no_leidos_usuario + 1 WHERE id = $1`,
+            [conv.id]
+          );
+          emitirAUsuario(usuarioId, { tipo: 'mensaje', conversacionId: conv.id, mensaje: botMsg.rows[0] });
+          emitirAAdmins({ tipo: 'mensaje', conversacionId: conv.id, mensaje: botMsg.rows[0] });
+        })
+        .catch(err => console.error('[chat bot] Error en respuesta automática:', err));
+    }
   } catch (err: any) {
     console.error('POST /chat/mensaje:', err);
     res.status(500).json({ error: err?.message || 'Error al enviar el mensaje' });
@@ -350,7 +376,7 @@ adminChatRouter.post('/:id/mensaje', authMiddleware, responderChats, upload.sing
     );
 
     await pool.query(
-      `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_usuario = no_leidos_usuario + 1 WHERE id = $1`,
+      `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_usuario = no_leidos_usuario + 1, bot_activo = FALSE WHERE id = $1`,
       [convId]
     );
 
@@ -407,9 +433,12 @@ adminChatRouter.patch('/:id/leido', authMiddleware, verChats, async (req: AuthRe
 adminChatRouter.patch('/:id/resolver', authMiddleware, responderChats, async (req: AuthRequest, res: Response) => {
   try {
     const { estatus } = req.body as { estatus?: string };
+    const nuevoEstatus = estatus === 'abierta' ? 'abierta' : 'resuelta';
+    // Al resolver, se reactiva el asistente automático para el próximo mensaje
+    // del usuario — es un ciclo nuevo, no una conversación en curso con un admin.
     await pool.query(
-      `UPDATE chat_conversaciones SET estatus = $2 WHERE id = $1`,
-      [req.params.id, estatus === 'abierta' ? 'abierta' : 'resuelta']
+      `UPDATE chat_conversaciones SET estatus = $2, bot_activo = ($2 = 'resuelta') WHERE id = $1`,
+      [req.params.id, nuevoEstatus]
     );
     res.json({ ok: true });
   } catch {
