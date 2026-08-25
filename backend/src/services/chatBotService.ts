@@ -98,19 +98,25 @@ async function construirContextoBodeguero(usuarioId: number): Promise<string> {
   return lineas.join('\n');
 }
 
+const CAPACIDADES_PRODUCTOR = `Un productor en SIMAC puede: publicar su maíz disponible (tipo, variedad, volumen, fechas, calidad); publicarlo como "propuesta de negociación abierta a bodegas" con un precio solicitado; recibir y comparar ofertas de bodegas (precio, acondicionamiento, transporte, momento de pago) y aceptar la que prefiera; ver sus transacciones y confirmarlas o marcarlas en disputa; ver precios de referencia del mercado. NO puede: publicar requerimientos de compra, ofertar por maíz de otros productores, ni ver información de otros productores o de otras bodegas — eso es exclusivo de cuentas de bodega.`;
+
+const CAPACIDADES_BODEGUERO = `Una bodega en SIMAC puede: publicar requerimientos de maíz que busca comprar; ver "propuestas disponibles" publicadas por productores y mandarles una oferta (solo puede igualar o mejorar el precio que pide el productor, nunca ofrecer menos); guardar filtros de búsqueda como alerta para recibir notificación automática; registrar transacciones y ver su historial; configurar su tarifario de servicios. NO puede: publicar disponibilidad de maíz como si fuera productor, ni ver las ofertas que otras bodegas mandaron a la misma propuesta — eso siempre queda oculto entre bodegas.`;
+
 const SISTEMA_PROMPT = `Eres el asistente automático del chat de ayuda de SIMAC (Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México), una plataforma que conecta productores de maíz con bodegas compradoras.
 
 Reglas estrictas:
-- Responde SOLO con base en la información de contexto que se te da sobre este usuario y en cómo funciona la plataforma (disponibilidad, propuestas de negociación, ofertas, requerimientos, transacciones). Nunca inventes precios, fechas, nombres de otras personas o datos que no estén en el contexto.
+- Responde SOLO con base en la información de contexto que se te da sobre este usuario específico (por nombre) y en las funciones que existen realmente para su rol. Nunca inventes precios, fechas, nombres de otras personas o datos que no estén en el contexto.
+- Sé exacto: si el contexto no tiene el dato que piden (por ejemplo, no tiene disponibilidad publicada, o no tiene transacciones), dilo tal cual — nunca supongas ni redondees.
+- Si preguntan por algo que no existe para su tipo de cuenta (rol), dilo explícitamente en vez de inventar que sí existe — por ejemplo, si un bodeguero pregunta cómo publicar disponibilidad de maíz, explica que esa función es solo para cuentas de productor.
 - Nunca reveles ni asumas información de otros usuarios — solo conoces los datos del usuario que te escribe.
-- Sé breve, claro y en español natural de México. Sin tecnicismos innecesarios.
+- Sé breve, claro y en español natural de México. Sin tecnicismos innecesarios. Dirígete a la persona por su nombre cuando tenga sentido.
 - Si la pregunta es sobre una disputa, un pago, un problema técnico, o algo que no puedes resolver con el contexto que tienes, responde brevemente y termina indicando que vas a avisar a una persona del equipo para que le ayude — NO intentes resolverlo tú.
 - Si el usuario simplemente quiere hablar con una persona, respétalo de inmediato y avisa que se le va a conectar con el equipo.
 
 Responde en JSON con este formato exacto, sin texto fuera del JSON:
 {"respuesta": "...", "escalar": true|false}
 
-"escalar" es true cuando el usuario necesita o pidió ayuda humana; false cuando tu respuesta ya resuelve la duda.`;
+"escalar" es true cuando el usuario necesita o pidió ayuda humana, o cuando preguntó algo que no puedes resolver con el contexto que tienes; false cuando tu respuesta ya resuelve la duda.`;
 
 interface RespuestaBot {
   respuesta: string;
@@ -126,9 +132,13 @@ export async function generarRespuestaBot(opts: {
   if (!apiKey || process.env.CHAT_BOT_ENABLED === 'false') return null;
 
   try {
-    const contexto = opts.rol === 'bodeguero'
-      ? await construirContextoBodeguero(opts.usuarioId)
-      : await construirContextoProductor(opts.usuarioId);
+    const [nombreR, contexto] = await Promise.all([
+      pool.query('SELECT nombre_completo FROM usuarios WHERE id = $1', [opts.usuarioId]),
+      opts.rol === 'bodeguero' ? construirContextoBodeguero(opts.usuarioId) : construirContextoProductor(opts.usuarioId),
+    ]);
+    const nombre = nombreR.rows[0]?.nombre_completo || 'este usuario';
+    const capacidades = opts.rol === 'bodeguero' ? CAPACIDADES_BODEGUERO : CAPACIDADES_PRODUCTOR;
+    const rolLabel = opts.rol === 'bodeguero' ? 'bodega' : 'productor';
 
     const res = await fetch(GROQ_API_URL, {
       method: 'POST',
@@ -143,7 +153,7 @@ export async function generarRespuestaBot(opts: {
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SISTEMA_PROMPT },
-          { role: 'system', content: `Contexto del usuario (rol: ${opts.rol}):\n${contexto}` },
+          { role: 'system', content: `Usuario: ${nombre} (cuenta de tipo: ${rolLabel}).\n\nFunciones que existen para este tipo de cuenta:\n${capacidades}\n\nDatos actuales de este usuario:\n${contexto}` },
           { role: 'user', content: opts.mensaje },
         ],
       }),

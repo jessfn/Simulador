@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search, MessageCircle, Paperclip, Image as ImageIcon,
-  Smile, RefreshCw,
+  Smile, RefreshCw, Sparkles, Hand,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { apiFetch, BASE } from '../../services/api';
@@ -40,6 +41,7 @@ interface Conversacion {
   rol_usuario: string;
   rol_legible: string;
   estatus: string;
+  bot_activo: boolean;
   no_leidos_admin: number;
   ultimo_mensaje_at: string;
   ultimo_contenido: string | null;
@@ -84,7 +86,9 @@ function previewTexto(c: Conversacion) {
 
 export default function ChatsAdminPage() {
   const { user, token } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
+  const [tomandoControl, setTomandoControl] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorConexion, setErrorConexion] = useState(false);
   const [filtro, setFiltro] = useState<'todos' | 'sin_leer' | 'productor' | 'bodega'>('todos');
@@ -156,6 +160,11 @@ export default function ChatsAdminPage() {
           setMensajes(prev => prev.map(m => m.id === payload.mensajeId ? { ...m, activo_hasta: new Date(0).toISOString() } : m));
           return;
         }
+        if (payload.tipo === 'control-tomado') {
+          setConversaciones(prev => prev.map(c => c.id === payload.conversacionId ? { ...c, bot_activo: false } : c));
+          setSeleccionada(s => s && s.id === payload.conversacionId ? { ...s, bot_activo: false } : s);
+          return;
+        }
         if (payload.tipo !== 'mensaje') return;
         const { conversacionId, mensaje } = payload;
         cargarLista();
@@ -176,6 +185,30 @@ export default function ChatsAdminPage() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [mensajes, seleccionada && escribiendoIds.has(seleccionada.id)]);
+
+  // Deep link desde una notificación de escalación (?conv=123): abre esa
+  // conversación en cuanto la lista termina de cargar.
+  useEffect(() => {
+    const convId = searchParams.get('conv');
+    if (!convId || conversaciones.length === 0) return;
+    const conv = conversaciones.find(c => c.id === Number(convId));
+    if (conv) abrirConversacion(conv);
+    const next = new URLSearchParams(searchParams);
+    next.delete('conv');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversaciones]);
+
+  async function tomarControl() {
+    if (!seleccionada) return;
+    setTomandoControl(true);
+    try {
+      await apiFetch(`/admin/chats/${seleccionada.id}/tomar-control`, { method: 'PATCH' });
+      setSeleccionada(s => s ? { ...s, bot_activo: false } : s);
+      setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? { ...c, bot_activo: false } : c));
+    } catch { /* ignore */ }
+    finally { setTomandoControl(false); }
+  }
 
   async function abrirConversacion(c: Conversacion) {
     desbloquearAudio();
@@ -211,6 +244,7 @@ export default function ChatsAdminPage() {
         setTexto('');
         playSentSound();
         cargarLista();
+        setSeleccionada(s => s ? { ...s, bot_activo: false } : s);
       }
     } catch { /* ignore */ }
     finally { setEnviando(false); }
@@ -305,8 +339,11 @@ export default function ChatsAdminPage() {
                   <div className={`text-[8.5px] font-bold uppercase tracking-wide mt-0.5 ${c.rol_usuario === 'productor' ? 'text-[#1A5C38]' : 'text-blue-600'}`}>
                     {c.rol_legible}
                   </div>
-                  <div className={`text-[11px] truncate mt-0.5 ${escribiendoIds.has(c.id) ? 'text-emerald-600 font-semibold italic' : 'text-gray-500'}`}>
-                    {escribiendoIds.has(c.id) ? 'escribiendo…' : previewTexto(c)}
+                  <div className={`text-[11px] truncate mt-0.5 flex items-center gap-1 ${escribiendoIds.has(c.id) ? 'text-emerald-600 font-semibold italic' : 'text-gray-500'}`}>
+                    {c.bot_activo && c.estatus === 'abierta' && (
+                      <span className="inline-flex items-center gap-0.5 text-indigo-500 font-bold text-[9px] flex-shrink-0"><Sparkles size={10} /> Bot</span>
+                    )}
+                    <span className="truncate">{escribiendoIds.has(c.id) ? 'escribiendo…' : previewTexto(c)}</span>
                   </div>
                 </div>
                 {c.no_leidos_admin > 0 && (
@@ -336,7 +373,13 @@ export default function ChatsAdminPage() {
                   <div className="text-[13.5px] font-extrabold text-gray-900 truncate">{seleccionada.nombre_completo}</div>
                   <div className="text-[10px] text-gray-400 truncate">{seleccionada.rol_legible} · {seleccionada.email}{seleccionada.curp ? ` · CURP ${seleccionada.curp}` : ''}</div>
                 </div>
-                <span className="ml-auto text-[10px] font-extrabold px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
+                {seleccionada.bot_activo && seleccionada.estatus === 'abierta' && (
+                  <button onClick={tomarControl} disabled={tomandoControl}
+                    className="ml-auto flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 active:scale-95 transition-all flex-shrink-0 disabled:opacity-50">
+                    <Hand size={12} /> {tomandoControl ? 'Tomando...' : 'Tomar control'}
+                  </button>
+                )}
+                <span className={`${seleccionada.bot_activo && seleccionada.estatus === 'abierta' ? '' : 'ml-auto'} text-[10px] font-extrabold px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0`}>
                   {seleccionada.estatus === 'abierta' ? 'Abierta' : 'Resuelta'}
                 </span>
               </div>
@@ -346,14 +389,20 @@ export default function ChatsAdminPage() {
                   // Vista del admin: los mensajes del equipo de soporte van a la derecha,
                   // los del productor/bodeguero (dueño de la conversación) a la izquierda.
                   const alinearDerecha = m.autor_id !== seleccionada.usuario_id;
+                  const esBot = m.autor_rol === 'bot';
                   const url = m.archivo_url ? `${BASE.replace('/api', '')}${m.archivo_url}` : '';
                   const esSoloImagen = m.tipo === 'imagen' && !!m.archivo_url && !m.contenido;
                   return (
                     <div key={m.id} style={bubbleShadow} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
+                      {esBot && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 mb-0.5 mr-1">
+                          <Sparkles size={11} /> Asistente SIMAC
+                        </span>
+                      )}
                       <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
-                        alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
+                        esBot ? 'bg-indigo-50 ring-1 ring-indigo-100' : alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
                       }`}>
-                        <Tail esMio={alinearDerecha} color={alinearDerecha ? '#17603a' : '#ffffff'} />
+                        <Tail esMio={alinearDerecha} color={esBot ? '#eef2ff' : alinearDerecha ? '#17603a' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
                             <img src={url} onClick={() => setLightboxImg({ url, alinearDerecha, fecha: m.created_at, caption: m.contenido })} className="rounded-[10px] max-w-[260px] block cursor-pointer" />
@@ -381,7 +430,7 @@ export default function ChatsAdminPage() {
                           <LocationPreview lat={m.lat} lng={m.lng} enVivo={m.tipo === 'ubicacion_vivo'} activoHasta={m.activo_hasta} />
                         )}
                         {m.contenido && (
-                          <div className={`text-[13px] leading-[1.5] ${alinearDerecha ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
+                          <div className={`text-[13px] leading-[1.5] ${esBot ? 'text-slate-800' : alinearDerecha ? 'text-white' : 'text-slate-800'}`}>{m.contenido}</div>
                         )}
                         {!esSoloImagen && (
                           <div className={`flex items-center justify-end gap-1 mt-1 ${alinearDerecha ? 'text-white/65' : 'text-slate-300'}`}>

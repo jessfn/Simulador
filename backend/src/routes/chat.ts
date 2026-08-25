@@ -224,6 +224,40 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
           );
           emitirAUsuario(usuarioId, { tipo: 'mensaje', conversacionId: conv.id, mensaje: botMsg.rows[0] });
           emitirAAdmins({ tipo: 'mensaje', conversacionId: conv.id, mensaje: botMsg.rows[0] });
+
+          // Push nativa al usuario (igual que cuando responde un admin) para
+          // que le llegue aunque tenga la app cerrada o en segundo plano.
+          notificar({
+            usuarioId,
+            tipo: 'chat_ayuda',
+            titulo: '🤖 Asistente SIMAC',
+            mensaje: respuesta.respuesta,
+            referenciaId: conv.id,
+            referenciaTipo: 'chat_ayuda',
+            url: rolUsuario === 'productor' ? '/productor?abrirChat=1' : '/dashboard?abrirChat=1',
+          }).catch(() => {});
+
+          // Si el bot no pudo resolverlo, se avisa a los admins con más
+          // urgencia para que sepan que conviene tomar control de inmediato.
+          if (respuesta.escalar) {
+            const admins = await pool.query(`
+              SELECT u.id FROM usuarios u JOIN roles_panel rp ON rp.clave = u.rol WHERE rp.permisos_totales = TRUE
+              UNION
+              SELECT ap.usuario_id AS id FROM admin_permisos ap
+              WHERE ap.vista = 'chats_ayuda' AND ap.sub_accion = 'ver' AND ap.habilitado = TRUE
+            `);
+            for (const a of admins.rows) {
+              notificar({
+                usuarioId: a.id,
+                tipo: 'chat_ayuda_escalado',
+                titulo: '🚨 El asistente necesita ayuda humana',
+                mensaje: `${rolLegible(rolUsuario)} tiene una duda que el asistente no pudo resolver. Toca para tomar control.`,
+                referenciaId: conv.id,
+                referenciaTipo: 'chat_ayuda',
+                url: `/admin/chats?conv=${conv.id}`,
+              }).catch(() => {});
+            }
+          }
         })
         .catch(err => console.error('[chat bot] Error en respuesta automática:', err));
     }
@@ -427,6 +461,23 @@ adminChatRouter.patch('/:id/leido', authMiddleware, verChats, async (req: AuthRe
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: 'Error al marcar como leído' });
+  }
+});
+
+// El admin puede apagar el asistente automático sin necesidad de mandar un
+// mensaje primero — útil cuando ve que el bot está atendiendo y quiere
+// intervenir de inmediato.
+adminChatRouter.patch('/:id/tomar-control', authMiddleware, responderChats, async (req: AuthRequest, res: Response) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE chat_conversaciones SET bot_activo = FALSE WHERE id = $1 RETURNING id`,
+      [req.params.id]
+    );
+    if (!rows.length) { res.status(404).json({ error: 'Conversación no encontrada' }); return; }
+    emitirAAdmins({ tipo: 'control-tomado', conversacionId: Number(req.params.id) });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Error al tomar control de la conversación' });
   }
 });
 
