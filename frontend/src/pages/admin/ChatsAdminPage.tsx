@@ -89,6 +89,7 @@ export default function ChatsAdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
   const [tomandoControl, setTomandoControl] = useState(false);
+  const [pidiendoIA, setPidiendoIA] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorConexion, setErrorConexion] = useState(false);
   const [filtro, setFiltro] = useState<'todos' | 'sin_leer' | 'productor' | 'bodega'>('todos');
@@ -209,6 +210,33 @@ export default function ChatsAdminPage() {
     } catch { /* ignore */ }
     finally { setTomandoControl(false); }
   }
+
+  async function responderConIA() {
+    if (!seleccionada) return;
+    setPidiendoIA(true);
+    try {
+      const res = await apiFetch(`/admin/chats/${seleccionada.id}/responder-con-ia`, { method: 'POST' });
+      const d = await res.json();
+      if (res.ok && d.mensaje) {
+        idsVistos.current.add(d.mensaje.id);
+        setMensajes(prev => [...prev, d.mensaje]);
+        cargarLista();
+      } else {
+        alert(d.error || 'El asistente no pudo responder. Intenta de nuevo o responde manualmente.');
+      }
+    } catch {
+      alert('Error de conexión al pedir la respuesta del asistente.');
+    } finally {
+      setPidiendoIA(false);
+    }
+  }
+
+  // El último mensaje es del usuario (no del admin ni del bot) → nadie lo
+  // contestó todavía, tiene sentido ofrecer "Responder con asistente IA".
+  const ultimoPendiente = mensajes.length > 0 ? mensajes[mensajes.length - 1] : null;
+  const hayPendienteSinResponder = !!seleccionada && !!ultimoPendiente
+    && ultimoPendiente.autor_id === seleccionada.usuario_id
+    && ultimoPendiente.tipo === 'texto' && !!ultimoPendiente.contenido?.trim();
 
   async function abrirConversacion(c: Conversacion) {
     desbloquearAudio();
@@ -459,6 +487,16 @@ export default function ChatsAdminPage() {
                     <button key={em} onClick={() => { setTexto(t => t + em); setShowEmoji(false); }}
                       className="text-[20px] active:scale-90 transition-transform">{em}</button>
                   ))}
+                </div>
+              )}
+
+              {hayPendienteSinResponder && (
+                <div className="flex-shrink-0 bg-indigo-50 border-t border-indigo-100 px-5 py-2 flex items-center justify-between gap-3">
+                  <span className="text-[11px] text-indigo-700 font-medium">Este mensaje sigue sin respuesta.</span>
+                  <button onClick={responderConIA} disabled={pidiendoIA}
+                    className="flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 transition-all flex-shrink-0 disabled:opacity-50">
+                    <Sparkles size={12} /> {pidiendoIA ? 'Generando...' : 'Responder con asistente IA'}
+                  </button>
                 </div>
               )}
 

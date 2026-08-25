@@ -87,6 +87,67 @@ function autenticarSSE(req: AuthRequest, res: Response): boolean {
   }
 }
 
+// Genera y publica una respuesta del asistente para una conversación —
+// usada tanto en el flujo automático (POST /mensaje) como cuando un admin
+// pide explícitamente "Responder con asistente IA" sobre un mensaje que
+// nadie más contestó. Nunca lanza: siempre best-effort.
+async function responderConBot(opts: {
+  conversacionId: number; usuarioId: number; rolUsuario: string; mensaje: string;
+}): Promise<any | null> {
+  try {
+    const respuesta = await generarRespuestaBot({ usuarioId: opts.usuarioId, rol: opts.rolUsuario, mensaje: opts.mensaje });
+    if (!respuesta) return null;
+    const botUserId = await obtenerBotUserId();
+    if (!botUserId) return null;
+
+    const botMsg = await pool.query(
+      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido)
+       VALUES ($1,$2,'bot','texto',$3) RETURNING *`,
+      [opts.conversacionId, botUserId, respuesta.respuesta]
+    );
+    await pool.query(
+      `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_usuario = no_leidos_usuario + 1 WHERE id = $1`,
+      [opts.conversacionId]
+    );
+    emitirAUsuario(opts.usuarioId, { tipo: 'mensaje', conversacionId: opts.conversacionId, mensaje: botMsg.rows[0] });
+    emitirAAdmins({ tipo: 'mensaje', conversacionId: opts.conversacionId, mensaje: botMsg.rows[0] });
+
+    notificar({
+      usuarioId: opts.usuarioId,
+      tipo: 'chat_ayuda',
+      titulo: '🤖 Asistente SIMAC',
+      mensaje: respuesta.respuesta,
+      referenciaId: opts.conversacionId,
+      referenciaTipo: 'chat_ayuda',
+      url: opts.rolUsuario === 'productor' ? '/productor?abrirChat=1' : '/dashboard?abrirChat=1',
+    }).catch(() => {});
+
+    if (respuesta.escalar) {
+      const admins = await pool.query(`
+        SELECT u.id FROM usuarios u JOIN roles_panel rp ON rp.clave = u.rol WHERE rp.permisos_totales = TRUE
+        UNION
+        SELECT ap.usuario_id AS id FROM admin_permisos ap
+        WHERE ap.vista = 'chats_ayuda' AND ap.sub_accion = 'ver' AND ap.habilitado = TRUE
+      `);
+      for (const a of admins.rows) {
+        notificar({
+          usuarioId: a.id,
+          tipo: 'chat_ayuda_escalado',
+          titulo: '🚨 El asistente necesita ayuda humana',
+          mensaje: `${rolLegible(opts.rolUsuario)} tiene una duda que el asistente no pudo resolver. Toca para tomar control.`,
+          referenciaId: opts.conversacionId,
+          referenciaTipo: 'chat_ayuda',
+          url: `/admin/chats?conv=${opts.conversacionId}`,
+        }).catch(() => {});
+      }
+    }
+    return botMsg.rows[0];
+  } catch (err) {
+    console.error('[chat bot] Error en responderConBot:', err);
+    return null;
+  }
+}
+
 function abrirSSE(res: Response) {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -207,58 +268,7 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
     // al usuario): solo para mensajes de texto de productor/bodeguero, y solo
     // si un admin no ha tomado ya la conversación (conv.bot_activo).
     if (tipo === 'texto' && contenido?.trim() && conv.bot_activo && ['productor', 'bodeguero'].includes(rolUsuario)) {
-      generarRespuestaBot({ usuarioId, rol: rolUsuario, mensaje: contenido.trim() })
-        .then(async (respuesta) => {
-          if (!respuesta) return;
-          const botUserId = await obtenerBotUserId();
-          if (!botUserId) return;
-
-          const botMsg = await pool.query(
-            `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido)
-             VALUES ($1,$2,'bot','texto',$3) RETURNING *`,
-            [conv.id, botUserId, respuesta.respuesta]
-          );
-          await pool.query(
-            `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_usuario = no_leidos_usuario + 1 WHERE id = $1`,
-            [conv.id]
-          );
-          emitirAUsuario(usuarioId, { tipo: 'mensaje', conversacionId: conv.id, mensaje: botMsg.rows[0] });
-          emitirAAdmins({ tipo: 'mensaje', conversacionId: conv.id, mensaje: botMsg.rows[0] });
-
-          // Push nativa al usuario (igual que cuando responde un admin) para
-          // que le llegue aunque tenga la app cerrada o en segundo plano.
-          notificar({
-            usuarioId,
-            tipo: 'chat_ayuda',
-            titulo: '🤖 Asistente SIMAC',
-            mensaje: respuesta.respuesta,
-            referenciaId: conv.id,
-            referenciaTipo: 'chat_ayuda',
-            url: rolUsuario === 'productor' ? '/productor?abrirChat=1' : '/dashboard?abrirChat=1',
-          }).catch(() => {});
-
-          // Si el bot no pudo resolverlo, se avisa a los admins con más
-          // urgencia para que sepan que conviene tomar control de inmediato.
-          if (respuesta.escalar) {
-            const admins = await pool.query(`
-              SELECT u.id FROM usuarios u JOIN roles_panel rp ON rp.clave = u.rol WHERE rp.permisos_totales = TRUE
-              UNION
-              SELECT ap.usuario_id AS id FROM admin_permisos ap
-              WHERE ap.vista = 'chats_ayuda' AND ap.sub_accion = 'ver' AND ap.habilitado = TRUE
-            `);
-            for (const a of admins.rows) {
-              notificar({
-                usuarioId: a.id,
-                tipo: 'chat_ayuda_escalado',
-                titulo: '🚨 El asistente necesita ayuda humana',
-                mensaje: `${rolLegible(rolUsuario)} tiene una duda que el asistente no pudo resolver. Toca para tomar control.`,
-                referenciaId: conv.id,
-                referenciaTipo: 'chat_ayuda',
-                url: `/admin/chats?conv=${conv.id}`,
-              }).catch(() => {});
-            }
-          }
-        })
+      responderConBot({ conversacionId: conv.id, usuarioId, rolUsuario, mensaje: contenido.trim() })
         .catch(err => console.error('[chat bot] Error en respuesta automática:', err));
     }
   } catch (err: any) {
@@ -478,6 +488,51 @@ adminChatRouter.patch('/:id/tomar-control', authMiddleware, responderChats, asyn
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: 'Error al tomar control de la conversación' });
+  }
+});
+
+// El admin pide explícitamente que el asistente conteste un mensaje que
+// nadie más respondió — para cuando nadie alcanzó a contestar y no hace
+// falta escribir a mano. Funciona sin importar si bot_activo está apagado
+// (es una acción manual, no reactiva el flujo automático).
+adminChatRouter.post('/:id/responder-con-ia', authMiddleware, responderChats, async (req: AuthRequest, res: Response) => {
+  try {
+    const convId = Number(req.params.id);
+    const conv = await pool.query('SELECT * FROM chat_conversaciones WHERE id = $1', [convId]);
+    if (!conv.rows.length) { res.status(404).json({ error: 'Conversación no encontrada' }); return; }
+    if (!['productor', 'bodeguero'].includes(conv.rows[0].rol_usuario)) {
+      res.status(400).json({ error: 'El asistente solo puede responder a productores o bodegas' });
+      return;
+    }
+
+    const ultimo = await pool.query(
+      `SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [convId]
+    );
+    const ultimoMsg = ultimo.rows[0];
+    if (!ultimoMsg || ultimoMsg.autor_id !== conv.rows[0].usuario_id) {
+      res.status(400).json({ error: 'No hay ningún mensaje pendiente de responder en esta conversación' });
+      return;
+    }
+    if (ultimoMsg.tipo !== 'texto' || !ultimoMsg.contenido?.trim()) {
+      res.status(400).json({ error: 'El asistente solo puede responder mensajes de texto' });
+      return;
+    }
+
+    const botMsg = await responderConBot({
+      conversacionId: convId,
+      usuarioId: conv.rows[0].usuario_id,
+      rolUsuario: conv.rows[0].rol_usuario,
+      mensaje: ultimoMsg.contenido.trim(),
+    });
+    if (!botMsg) {
+      res.status(502).json({ error: 'El asistente no pudo generar una respuesta. Intenta de nuevo o responde manualmente.' });
+      return;
+    }
+    res.json({ mensaje: botMsg });
+  } catch (err: any) {
+    console.error('POST /admin/chats/:id/responder-con-ia:', err);
+    res.status(500).json({ error: err?.message || 'Error al pedir la respuesta del asistente' });
   }
 });
 
