@@ -255,7 +255,7 @@ export default function WelcomePage() {
                 <span className="text-emerald-400">conectado</span> al mercado
               </h2>
               <p className="text-white/45 text-[15px] font-medium mt-3 leading-relaxed max-w-md">
-                Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México.
+                Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México.
               </p>
             </div>
           </div>
@@ -394,7 +394,7 @@ export default function WelcomePage() {
             className="mt-8 text-center text-[10px] text-white/18 max-w-[260px] leading-relaxed"
             style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.6s ease 0.28s' }}
           >
-            Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México
+            Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México
           </p>
         </div>
       </div>

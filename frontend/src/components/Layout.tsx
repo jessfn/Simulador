@@ -15,7 +15,7 @@ const NAV = [
   { path: '/mas', icon: MoreHorizontal, label: 'Más' },
 ];
 
-const SYSTEM_NAME = 'Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México';
+const SYSTEM_NAME = 'Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México';
 
 export function Layout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();

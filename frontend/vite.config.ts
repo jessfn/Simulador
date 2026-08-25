@@ -18,9 +18,9 @@ export default defineConfig({
       devOptions: { enabled: false },
       includeAssets: ['icono.png'],
       manifest: {
-        name: 'SIMAC — Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México',
+        name: 'SIMAC — Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México',
         short_name: 'SIMAC',
-        description: 'Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México — Módulo Bodega',
+        description: 'Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México — Módulo Bodega',
         start_url: '/',
         display: 'standalone',
         background_color: '#1A5C38',

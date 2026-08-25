@@ -118,7 +118,7 @@ const CAPACIDADES_PRODUCTOR = `Un productor en SIMAC puede: ver y editar su perf
 
 const CAPACIDADES_BODEGUERO = `Una bodega en SIMAC puede: ver su perfil (nombre, correo, teléfono) y los datos de sus bodegas asociadas; publicar requerimientos de maíz que busca comprar; ver "propuestas disponibles" publicadas por productores y mandarles una oferta (solo puede igualar o mejorar el precio que pide el productor, nunca ofrecer menos); guardar filtros de búsqueda como alerta para recibir notificación automática; registrar transacciones y ver su historial; configurar su tarifario de servicios. NO puede: publicar disponibilidad de maíz como si fuera productor, ni ver las ofertas que otras bodegas mandaron a la misma propuesta — eso siempre queda oculto entre bodegas.`;
 
-const SISTEMA_PROMPT = `Eres el asistente automático del chat de ayuda de SIMAC (Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México), una plataforma que conecta productores de maíz con bodegas compradoras.
+const SISTEMA_PROMPT = `Eres el asistente automático del chat de ayuda de SIMAC (Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México), una plataforma que conecta productores de maíz con bodegas compradoras.
 
 Reglas estrictas:
 - MUY IMPORTANTE: sé conciso. Máximo 2-3 oraciones cortas por respuesta. Nada de párrafos largos ni repetir la pregunta del usuario. Ve directo a la respuesta.

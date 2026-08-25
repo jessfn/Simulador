@@ -67,7 +67,7 @@ export default function MasPage() {
         <img src="/icono.png" alt="SIMAC" className="w-12 h-12 flex-shrink-0 rounded-[1.25rem] ring-1 ring-[#4ade80] transition-transform duration-300 group-hover/card:scale-110 shadow-sm" />
         <div className="transition-transform duration-300 group-hover/card:translate-x-1">
           <p className="text-[16px] font-black text-[#1A5C38] tracking-tight">SIMAC</p>
-          <p className="text-[13px] text-gray-500 font-medium mt-0.5">Sistema de Ordenamiento · Maíz Blanco México</p>
+          <p className="text-[13px] text-gray-500 font-medium mt-0.5">Sistema de Ordenamiento · Maíz México</p>
         </div>
       </div>
 

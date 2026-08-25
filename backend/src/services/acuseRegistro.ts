@@ -64,23 +64,28 @@ export function generarAcuseRegistro(datos: DatosAcuse): PDFKit.PDFDocument {
   // ── Encabezado ──────────────────────────────────────────────
   doc.rect(0, 0, doc.page.width, 8).fill(VERDE);
 
-  // Logos institucionales, de izquierda a derecha: sistema (SIMAC) →
-  // dependencia (Secretaría de Agricultura) → gobierno federal.
+  // Logos institucionales, justificados a lo ancho de la página (uno en cada
+  // extremo y el resto repartido entre medio, como "space-between"): sistema
+  // (SIMAC) → dependencia (Secretaría de Agricultura) → gobierno federal.
   const logoAlto = 32;
-  const logoGap = 18;
+  const anchoDisponible = doc.page.width - 112; // 56pt de margen a cada lado
+  const anchosLogos = LOGOS.map(l => logoAlto * l.ratio);
+  const anchoTotalLogos = anchosLogos.reduce((a, b) => a + b, 0);
+  const gapJustificado = LOGOS.length > 1
+    ? (anchoDisponible - anchoTotalLogos) / (LOGOS.length - 1)
+    : 0;
   let logoX = 56;
-  for (const logo of LOGOS) {
-    const ancho = logoAlto * logo.ratio;
+  LOGOS.forEach((logo, i) => {
     try {
       doc.image(path.join(LOGOS_DIR, logo.archivo), logoX, 24, { height: logoAlto });
     } catch { /* si el archivo no está disponible, no romper el acuse */ }
-    logoX += ancho + logoGap;
-  }
+    logoX += anchosLogos[i] + gapJustificado;
+  });
 
   doc.moveTo(56, 68).lineTo(doc.page.width - 56, 68).strokeColor('#E5E7EB').lineWidth(1).stroke();
 
   doc.fillColor(GRIS).font('Helvetica').fontSize(9)
-    .text('Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México', 56, 76, { width: 500 });
+    .text('Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México', 56, 76, { width: 500 });
   doc.fillColor(GRIS_CLARO).fontSize(8).text('Plan Nacional Maíz 2026', 56, 90);
 
   doc.moveTo(56, 112).lineTo(doc.page.width - 56, 112).strokeColor('#E5E7EB').lineWidth(1).stroke();
