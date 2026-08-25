@@ -1,5 +1,16 @@
 import PDFDocument from 'pdfkit';
 import crypto from 'crypto';
+import path from 'path';
+
+const LOGOS_DIR = path.join(__dirname, '../../assets/logos');
+// Relación ancho/alto real de cada PNG — pdfkit escala por altura, pero
+// necesitamos el ancho resultante de antemano para acomodar el siguiente
+// logo en la fila sin traslaparse.
+const LOGOS = [
+  { archivo: 'simac.png', ratio: 2142 / 734 },
+  { archivo: 'agricultura.png', ratio: 3800 / 727 },
+  { archivo: 'gobmex.png', ratio: 3795 / 1401 },
+];
 
 interface DatosAcuse {
   usuarioId: number;
@@ -52,21 +63,34 @@ export function generarAcuseRegistro(datos: DatosAcuse): PDFKit.PDFDocument {
 
   // ── Encabezado ──────────────────────────────────────────────
   doc.rect(0, 0, doc.page.width, 8).fill(VERDE);
-  doc.moveDown(1.5);
 
-  doc.fillColor(VERDE).font('Helvetica-Bold').fontSize(18).text('SIMAC', 56, 40);
+  // Logos institucionales, de izquierda a derecha: sistema (SIMAC) →
+  // dependencia (Secretaría de Agricultura) → gobierno federal.
+  const logoAlto = 32;
+  const logoGap = 18;
+  let logoX = 56;
+  for (const logo of LOGOS) {
+    const ancho = logoAlto * logo.ratio;
+    try {
+      doc.image(path.join(LOGOS_DIR, logo.archivo), logoX, 24, { height: logoAlto });
+    } catch { /* si el archivo no está disponible, no romper el acuse */ }
+    logoX += ancho + logoGap;
+  }
+
+  doc.moveTo(56, 68).lineTo(doc.page.width - 56, 68).strokeColor('#E5E7EB').lineWidth(1).stroke();
+
   doc.fillColor(GRIS).font('Helvetica').fontSize(9)
-    .text('Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México', 56, 62, { width: 500 });
-  doc.fillColor(GRIS_CLARO).fontSize(8).text('Plan Nacional Maíz 2026', 56, 76);
+    .text('Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México', 56, 76, { width: 500 });
+  doc.fillColor(GRIS_CLARO).fontSize(8).text('Plan Nacional Maíz 2026', 56, 90);
 
-  doc.moveTo(56, 100).lineTo(doc.page.width - 56, 100).strokeColor('#E5E7EB').lineWidth(1).stroke();
+  doc.moveTo(56, 112).lineTo(doc.page.width - 56, 112).strokeColor('#E5E7EB').lineWidth(1).stroke();
 
   // ── Título ──────────────────────────────────────────────────
-  doc.fillColor('#111827').font('Helvetica-Bold').fontSize(20).text('ACUSE DE REGISTRO', 56, 120, { align: 'center' });
+  doc.fillColor('#111827').font('Helvetica-Bold').fontSize(20).text('ACUSE DE REGISTRO', 56, 132, { align: 'center' });
   doc.fillColor(GRIS).font('Helvetica').fontSize(10)
-    .text(`Folio: ${folio(datos.rol, datos.usuarioId)}`, 56, 148, { align: 'center' });
+    .text(`Folio: ${folio(datos.rol, datos.usuarioId)}`, 56, 160, { align: 'center' });
 
-  let y = 190;
+  let y = 202;
   const filaAlto = 28;
   const etiquetaAncho = 170;
   const valorX = 56 + etiquetaAncho;
