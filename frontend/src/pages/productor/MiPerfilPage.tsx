@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   Edit2, MapPin, LogOut, CalendarCheck, ChevronRight,
   Sprout, Trash2, Plus, Phone, Mail, Check, X, Leaf,
-  ClipboardList, Award, CircleDot, Bell, Pencil,
+  ClipboardList, Award, CircleDot, Bell, Pencil, FileDown,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import ProfileHero from '../../components/ProfileHero';
+import { descargarAcuseRegistro } from '../../utils/descargarAcuse';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -58,6 +59,18 @@ export default function MiPerfilPage() {
   const [savedTel, setSavedTel]     = useState(false);
   const [savedCorreo, setSavedCorreo] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
+  const [descargandoAcuse, setDescargandoAcuse] = useState(false);
+
+  async function handleDescargarAcuse() {
+    setDescargandoAcuse(true);
+    try {
+      await descargarAcuseRegistro();
+    } catch {
+      alert('No se pudo generar el acuse de registro. Intenta de nuevo.');
+    } finally {
+      setDescargandoAcuse(false);
+    }
+  }
 
   // Edición de ubicación (estado/municipio)
   const [editandoUbicacion, setEditandoUbicacion]           = useState(false);
@@ -689,6 +702,21 @@ export default function MiPerfilPage() {
               <p className="text-[14px] font-bold text-slate-800">Alertas</p>
               <p className="text-[12px] text-slate-400 mt-0.5">
                 {notifCount > 0 ? `${notifCount} sin leer` : 'Sin alertas pendientes'}
+              </p>
+            </div>
+            <ChevronRight size={16} className="text-slate-300 group-active:text-[#1A5C38] transition-colors flex-shrink-0" />
+          </button>
+
+          {/* Acuse de registro */}
+          <button onClick={handleDescargarAcuse} disabled={descargandoAcuse}
+            className="w-full bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] px-5 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all group disabled:opacity-60">
+            <div className="w-10 h-10 rounded-2xl bg-[#eef8f2] flex items-center justify-center flex-shrink-0 group-active:bg-[#d9f0e5] transition-colors">
+              <FileDown size={17} className="text-[#1A5C38]" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[14px] font-bold text-slate-800">Acuse de registro</p>
+              <p className="text-[12px] text-slate-400 mt-0.5">
+                {descargandoAcuse ? 'Generando PDF…' : 'Descargar comprobante de tu registro en SIMAC'}
               </p>
             </div>
             <ChevronRight size={16} className="text-slate-300 group-active:text-[#1A5C38] transition-colors flex-shrink-0" />

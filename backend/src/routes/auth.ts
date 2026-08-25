@@ -8,6 +8,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { enviarEmailRecuperacion, smtpConfigurado } from '../utils/mailer';
 import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
 import { authLimiter } from '../middleware/rateLimiters';
+import { generarAcuseRegistro } from '../services/acuseRegistro';
 
 const router = Router();
 
@@ -315,6 +316,78 @@ router.get('/perfil', authMiddleware, async (req: AuthRequest, res: Response): P
   } catch (error) {
     console.error('Error al obtener perfil:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// =============================================
+// GET /api/auth/perfil/acuse — Acuse de registro en PDF.
+// Sirve para productor y bodeguero por igual: ambos son filas de
+// `usuarios`, aquí solo se agrega la sección "extra" según el rol.
+// =============================================
+router.get('/perfil/acuse', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const userR = await pool.query(
+      'SELECT id, email, curp, nombre_completo, telefono, rol, created_at FROM usuarios WHERE id = $1',
+      [userId]
+    );
+    if (userR.rows.length === 0) {
+      res.status(404).json({ error: 'Usuario no encontrado' });
+      return;
+    }
+    const u = userR.rows[0];
+    const extra: string[] = [];
+
+    if (u.rol === 'productor') {
+      const prodR = await pool.query(
+        `SELECT p.producer_id, p.estatus_registro, up.up_name, up.municipality_name, up.state_name
+         FROM producer p
+         LEFT JOIN up ON up.producer_id = p.producer_id
+         WHERE p.usuario_id = $1
+         ORDER BY up.created_at ASC LIMIT 1`,
+        [userId]
+      );
+      if (prodR.rows.length > 0) {
+        const p = prodR.rows[0];
+        extra.push(`Folio interno de productor: ${p.producer_id}`);
+        extra.push(`Estatus de registro: ${p.estatus_registro || 'pendiente'}`);
+        if (p.up_name) extra.push(`Parcela registrada: ${p.up_name} (${p.municipality_name}, ${p.state_name})`);
+      } else {
+        extra.push('Sin parcela (UP) registrada al momento de la emisión de este acuse.');
+      }
+    } else if (u.rol === 'bodeguero') {
+      const bodR = await pool.query(
+        `SELECT b.nombre, b.municipio, b.estado, bb.estatus
+         FROM bodeguero_bodegas bb JOIN bodegas b ON b.id = bb.bodega_id
+         WHERE bb.usuario_id = $1 ORDER BY bb.fecha_solicitud ASC`,
+        [userId]
+      );
+      if (bodR.rows.length > 0) {
+        for (const b of bodR.rows) {
+          extra.push(`${b.nombre} — ${b.municipio}, ${b.estado} (${b.estatus === 'aprobada' ? 'aprobada' : b.estatus})`);
+        }
+      } else {
+        extra.push('Sin bodega asociada al momento de la emisión de este acuse.');
+      }
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="acuse_registro_simac_${userId}.pdf"`);
+
+    const doc = generarAcuseRegistro({
+      usuarioId: u.id,
+      nombreCompleto: u.nombre_completo,
+      curp: u.curp,
+      email: u.email,
+      telefono: u.telefono,
+      rol: u.rol,
+      fechaRegistro: new Date(u.created_at),
+      extra,
+    });
+    doc.pipe(res);
+  } catch (error) {
+    console.error('Error al generar acuse de registro:', error);
+    res.status(500).json({ error: 'Error al generar el acuse de registro' });
   }
 });
 

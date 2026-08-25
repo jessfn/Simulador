@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   Edit2, Check, X, Phone, MapPin, AlertTriangle,
   CreditCard, LogOut, ChevronRight, Warehouse, Settings,
-  Calendar, ShieldCheck,
+  Calendar, ShieldCheck, FileDown,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import ProfileHero from '../components/ProfileHero';
+import { descargarAcuseRegistro } from '../utils/descargarAcuse';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const HDR  = () => ({ Authorization: `Bearer ${localStorage.getItem('simac_token')}`, 'Content-Type': 'application/json' });
@@ -215,6 +216,18 @@ export default function B24PerfilBodega() {
   const [perfil, setPerfil]   = useState<PerfilBodega | null>(null);
   const [bodegas, setBodegas] = useState<BodegaInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [descargandoAcuse, setDescargandoAcuse] = useState(false);
+
+  async function handleDescargarAcuse() {
+    setDescargandoAcuse(true);
+    try {
+      await descargarAcuseRegistro();
+    } catch {
+      alert('No se pudo generar el acuse de registro. Intenta de nuevo.');
+    } finally {
+      setDescargandoAcuse(false);
+    }
+  }
 
   const [editTel, setEditTel]     = useState(false);
   const [telefono, setTelefono]   = useState('');
@@ -510,6 +523,21 @@ export default function B24PerfilBodega() {
             <div className="flex-1">
               <p className="text-[14px] font-bold text-slate-800">Configuración</p>
               <p className="text-[12px] text-slate-400 mt-0.5">Cambiar contraseña y preferencias</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-300 group-active:text-[#1A5C38] transition-colors" />
+          </button>
+
+          {/* ── Acuse de registro ── */}
+          <button style={delay(3.5)} onClick={handleDescargarAcuse} disabled={descargandoAcuse}
+            className="w-full bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] px-5 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all group disabled:opacity-60">
+            <div className="w-10 h-10 rounded-xl bg-[#eef8f2] flex items-center justify-center flex-shrink-0 group-active:bg-[#d9f0e5] transition-colors">
+              <FileDown size={17} className="text-[#1A5C38]" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[14px] font-bold text-slate-800">Acuse de registro</p>
+              <p className="text-[12px] text-slate-400 mt-0.5">
+                {descargandoAcuse ? 'Generando PDF…' : 'Descargar comprobante de tu registro en SIMAC'}
+              </p>
             </div>
             <ChevronRight size={16} className="text-slate-300 group-active:text-[#1A5C38] transition-colors" />
           </button>
