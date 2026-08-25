@@ -10,9 +10,13 @@ import ErrorConexionBanner from '../../components/admin/ErrorConexionBanner';
 import { playSentSound, playReceivedSound, desbloquearAudio } from '../../utils/chatSounds';
 import { AudioPlayer, ImageLightbox, LocationPreview, Tail, bubbleRadius, bubbleShadow, chatWallpaper, SendIcon } from '../../components/chat/ChatMedia';
 
-/** Palomita(s) estilo WhatsApp: una = enviado, dos = entregado/leído. */
-function Ticks({ leido }: { leido: boolean }) {
-  const color = leido ? '#7dd3fc' : 'currentColor';
+/** Palomita(s) estilo WhatsApp: una = enviado, dos = entregado/leído.
+ * colorLeido tiene su propio valor porque el celeste de WhatsApp (#7dd3fc)
+ * solo se ve sobre fondos oscuros — sobre la burbuja clara del bot se
+ * volvía invisible, así que cada llamador pasa el tono que sí contrasta
+ * con su propio fondo. */
+function Ticks({ leido, colorLeido = '#7dd3fc' }: { leido: boolean; colorLeido?: string }) {
+  const color = leido ? colorLeido : 'currentColor';
   return (
     <svg width="15" height="11" viewBox="0 0 16 11" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M1 5.2 3.8 8 9 1.8" opacity="0.95" />
@@ -475,8 +479,11 @@ export default function ChatsAdminPage() {
                         {!esSoloImagen && (
                           <div className={`flex items-center justify-end gap-1 mt-1 ${esBot ? 'text-indigo-400' : alinearDerecha ? 'text-white/65' : 'text-slate-400'}`}>
                             <span className="text-[9px]">{fmtHora(m.created_at)}</span>
-                            {alinearDerecha && !esBot && (
-                              <Ticks leido={!!usuarioLeidoHasta && new Date(m.created_at) <= new Date(usuarioLeidoHasta)} />
+                            {alinearDerecha && (
+                              <Ticks
+                                leido={!!usuarioLeidoHasta && new Date(m.created_at) <= new Date(usuarioLeidoHasta)}
+                                colorLeido={esBot ? '#4f46e5' : '#7dd3fc'}
+                              />
                             )}
                           </div>
                         )}
