@@ -112,7 +112,9 @@ export function generarAcuseRegistro(datos: DatosAcuse): PDFKit.PDFDocument {
   );
 
   // ── Pie ─────────────────────────────────────────────────────
-  const pieY = doc.page.height - 90;
+  // Debe quedar dentro del margen inferior (56pt) o PDFKit crea una
+  // segunda página en blanco al intentar respetar el cuadro de texto.
+  const pieY = doc.page.height - 130;
   doc.moveTo(56, pieY).lineTo(doc.page.width - 56, pieY).strokeColor('#E5E7EB').lineWidth(1).stroke();
   doc.fillColor(GRIS).font('Helvetica').fontSize(8.5)
     .text(`Documento generado el ${fmtFechaHora(ahora)}`, 56, pieY + 10);
