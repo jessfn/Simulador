@@ -1,7 +1,7 @@
 import pool from '../config/database';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.1-8b-instant';
+const GROQ_MODEL = 'openai/gpt-oss-20b';
 
 let botUserIdCache: number | null = null;
 
