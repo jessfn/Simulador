@@ -340,7 +340,7 @@ router.get('/perfil/acuse', authMiddleware, async (req: AuthRequest, res: Respon
 
     if (u.rol === 'productor') {
       const prodR = await pool.query(
-        `SELECT p.producer_id, p.estatus_registro, up.up_name, up.municipality_name, up.state_name
+        `SELECT p.producer_id, p.estado_validacion, up.up_name, up.municipality_name, up.state_name
          FROM producer p
          LEFT JOIN up ON up.producer_id = p.producer_id
          WHERE p.usuario_id = $1
@@ -349,8 +349,12 @@ router.get('/perfil/acuse', authMiddleware, async (req: AuthRequest, res: Respon
       );
       if (prodR.rows.length > 0) {
         const p = prodR.rows[0];
+        const estadoLegible: Record<string, string> = {
+          activo: 'Activo', pendiente: 'Pendiente de validación',
+          rechazado: 'Rechazado', suspendido: 'Suspendido',
+        };
         extra.push(`Folio interno de productor: ${p.producer_id}`);
-        extra.push(`Estatus de registro: ${p.estatus_registro || 'pendiente'}`);
+        extra.push(`Estado de la cuenta: ${estadoLegible[p.estado_validacion] || p.estado_validacion || 'Activo'}`);
         if (p.up_name) extra.push(`Parcela registrada: ${p.up_name} (${p.municipality_name}, ${p.state_name})`);
       } else {
         extra.push('Sin parcela (UP) registrada al momento de la emisión de este acuse.');
