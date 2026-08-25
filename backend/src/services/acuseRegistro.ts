@@ -6,10 +6,13 @@ const LOGOS_DIR = path.join(__dirname, '../../assets/logos');
 // Relación ancho/alto real de cada PNG — pdfkit escala por altura, pero
 // necesitamos el ancho resultante de antemano para acomodar el siguiente
 // logo en la fila sin traslaparse.
+// alto individual: el de Agricultura es proporcionalmente muy alargado, a la
+// misma altura que los otros dos se ve más grande de la cuenta — se reduce
+// un poco solo el suyo para que los tres se sientan del mismo peso visual.
 const LOGOS = [
-  { archivo: 'simac.png', ratio: 2142 / 734 },
-  { archivo: 'agricultura.png', ratio: 3800 / 727 },
-  { archivo: 'gobmex.png', ratio: 3795 / 1401 },
+  { archivo: 'simac.png', ratio: 2142 / 734, alto: 32 },
+  { archivo: 'agricultura.png', ratio: 3800 / 727, alto: 26 },
+  { archivo: 'gobmex.png', ratio: 3795 / 1401, alto: 32 },
 ];
 
 interface DatosAcuse {
@@ -67,17 +70,18 @@ export function generarAcuseRegistro(datos: DatosAcuse): PDFKit.PDFDocument {
   // Logos institucionales, justificados a lo ancho de la página (uno en cada
   // extremo y el resto repartido entre medio, como "space-between"): sistema
   // (SIMAC) → dependencia (Secretaría de Agricultura) → gobierno federal.
-  const logoAlto = 32;
+  const bandaAlto = Math.max(...LOGOS.map(l => l.alto));
   const anchoDisponible = doc.page.width - 112; // 56pt de margen a cada lado
-  const anchosLogos = LOGOS.map(l => logoAlto * l.ratio);
+  const anchosLogos = LOGOS.map(l => l.alto * l.ratio);
   const anchoTotalLogos = anchosLogos.reduce((a, b) => a + b, 0);
   const gapJustificado = LOGOS.length > 1
     ? (anchoDisponible - anchoTotalLogos) / (LOGOS.length - 1)
     : 0;
   let logoX = 56;
   LOGOS.forEach((logo, i) => {
+    const logoY = 24 + (bandaAlto - logo.alto) / 2; // centrados verticalmente entre sí
     try {
-      doc.image(path.join(LOGOS_DIR, logo.archivo), logoX, 24, { height: logoAlto });
+      doc.image(path.join(LOGOS_DIR, logo.archivo), logoX, logoY, { height: logo.alto });
     } catch { /* si el archivo no está disponible, no romper el acuse */ }
     logoX += anchosLogos[i] + gapJustificado;
   });
