@@ -218,8 +218,12 @@ export default function ChatsAdminPage() {
       const res = await apiFetch(`/admin/chats/${seleccionada.id}/responder-con-ia`, { method: 'POST' });
       const d = await res.json();
       if (res.ok && d.mensaje) {
-        idsVistos.current.add(d.mensaje.id);
-        setMensajes(prev => [...prev, d.mensaje]);
+        // La respuesta también puede llegar por SSE (emitirAAdmins) antes de
+        // que este fetch resuelva — no duplicar si ya se agregó por ahí.
+        if (!idsVistos.current.has(d.mensaje.id)) {
+          idsVistos.current.add(d.mensaje.id);
+          setMensajes(prev => [...prev, d.mensaje]);
+        }
         cargarLista();
       } else {
         alert(d.error || 'El asistente no pudo responder. Intenta de nuevo o responde manualmente.');
@@ -267,8 +271,10 @@ export default function ChatsAdminPage() {
       const res = await apiFetch(`/admin/chats/${seleccionada.id}/mensaje`, { method: 'POST', body });
       const d = await res.json();
       if (res.ok && d.mensaje) {
-        idsVistos.current.add(d.mensaje.id);
-        setMensajes(prev => [...prev, d.mensaje]);
+        if (!idsVistos.current.has(d.mensaje.id)) {
+          idsVistos.current.add(d.mensaje.id);
+          setMensajes(prev => [...prev, d.mensaje]);
+        }
         setTexto('');
         playSentSound();
         cargarLista();

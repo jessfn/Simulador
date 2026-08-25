@@ -58,6 +58,11 @@ function rolLegible(rol: string): string {
 const sseUsuario = new Map<number, Response[]>();
 const sseAdmins: Response[] = [];
 
+// Evita que el flujo automático y el botón manual "Responder con asistente
+// IA" generen dos respuestas para el mismo mensaje si un admin lo presiona
+// mientras el bot automático todavía está generando la suya.
+const generandoRespuestaBot = new Set<number>();
+
 function emitirAUsuario(usuarioId: number, payload: any) {
   const data = JSON.stringify(payload);
   (sseUsuario.get(usuarioId) ?? []).forEach(res => {
@@ -94,6 +99,11 @@ function autenticarSSE(req: AuthRequest, res: Response): boolean {
 async function responderConBot(opts: {
   conversacionId: number; usuarioId: number; rolUsuario: string; mensaje: string;
 }): Promise<any | null> {
+  // Candado: si ya hay una respuesta en curso para esta conversación (el
+  // flujo automático generándose cuando el admin presiona el botón manual,
+  // o viceversa), no arrancar una segunda — evita el mensaje duplicado.
+  if (generandoRespuestaBot.has(opts.conversacionId)) return null;
+  generandoRespuestaBot.add(opts.conversacionId);
   try {
     const respuesta = await generarRespuestaBot({ usuarioId: opts.usuarioId, rol: opts.rolUsuario, mensaje: opts.mensaje });
     if (!respuesta) return null;
@@ -145,6 +155,8 @@ async function responderConBot(opts: {
   } catch (err) {
     console.error('[chat bot] Error en responderConBot:', err);
     return null;
+  } finally {
+    generandoRespuestaBot.delete(opts.conversacionId);
   }
 }
 

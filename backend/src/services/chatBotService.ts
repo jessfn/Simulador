@@ -19,8 +19,18 @@ export async function obtenerBotUserId(): Promise<number | null> {
 }
 
 async function construirContextoProductor(usuarioId: number): Promise<string> {
+  const perfilR = await pool.query(
+    `SELECT u.email, u.telefono, p.nombres, p.apellido_paterno, p.apellido_materno, p.municipality_id, p.state_id
+     FROM usuarios u LEFT JOIN producer p ON p.usuario_id = u.id WHERE u.id = $1`,
+    [usuarioId]
+  );
+  const perfil = perfilR.rows[0];
+  const perfilLinea = perfil
+    ? `Perfil: ${[perfil.nombres, perfil.apellido_paterno, perfil.apellido_materno].filter(Boolean).join(' ') || 'sin nombre registrado'}, correo ${perfil.email || 'no registrado'}, teléfono ${perfil.telefono || 'no registrado'}.`
+    : '';
+
   const prodR = await pool.query('SELECT producer_id FROM producer WHERE usuario_id = $1 LIMIT 1', [usuarioId]);
-  if (prodR.rows.length === 0) return 'Este productor todavía no tiene su registro completo en el sistema.';
+  if (prodR.rows.length === 0) return [perfilLinea, 'Este productor todavía no tiene su registro de productor completo en el sistema (sin parcela/UP registrada).'].filter(Boolean).join('\n');
   const producerId = prodR.rows[0].producer_id;
 
   const [disp, props, txns] = await Promise.all([
@@ -42,7 +52,7 @@ async function construirContextoProductor(usuarioId: number): Promise<string> {
     ),
   ]);
 
-  const lineas: string[] = [];
+  const lineas: string[] = [perfilLinea].filter(Boolean);
   lineas.push(disp.rows.length
     ? `Disponibilidades activas publicadas: ${disp.rows.map(d => `${d.volumen_estimado_ton} ton de maíz ${d.tipo_maiz}${d.variedad_code ? ` (${d.variedad_code})` : ''}, vence ${d.fecha_vencimiento}`).join('; ')}.`
     : 'No tiene disponibilidades activas publicadas.');
@@ -57,12 +67,18 @@ async function construirContextoProductor(usuarioId: number): Promise<string> {
 }
 
 async function construirContextoBodeguero(usuarioId: number): Promise<string> {
+  const perfilR = await pool.query('SELECT nombre_completo, email, telefono FROM usuarios WHERE id = $1', [usuarioId]);
+  const perfil = perfilR.rows[0];
+  const perfilLinea = perfil
+    ? `Perfil: ${perfil.nombre_completo || 'sin nombre registrado'}, correo ${perfil.email || 'no registrado'}, teléfono ${perfil.telefono || 'no registrado'}.`
+    : '';
+
   const bodegasR = await pool.query(
     `SELECT b.id, b.nombre FROM bodegas b
      JOIN bodeguero_bodegas bb ON bb.bodega_id = b.id AND bb.usuario_id = $1 AND bb.estatus = 'aprobada'`,
     [usuarioId]
   );
-  if (bodegasR.rows.length === 0) return 'Este bodeguero todavía no tiene ninguna bodega aprobada asociada a su cuenta.';
+  if (bodegasR.rows.length === 0) return [perfilLinea, 'Este bodeguero todavía no tiene ninguna bodega aprobada asociada a su cuenta.'].filter(Boolean).join('\n');
   const bodegaIds = bodegasR.rows.map(b => b.id);
 
   const [reqs, ofertas, txns] = await Promise.all([
@@ -83,7 +99,7 @@ async function construirContextoBodeguero(usuarioId: number): Promise<string> {
     ),
   ]);
 
-  const lineas: string[] = [];
+  const lineas: string[] = [perfilLinea].filter(Boolean);
   lineas.push(`Bodegas asociadas a esta cuenta: ${bodegasR.rows.map(b => b.nombre).join(', ')}.`);
   lineas.push(reqs.rows.length
     ? `Requerimientos activos: ${reqs.rows.map(r => `${r.volumen_ton || '?'} ton de maíz ${r.tipo_maiz} a $${r.precio_ofrecido}/ton, vence ${r.fecha_vencimiento}`).join('; ')}.`
@@ -98,19 +114,21 @@ async function construirContextoBodeguero(usuarioId: number): Promise<string> {
   return lineas.join('\n');
 }
 
-const CAPACIDADES_PRODUCTOR = `Un productor en SIMAC puede: publicar su maíz disponible (tipo, variedad, volumen, fechas, calidad); publicarlo como "propuesta de negociación abierta a bodegas" con un precio solicitado; recibir y comparar ofertas de bodegas (precio, acondicionamiento, transporte, momento de pago) y aceptar la que prefiera; ver sus transacciones y confirmarlas o marcarlas en disputa; ver precios de referencia del mercado. NO puede: publicar requerimientos de compra, ofertar por maíz de otros productores, ni ver información de otros productores o de otras bodegas — eso es exclusivo de cuentas de bodega.`;
+const CAPACIDADES_PRODUCTOR = `Un productor en SIMAC puede: ver y editar su perfil (nombre, correo, teléfono); publicar su maíz disponible (tipo, variedad, volumen, fechas, calidad); publicarlo como "propuesta de negociación abierta a bodegas" con un precio solicitado; recibir y comparar ofertas de bodegas (precio, acondicionamiento, transporte, momento de pago) y aceptar la que prefiera; ver sus transacciones y confirmarlas o marcarlas en disputa; ver precios de referencia del mercado. NO puede: publicar requerimientos de compra, ofertar por maíz de otros productores, ni ver información de otros productores o de otras bodegas — eso es exclusivo de cuentas de bodega.`;
 
-const CAPACIDADES_BODEGUERO = `Una bodega en SIMAC puede: publicar requerimientos de maíz que busca comprar; ver "propuestas disponibles" publicadas por productores y mandarles una oferta (solo puede igualar o mejorar el precio que pide el productor, nunca ofrecer menos); guardar filtros de búsqueda como alerta para recibir notificación automática; registrar transacciones y ver su historial; configurar su tarifario de servicios. NO puede: publicar disponibilidad de maíz como si fuera productor, ni ver las ofertas que otras bodegas mandaron a la misma propuesta — eso siempre queda oculto entre bodegas.`;
+const CAPACIDADES_BODEGUERO = `Una bodega en SIMAC puede: ver su perfil (nombre, correo, teléfono) y los datos de sus bodegas asociadas; publicar requerimientos de maíz que busca comprar; ver "propuestas disponibles" publicadas por productores y mandarles una oferta (solo puede igualar o mejorar el precio que pide el productor, nunca ofrecer menos); guardar filtros de búsqueda como alerta para recibir notificación automática; registrar transacciones y ver su historial; configurar su tarifario de servicios. NO puede: publicar disponibilidad de maíz como si fuera productor, ni ver las ofertas que otras bodegas mandaron a la misma propuesta — eso siempre queda oculto entre bodegas.`;
 
 const SISTEMA_PROMPT = `Eres el asistente automático del chat de ayuda de SIMAC (Sistema de Ordenamiento de la Producción y Comercialización del Maíz Blanco en México), una plataforma que conecta productores de maíz con bodegas compradoras.
 
 Reglas estrictas:
-- Responde SOLO con base en la información de contexto que se te da sobre este usuario específico (por nombre) y en las funciones que existen realmente para su rol. Nunca inventes precios, fechas, nombres de otras personas o datos que no estén en el contexto.
-- Sé exacto: si el contexto no tiene el dato que piden (por ejemplo, no tiene disponibilidad publicada, o no tiene transacciones), dilo tal cual — nunca supongas ni redondees.
-- Si preguntan por algo que no existe para su tipo de cuenta (rol), dilo explícitamente en vez de inventar que sí existe — por ejemplo, si un bodeguero pregunta cómo publicar disponibilidad de maíz, explica que esa función es solo para cuentas de productor.
-- Nunca reveles ni asumas información de otros usuarios — solo conoces los datos del usuario que te escribe.
-- Sé breve, claro y en español natural de México. Sin tecnicismos innecesarios. Dirígete a la persona por su nombre cuando tenga sentido.
-- Si la pregunta es sobre una disputa, un pago, un problema técnico, o algo que no puedes resolver con el contexto que tienes, responde brevemente y termina indicando que vas a avisar a una persona del equipo para que le ayude — NO intentes resolverlo tú.
+- MUY IMPORTANTE: sé conciso. Máximo 2-3 oraciones cortas por respuesta. Nada de párrafos largos ni repetir la pregunta del usuario. Ve directo a la respuesta.
+- Amable y cercano, en español natural de México, sin tecnicismos. Dirígete a la persona por su nombre cuando tenga sentido, sin abusar.
+- Solo hablas de SIMAC: su cuenta, sus datos, cómo usar la plataforma. Si preguntan algo que no tiene nada que ver con SIMAC (clima, noticias, otros temas), dilo con amabilidad y redirige la conversación a en qué le puedes ayudar dentro de la plataforma.
+- Antes de responder, revisa la lista de "Funciones que existen para este tipo de cuenta": si lo que piden SÍ existe para su rol, ayúdales con eso usando sus datos reales. Si NO existe para su rol (por ejemplo un bodeguero preguntando cómo publicar disponibilidad de maíz, que es solo de productores), dilo claro y explica brevemente qué sí puede hacer en su lugar.
+- Responde solo con base en el contexto que se te da sobre este usuario. Nunca inventes precios, fechas, nombres de otras personas o datos que no estén ahí. Si el contexto no tiene el dato (por ejemplo no tiene transacciones), dilo tal cual, sin suponer.
+- Nunca reveles información de otros usuarios (productores o bodegas) — solo conoces los datos del usuario que te escribe.
+- PRIVADO: nunca respondas nada sobre administradores, cuentas de admin, el panel administrativo, permisos internos o cómo funciona el sistema por dentro (base de datos, backend, código). Si preguntan por eso, di que no tienes acceso a esa información y que es un tema interno del equipo.
+- Si la pregunta es sobre una disputa, un pago, un problema técnico, o algo que no puedes resolver con el contexto que tienes, dilo en una frase breve y amable indicando que vas a avisar a una persona del equipo — NO intentes resolverlo tú.
 - Si el usuario simplemente quiere hablar con una persona, respétalo de inmediato y avisa que se le va a conectar con el equipo.
 
 Responde en JSON con este formato exacto, sin texto fuera del JSON:
@@ -149,7 +167,7 @@ export async function generarRespuestaBot(opts: {
       body: JSON.stringify({
         model: GROQ_MODEL,
         temperature: 0.3,
-        max_tokens: 400,
+        max_tokens: 200,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SISTEMA_PROMPT },
