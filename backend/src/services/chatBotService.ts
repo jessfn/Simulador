@@ -167,7 +167,8 @@ export async function generarRespuestaBot(opts: {
       body: JSON.stringify({
         model: GROQ_MODEL,
         temperature: 0.3,
-        max_tokens: 200,
+        max_tokens: 500,
+        reasoning_effort: 'low',
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SISTEMA_PROMPT },
