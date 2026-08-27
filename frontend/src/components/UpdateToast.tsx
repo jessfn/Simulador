@@ -8,8 +8,15 @@ export default function UpdateToast() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_swUrl, r) {
-      // Verificar actualizaciones cada 30 segundos
-      if (r) setInterval(() => { r.update(); }, 30 * 1000);
+      if (!r) return;
+      // Verificar actualizaciones cada 30 segundos...
+      setInterval(() => { r.update(); }, 30 * 1000);
+      // ...y también de inmediato cada vez que el usuario vuelve a la pestaña
+      // (admin con el panel abierto desde antes de un deploy, app en segundo
+      // plano, etc.) — así no depende de esperar el siguiente intervalo.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') r.update();
+      });
     },
   });
 
