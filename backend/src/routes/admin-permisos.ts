@@ -181,10 +181,26 @@ router.post('/usuarios', authMiddleware, soloAdmin, async (req: AuthRequest, res
     }
     const rolData = rolRow.rows[0];
 
-    // Idempotente: no duplicar email
-    const existente = await pool.query('SELECT id FROM usuarios WHERE email = $1', [emailLower]);
+    // Idempotente: no duplicar email — el correo es único para TODA la
+    // plataforma (usuarios, no solo panel), porque el login no distingue
+    // rol al buscar por email. El conflicto puede venir de una cuenta de
+    // productor/bodega inactiva que nunca aparece en esta lista de
+    // Permisos — se explica bien el motivo para que el admin no se quede
+    // sin poder investigar por qué "ya existe" si él no la ve.
+    const existente = await pool.query(
+      'SELECT id, nombre_completo, rol, activo FROM usuarios WHERE email = $1',
+      [emailLower]
+    );
     if (existente.rows.length > 0) {
-      res.status(409).json({ error: 'Ya existe un usuario con ese correo electrónico' });
+      const ex = existente.rows[0];
+      const rolLegible: Record<string, string> = { productor: 'productor', bodeguero: 'bodega' };
+      const tipoCuenta = rolLegible[ex.rol] || 'panel administrativo';
+      res.status(409).json({
+        error: `Ese correo ya pertenece a una cuenta existente: ${ex.nombre_completo || 'sin nombre'} ` +
+               `(${tipoCuenta}${ex.activo ? '' : ', inactiva'}). Cada correo debe ser único en todo el sistema — ` +
+               `no se puede crear otra cuenta con el mismo correo.`,
+        cuenta_existente: { id: ex.id, nombre_completo: ex.nombre_completo, rol: ex.rol, activo: ex.activo },
+      });
       return;
     }
 
