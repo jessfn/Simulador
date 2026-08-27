@@ -182,16 +182,19 @@ router.post('/registro', authLimiter, async (req: Request, res: Response): Promi
 // =============================================
 router.post('/login', authLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password }: LoginPayload = req.body;
+    const { email, password, contexto }: LoginPayload & { contexto?: 'admin' | 'bodega' } = req.body;
 
     if (!email || !password) {
       res.status(400).json({ error: 'Email y contraseña son obligatorios' });
       return;
     }
 
-    // Buscar usuario
+    // Buscar usuario — excluye productores porque ellos inician sesión con
+    // CURP + NIP (POST /productor/auth/login-pin), nunca por aquí. Esto
+    // evita ambigüedad si un productor y una cuenta de panel/bodega llegan
+    // a compartir el mismo correo (categorías independientes a propósito).
     const result = await pool.query(
-      'SELECT * FROM usuarios WHERE email = $1 AND activo = true',
+      "SELECT * FROM usuarios WHERE email = $1 AND activo = true AND rol != 'productor'",
       [email.toLowerCase().trim()]
     );
 
@@ -200,7 +203,16 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
       return;
     }
 
-    const usuario = result.rows[0];
+    // Caso raro: una cuenta de bodega y una de panel comparten correo (ambas
+    // activas, permitido a propósito). El frontend indica desde qué pantalla
+    // se inició sesión (`contexto`) para desambiguar cuál de las dos usar,
+    // vía la columna `es_panel_usuario` que ya distingue ambas categorías.
+    let usuario = result.rows[0];
+    if (result.rows.length > 1 && contexto) {
+      const esPanel = contexto === 'admin';
+      const filtrado = result.rows.find(r => !!r.es_panel_usuario === esPanel);
+      if (filtrado) usuario = filtrado;
+    }
 
     // Bloqueo por intentos fallidos
     const minutosBloqueo = await verificarBloqueo(usuario.id);

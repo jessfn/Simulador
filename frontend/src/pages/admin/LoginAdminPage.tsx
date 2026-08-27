@@ -73,7 +73,7 @@ export default function LoginAdminPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setError(''); setLoading(true);
     try {
-      const res = await api.auth.login(email, password);
+      const res = await api.auth.login(email, password, 'admin');
       const u = res.usuario || res.user;
       const puedeEntrar =
         u?.rol === 'admin' ||

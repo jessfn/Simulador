@@ -88,8 +88,8 @@ export { BASE };
 
 export const api = {
   auth: {
-    login: (email: string, password: string) =>
-      request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    login: (email: string, password: string, contexto?: 'admin' | 'bodega') =>
+      request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, contexto }) }),
     registro: (data: any) =>
       request('/auth/registro', { method: 'POST', body: JSON.stringify(data) }),
     perfil: () => request('/auth/perfil'),

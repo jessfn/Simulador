@@ -181,37 +181,37 @@ router.post('/usuarios', authMiddleware, soloAdmin, async (req: AuthRequest, res
     }
     const rolData = rolRow.rows[0];
 
-    // Solo bloquea si ya hay una cuenta ACTIVA con ese correo — el login
-    // busca por email sin filtrar rol (`WHERE email = $1 AND activo = true`),
-    // así que dos cuentas activas con el mismo correo sí serían ambiguas al
-    // iniciar sesión. Pero una cuenta inactiva nunca puede iniciar sesión,
-    // así que no hay riesgo real en reutilizar su correo — no debe bloquear
-    // la creación de un usuario de panel nuevo (productor/bodega y panel son
-    // categorías distintas para efectos de este límite).
+    // Las cuentas de "app" (productor y bodega) son una categoría aparte de
+    // las de panel/admin — el correo solo debe ser único DENTRO de cada
+    // categoría (ver migración v43, índices únicos parciales por
+    // `es_panel_usuario`), nunca entre ellas. Un productor inicia sesión con
+    // CURP + NIP (nunca por correo) y una bodega con correo + contraseña,
+    // pero por el mismo endpoint que el panel (`POST /api/auth/login`), que
+    // ahora desambigua con el `contexto` que manda el frontend. Por eso
+    // aquí solo importa si YA existe otra cuenta de PANEL con ese correo.
     const existente = await pool.query(
-      'SELECT id, nombre_completo, rol, activo FROM usuarios WHERE email = $1',
+      'SELECT id, nombre_completo, rol, activo FROM usuarios WHERE email = $1 AND es_panel_usuario = TRUE',
       [emailLower]
     );
     const conflictoActivo = existente.rows.find(r => r.activo);
     if (conflictoActivo) {
-      const rolLegible: Record<string, string> = { productor: 'productor', bodeguero: 'bodega' };
-      const tipoCuenta = rolLegible[conflictoActivo.rol] || 'panel administrativo';
       res.status(409).json({
-        error: `Ese correo ya pertenece a una cuenta activa: ${conflictoActivo.nombre_completo || 'sin nombre'} ` +
-               `(${tipoCuenta}). No se puede crear otra cuenta activa con el mismo correo.`,
+        error: `Ese correo ya pertenece a una cuenta de panel administrativo activa: ` +
+               `${conflictoActivo.nombre_completo || 'sin nombre'}. No se puede crear otra cuenta activa con el mismo correo.`,
         cuenta_existente: { id: conflictoActivo.id, nombre_completo: conflictoActivo.nombre_completo, rol: conflictoActivo.rol, activo: true },
       });
       return;
     }
     if (existente.rows.length > 0) {
-      // Todos los que comparten el correo están inactivos (nunca pueden
-      // iniciar sesión) — se les libera el correo renombrándolo, para no
-      // chocar con la restricción UNIQUE(email) de la base de datos, sin
-      // borrar esas cuentas ni perder su historial.
-      for (const inactiva of existente.rows) {
+      // Cuentas de panel INACTIVAS con el mismo correo: no bloquean, pero
+      // el índice único parcial de la categoría panel sí exige que el
+      // correo no se repita dentro de ella, así que se liberan
+      // renombrándolas antes de insertar la cuenta nueva. Nunca se borran
+      // ni se pierde su historial.
+      for (const otraCuenta of existente.rows) {
         await pool.query(
           `UPDATE usuarios SET email = $1 WHERE id = $2`,
-          [`${emailLower}.inactivo-${inactiva.id}`, inactiva.id]
+          [`${emailLower}.liberado-${otraCuenta.id}`, otraCuenta.id]
         );
       }
     }
