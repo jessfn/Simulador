@@ -33,7 +33,11 @@ async function construirContextoProductor(usuarioId: number): Promise<string> {
   if (prodR.rows.length === 0) return [perfilLinea, 'Este productor todavía no tiene su registro de productor completo en el sistema (sin parcela/UP registrada).'].filter(Boolean).join('\n');
   const producerId = prodR.rows[0].producer_id;
 
-  const [disp, props, txns] = await Promise.all([
+  const [ups, disp, props, txns] = await Promise.all([
+    pool.query(
+      `SELECT up_name, municipality_name, state_name FROM up WHERE producer_id = $1 ORDER BY created_at ASC`,
+      [producerId]
+    ),
     pool.query(
       `SELECT tipo_maiz, variedad_code, volumen_estimado_ton, fecha_vencimiento, activa
        FROM disponibilidad_productor WHERE producer_id = $1 AND activa = TRUE ORDER BY created_at DESC LIMIT 5`,
@@ -53,6 +57,9 @@ async function construirContextoProductor(usuarioId: number): Promise<string> {
   ]);
 
   const lineas: string[] = [perfilLinea].filter(Boolean);
+  lineas.push(ups.rows.length
+    ? `Parcelas (UPs) registradas: ${ups.rows.map(u => `${u.up_name} (${u.municipality_name}, ${u.state_name})`).join('; ')}. Puede agregar más parcelas cuando quiera, incluso si las renta.`
+    : 'No tiene ninguna parcela (UP) registrada todavía — puede agregar una desde "Agregar otra parcela", incluso si la renta.');
   lineas.push(disp.rows.length
     ? `Disponibilidades activas publicadas: ${disp.rows.map(d => `${d.volumen_estimado_ton} ton de maíz ${d.tipo_maiz}${d.variedad_code ? ` (${d.variedad_code})` : ''}, vence ${d.fecha_vencimiento}`).join('; ')}.`
     : 'No tiene disponibilidades activas publicadas.');
@@ -114,9 +121,33 @@ async function construirContextoBodeguero(usuarioId: number): Promise<string> {
   return lineas.join('\n');
 }
 
-const CAPACIDADES_PRODUCTOR = `Un productor en SIMAC puede: ver y editar su perfil (nombre, correo, teléfono); descargar su "acuse de registro" en PDF desde Mi Perfil (botón "Acuse de registro" — incluye su folio, CURP, fecha de registro y estado de la cuenta); publicar su maíz disponible (tipo, variedad, volumen, fechas, calidad); publicarlo como "propuesta de negociación abierta a bodegas" con un precio solicitado; recibir y comparar ofertas de bodegas (precio, acondicionamiento, transporte, momento de pago) y aceptar la que prefiera; ver sus transacciones y confirmarlas o marcarlas en disputa; ver precios de referencia del mercado. NO puede: publicar requerimientos de compra, ofertar por maíz de otros productores, ni ver información de otros productores o de otras bodegas — eso es exclusivo de cuentas de bodega.`;
+const CAPACIDADES_PRODUCTOR = `Un productor en SIMAC puede:
+- Agregar una nueva parcela (UP) cuando quiera, desde "Agregar otra parcela" — dibuja el polígono o marca puntos GPS en el mapa. Puede tener varias parcelas registradas a la vez, y esto aplica igual si es dueño o si RENTA la tierra (rentar no le impide agregar la parcela al sistema).
+- Ver y editar su perfil (nombre, correo, teléfono) desde Mi Perfil.
+- Descargar su "acuse de registro" en PDF desde Mi Perfil (botón "Acuse de registro" — incluye folio, CURP, fecha de registro y estado de la cuenta).
+- Registrar y dar seguimiento a su ciclo productivo (siembra, cosecha).
+- Publicar su maíz disponible (tipo, variedad, volumen, fechas, calidad) y, si quiere, publicarlo como "propuesta de negociación abierta a bodegas" con un precio solicitado.
+- Ver el mapa de bodegas cercanas y el detalle de cada una.
+- Recibir y comparar ofertas de bodegas a sus propuestas (precio, acondicionamiento, transporte, momento de pago) desde "Mis propuestas y ofertas", y aceptar la que prefiera.
+- Ver sus transacciones y confirmarlas o marcarlas en disputa.
+- Ver precios de referencia del mercado, con la metodología explicada.
+- Ver y solicitar apoyo en ventanillas de programas de gobierno, y ver incentivos disponibles.
+- Ver sus alertas/notificaciones y el estado de sus solicitudes de apoyo.
+NO puede: publicar requerimientos de compra (eso es de bodegas), ofertar por maíz de otros productores, ni ver información de otros productores o de otras bodegas — eso es exclusivo de cuentas de bodega. No existe una pantalla dedicada para EDITAR una parcela ya creada, solo para agregar nuevas y verlas en el mapa/dashboard.`;
 
-const CAPACIDADES_BODEGUERO = `Una bodega en SIMAC puede: ver su perfil (nombre, correo, teléfono) y los datos de sus bodegas asociadas; descargar su "acuse de registro" en PDF desde Mi Perfil (botón "Acuse de registro" — incluye su folio, CURP, fecha de registro, estado de la cuenta y sus bodegas asociadas); publicar requerimientos de maíz que busca comprar; ver "propuestas disponibles" publicadas por productores y mandarles una oferta (solo puede igualar o mejorar el precio que pide el productor, nunca ofrecer menos); guardar filtros de búsqueda como alerta para recibir notificación automática; registrar transacciones y ver su historial; configurar su tarifario de servicios. NO puede: publicar disponibilidad de maíz como si fuera productor, ni ver las ofertas que otras bodegas mandaron a la misma propuesta — eso siempre queda oculto entre bodegas.`;
+const CAPACIDADES_BODEGUERO = `Una bodega en SIMAC puede:
+- Ver y editar su perfil, sus bodegas asociadas, y editar los datos de una bodega (dirección, contacto).
+- Descargar su "acuse de registro" en PDF desde Mi Perfil (folio, CURP, fecha de registro, estado de la cuenta, bodegas asociadas).
+- Gestionar su inventario y publicar/actualizar su precio de compra diario.
+- Publicar requerimientos de maíz que busca comprar (señales de compra) para que productores cercanos los vean.
+- Ver la tabla de oferta de productores por municipio y marcar interés.
+- Ver "propuestas disponibles" publicadas por productores y mandarles una oferta (solo puede igualar o mejorar el precio que pide el productor, nunca ofrecer menos).
+- Guardar filtros de búsqueda como alerta para recibir notificación automática cuando aparezca algo que le interese.
+- Registrar transacciones manualmente y ver su historial completo.
+- Configurar y proponer conceptos en su tarifario de servicios.
+- Crear y administrar ventanillas de apoyo propias, y ver/gestionar las solicitudes que reciba en ellas.
+- Ver notificaciones y ajustar su configuración de cuenta.
+NO puede: publicar disponibilidad de maíz como si fuera productor, ni ver las ofertas que otras bodegas mandaron a la misma propuesta — eso siempre queda oculto entre bodegas. El acceso a "Precios de mercado" puede estar restringido según el tipo de bodega.`;
 
 const SISTEMA_PROMPT = `Eres el asistente automático del chat de ayuda de SIMAC (Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México), una plataforma que conecta productores de maíz con bodegas compradoras.
 
@@ -124,7 +155,7 @@ Reglas estrictas:
 - MUY IMPORTANTE: sé conciso. Máximo 2-3 oraciones cortas por respuesta. Nada de párrafos largos ni repetir la pregunta del usuario. Ve directo a la respuesta.
 - Amable y cercano, en español natural de México, sin tecnicismos. Dirígete a la persona por su nombre cuando tenga sentido, sin abusar.
 - Solo hablas de SIMAC: su cuenta, sus datos, cómo usar la plataforma. Si preguntan algo que no tiene nada que ver con SIMAC (clima, noticias, otros temas), dilo con amabilidad y redirige la conversación a en qué le puedes ayudar dentro de la plataforma.
-- Antes de responder, revisa la lista de "Funciones que existen para este tipo de cuenta": si lo que piden SÍ existe para su rol, ayúdales con eso usando sus datos reales. Si NO existe para su rol (por ejemplo un bodeguero preguntando cómo publicar disponibilidad de maíz, que es solo de productores), dilo claro y explica brevemente qué sí puede hacer en su lugar.
+- Antes de responder, lee con cuidado y COMPLETO la lista de "Funciones que existen para este tipo de cuenta" — está actualizada y es la fuente de verdad. Si lo que piden SÍ existe para su rol (aunque esté descrito con otras palabras — por ejemplo "rentar y agregar una parcela" es lo mismo que "agregar una nueva UP"), ayúdales con eso usando sus datos reales. Nunca digas que algo "no se puede" solo porque no lo reconociste a la primera lectura — vuelve a revisar la lista completa antes de negar algo. Si de verdad NO existe para su rol (por ejemplo un bodeguero preguntando cómo publicar disponibilidad de maíz, que es solo de productores), dilo claro y explica brevemente qué sí puede hacer en su lugar.
 - Si el usuario menciona la palabra "acuse" sin más contexto (por ejemplo solo escribe "acuse" o "mi acuse"), no asumas qué necesita — pregúntale directamente si se refiere al acuse de registro (el PDF descargable desde Mi Perfil) o a otra cosa, y ya con su respuesta ayúdalo.
 - Responde solo con base en el contexto que se te da sobre este usuario. Nunca inventes precios, fechas, nombres de otras personas o datos que no estén ahí. Si el contexto no tiene el dato (por ejemplo no tiene transacciones), dilo tal cual, sin suponer.
 - Nunca reveles información de otros usuarios (productores o bodegas) — solo conoces los datos del usuario que te escribe.

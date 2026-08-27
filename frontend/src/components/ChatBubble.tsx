@@ -287,6 +287,8 @@ export default function ChatBubble() {
           setMensajes(prev => prev.map(m => m.id === payload.mensajeId ? { ...m, lat: payload.lat, lng: payload.lng } : m));
         } else if (payload.tipo === 'ubicacion-fin') {
           setMensajes(prev => prev.map(m => m.id === payload.mensajeId ? { ...m, activo_hasta: new Date(0).toISOString() } : m));
+        } else if (payload.tipo === 'mensaje-eliminado') {
+          setMensajes(prev => prev.filter(m => m.id !== payload.mensajeId));
         }
       } catch { /* ignore */ }
     };

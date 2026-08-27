@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search, MessageCircle, Paperclip, Image as ImageIcon,
-  Smile, RefreshCw, Sparkles, Hand,
+  Smile, RefreshCw, Sparkles, Hand, MoreVertical, Trash2,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { apiFetch, BASE } from '../../services/api';
@@ -105,6 +105,8 @@ export default function ChatsAdminPage() {
   const [showEmoji, setShowEmoji] = useState(false);
   const [usuarioLeidoHasta, setUsuarioLeidoHasta] = useState<string | null>(null);
   const [lightboxImg, setLightboxImg] = useState<{ url: string; alinearDerecha: boolean; fecha: string; caption: string | null } | null>(null);
+  const [menuMensajeId, setMenuMensajeId] = useState<number | null>(null);
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
   const [escribiendoIds, setEscribiendoIds] = useState<Set<number>>(new Set());
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -175,6 +177,13 @@ export default function ChatsAdminPage() {
           setSeleccionada(s => s && s.id === payload.conversacionId ? { ...s, bot_activo: false } : s);
           return;
         }
+        if (payload.tipo === 'mensaje-eliminado') {
+          if (seleccionadaRef.current?.id === payload.conversacionId) {
+            setMensajes(prev => prev.filter(m => m.id !== payload.mensajeId));
+          }
+          cargarLista();
+          return;
+        }
         if (payload.tipo !== 'mensaje') return;
         const { conversacionId, mensaje } = payload;
         cargarLista();
@@ -218,6 +227,28 @@ export default function ChatsAdminPage() {
       setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? { ...c, bot_activo: false } : c));
     } catch { /* ignore */ }
     finally { setTomandoControl(false); }
+  }
+
+  async function eliminarMensaje(mensajeId: number) {
+    if (!seleccionada) return;
+    const ok = confirm('¿Eliminar este mensaje? Desaparecerá también del lado del usuario. No se puede deshacer.');
+    if (!ok) return;
+    setEliminandoId(mensajeId);
+    setMenuMensajeId(null);
+    try {
+      const res = await apiFetch(`/admin/chats/${seleccionada.id}/mensaje/${mensajeId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setMensajes(prev => prev.filter(m => m.id !== mensajeId));
+        cargarLista();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'No se pudo eliminar el mensaje.');
+      }
+    } catch {
+      alert('Error de conexión al eliminar el mensaje.');
+    } finally {
+      setEliminandoId(null);
+    }
   }
 
   async function responderConIA() {
@@ -436,16 +467,18 @@ export default function ChatsAdminPage() {
                   const esBot = m.autor_rol === 'bot';
                   const url = m.archivo_url ? `${BASE.replace('/api', '')}${m.archivo_url}` : '';
                   const esSoloImagen = m.tipo === 'imagen' && !!m.archivo_url && !m.contenido;
+                  const puedeEliminar = alinearDerecha; // solo mensajes del admin o del bot
                   return (
-                    <div key={m.id} style={bubbleShadow} className={`flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
+                    <div key={m.id} style={bubbleShadow} className={`group flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
                       {esBot && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 mb-0.5 mr-1">
                           <Sparkles size={11} /> Asistente SIMAC
                         </span>
                       )}
+                      <div className={`flex items-center gap-1 ${alinearDerecha ? 'flex-row' : 'flex-row-reverse'}`}>
                       <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
                         esBot ? 'bg-indigo-50 ring-1 ring-indigo-100' : alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
-                      }`}>
+                      } ${eliminandoId === m.id ? 'opacity-40' : ''}`}>
                         <Tail esMio={alinearDerecha} color={esBot ? '#eef2ff' : alinearDerecha ? '#17603a' : '#ffffff'} />
                         {m.tipo === 'imagen' && m.archivo_url && esSoloImagen && (
                           <div className="relative">
@@ -487,6 +520,26 @@ export default function ChatsAdminPage() {
                             )}
                           </div>
                         )}
+                      </div>
+                      {puedeEliminar && (
+                        <div className="relative flex-shrink-0">
+                          <button onClick={() => setMenuMensajeId(id => id === m.id ? null : m.id)}
+                            className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-6 h-6 rounded-full hover:bg-black/5 flex items-center justify-center text-gray-400 transition-opacity">
+                            <MoreVertical size={14} />
+                          </button>
+                          {menuMensajeId === m.id && (
+                            <>
+                              <div className="fixed inset-0 z-10" onClick={() => setMenuMensajeId(null)} />
+                              <div className="absolute z-20 top-7 right-0 bg-white rounded-xl shadow-lg ring-1 ring-black/[0.06] py-1 w-44">
+                                <button onClick={() => eliminarMensaje(m.id)}
+                                  className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[12.5px] font-semibold text-red-500 hover:bg-red-50 transition-colors">
+                                  <Trash2 size={13} /> Eliminar mensaje
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                       </div>
                     </div>
                   );

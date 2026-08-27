@@ -564,6 +564,41 @@ adminChatRouter.patch('/:id/resolver', authMiddleware, responderChats, async (re
   }
 });
 
+// El admin borra un mensaje suyo o del bot cuando hubo un error (respuesta
+// equivocada, mensaje mal enviado, etc.) — se elimina de verdad de la
+// conversación, no solo de su vista: se avisa al usuario y a los demás
+// admins conectados por SSE para que también desaparezca de sus pantallas.
+// Nunca deja borrar mensajes del propio usuario (dueño de la conversación).
+adminChatRouter.delete('/:id/mensaje/:mensajeId', authMiddleware, responderChats, async (req: AuthRequest, res: Response) => {
+  try {
+    const convId = Number(req.params.id);
+    const mensajeId = Number(req.params.mensajeId);
+
+    const conv = await pool.query('SELECT usuario_id FROM chat_conversaciones WHERE id = $1', [convId]);
+    if (!conv.rows.length) { res.status(404).json({ error: 'Conversación no encontrada' }); return; }
+
+    const result = await pool.query(
+      `DELETE FROM chat_mensajes
+       WHERE id = $1 AND conversacion_id = $2 AND autor_rol IN ('admin', 'bot')
+       RETURNING id`,
+      [mensajeId, convId]
+    );
+    if (!result.rows.length) {
+      res.status(404).json({ error: 'Mensaje no encontrado o no se puede eliminar (solo se pueden borrar mensajes del admin o del asistente)' });
+      return;
+    }
+
+    const payload = { tipo: 'mensaje-eliminado', conversacionId: convId, mensajeId };
+    emitirAUsuario(conv.rows[0].usuario_id, payload);
+    emitirAAdmins(payload);
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    console.error('DELETE /admin/chats/:id/mensaje/:mensajeId:', err);
+    res.status(500).json({ error: err?.message || 'Error al eliminar el mensaje' });
+  }
+});
+
 adminChatRouter.get('/stream', async (req: AuthRequest, res: Response) => {
   if (!autenticarSSE(req, res)) return;
   try {
