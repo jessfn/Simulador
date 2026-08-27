@@ -105,7 +105,7 @@ async function responderConBot(opts: {
   if (generandoRespuestaBot.has(opts.conversacionId)) return null;
   generandoRespuestaBot.add(opts.conversacionId);
   try {
-    const respuesta = await generarRespuestaBot({ usuarioId: opts.usuarioId, rol: opts.rolUsuario, mensaje: opts.mensaje });
+    const respuesta = await generarRespuestaBot({ usuarioId: opts.usuarioId, rol: opts.rolUsuario, mensaje: opts.mensaje, conversacionId: opts.conversacionId });
     if (!respuesta) return null;
     const botUserId = await obtenerBotUserId();
     if (!botUserId) return null;

@@ -469,13 +469,12 @@ export default function ChatsAdminPage() {
                   const esSoloImagen = m.tipo === 'imagen' && !!m.archivo_url && !m.contenido;
                   const puedeEliminar = alinearDerecha; // solo mensajes del admin o del bot
                   return (
-                    <div key={m.id} style={bubbleShadow} className={`group flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
+                    <div key={m.id} style={bubbleShadow} className={`group relative flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
                       {esBot && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 mb-0.5 mr-1">
                           <Sparkles size={11} /> Asistente SIMAC
                         </span>
                       )}
-                      <div className={`flex items-center gap-1 ${alinearDerecha ? 'flex-row' : 'flex-row-reverse'}`}>
                       <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
                         esBot ? 'bg-indigo-50 ring-1 ring-indigo-100' : alinearDerecha ? 'bg-gradient-to-br from-[#1f7a49] to-[#17603a]' : 'bg-white'
                       } ${eliminandoId === m.id ? 'opacity-40' : ''}`}>
@@ -520,26 +519,25 @@ export default function ChatsAdminPage() {
                             )}
                           </div>
                         )}
-                      </div>
-                      {puedeEliminar && (
-                        <div className="relative flex-shrink-0">
-                          <button onClick={() => setMenuMensajeId(id => id === m.id ? null : m.id)}
-                            className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-6 h-6 rounded-full hover:bg-black/5 flex items-center justify-center text-gray-400 transition-opacity">
-                            <MoreVertical size={14} />
-                          </button>
-                          {menuMensajeId === m.id && (
-                            <>
-                              <div className="fixed inset-0 z-10" onClick={() => setMenuMensajeId(null)} />
-                              <div className="absolute z-20 top-7 right-0 bg-white rounded-xl shadow-lg ring-1 ring-black/[0.06] py-1 w-44">
-                                <button onClick={() => eliminarMensaje(m.id)}
-                                  className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[12.5px] font-semibold text-red-500 hover:bg-red-50 transition-colors">
-                                  <Trash2 size={13} /> Eliminar mensaje
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
+                        {puedeEliminar && (
+                          <div className="absolute -left-8 top-0">
+                            <button onClick={() => setMenuMensajeId(id => id === m.id ? null : m.id)}
+                              className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-6 h-6 rounded-full hover:bg-black/10 flex items-center justify-center text-gray-400 transition-opacity">
+                              <MoreVertical size={14} />
+                            </button>
+                            {menuMensajeId === m.id && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setMenuMensajeId(null)} />
+                                <div className="absolute z-20 top-7 right-0 bg-white rounded-xl shadow-lg ring-1 ring-black/[0.06] py-1 w-44">
+                                  <button onClick={() => eliminarMensaje(m.id)}
+                                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[12.5px] font-semibold text-red-500 hover:bg-red-50 transition-colors">
+                                    <Trash2 size={13} /> Eliminar mensaje
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

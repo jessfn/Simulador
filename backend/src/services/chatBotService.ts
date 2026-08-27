@@ -3,6 +3,14 @@ import pool from '../config/database';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'openai/gpt-oss-20b';
 
+/** "Buenos días" / "Buenas tardes" / "Buenas noches" según la hora real en México. */
+function saludoSegunHora(): string {
+  const hora = Number(new Intl.DateTimeFormat('es-MX', { hour: 'numeric', hour12: false, timeZone: 'America/Mexico_City' }).format(new Date()));
+  if (hora < 12) return 'Buenos días';
+  if (hora < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
 let botUserIdCache: number | null = null;
 
 /** Id del usuario sintético 'bot' (creado por migrate_v42_chat_bot.sql). Se cachea en memoria. */
@@ -154,6 +162,7 @@ const SISTEMA_PROMPT = `Eres el asistente automático del chat de ayuda de SIMAC
 Reglas estrictas:
 - MUY IMPORTANTE: sé conciso. Máximo 2-3 oraciones cortas por respuesta. Nada de párrafos largos ni repetir la pregunta del usuario. Ve directo a la respuesta.
 - Amable y cercano, en español natural de México, sin tecnicismos. Dirígete a la persona por su nombre cuando tenga sentido, sin abusar.
+- Sigue la instrucción sobre el saludo (al final del mensaje de contexto) tal cual — es una cortesía importante para el usuario.
 - Solo hablas de SIMAC: su cuenta, sus datos, cómo usar la plataforma. Si preguntan algo que no tiene nada que ver con SIMAC (clima, noticias, otros temas), dilo con amabilidad y redirige la conversación a en qué le puedes ayudar dentro de la plataforma.
 - Antes de responder, lee con cuidado y COMPLETO la lista de "Funciones que existen para este tipo de cuenta" — está actualizada y es la fuente de verdad. Si lo que piden SÍ existe para su rol (aunque esté descrito con otras palabras — por ejemplo "rentar y agregar una parcela" es lo mismo que "agregar una nueva UP"), ayúdales con eso usando sus datos reales. Nunca digas que algo "no se puede" solo porque no lo reconociste a la primera lectura — vuelve a revisar la lista completa antes de negar algo. Si de verdad NO existe para su rol (por ejemplo un bodeguero preguntando cómo publicar disponibilidad de maíz, que es solo de productores), dilo claro y explica brevemente qué sí puede hacer en su lugar.
 - Si el usuario menciona la palabra "acuse" sin más contexto (por ejemplo solo escribe "acuse" o "mi acuse"), no asumas qué necesita — pregúntale directamente si se refiere al acuse de registro (el PDF descargable desde Mi Perfil) o a otra cosa, y ya con su respuesta ayúdalo.
@@ -177,18 +186,33 @@ export async function generarRespuestaBot(opts: {
   usuarioId: number;
   rol: string;
   mensaje: string;
+  conversacionId?: number;
 }): Promise<RespuestaBot | null> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey || process.env.CHAT_BOT_ENABLED === 'false') return null;
 
   try {
-    const [nombreR, contexto] = await Promise.all([
+    const [nombreR, contexto, primerMsgHoyR] = await Promise.all([
       pool.query('SELECT nombre_completo FROM usuarios WHERE id = $1', [opts.usuarioId]),
       opts.rol === 'bodeguero' ? construirContextoBodeguero(opts.usuarioId) : construirContextoProductor(opts.usuarioId),
+      opts.conversacionId
+        ? pool.query(
+            `SELECT 1 FROM chat_mensajes
+             WHERE conversacion_id = $1 AND autor_rol = 'bot'
+               AND created_at::date = (now() AT TIME ZONE 'America/Mexico_City')::date
+             LIMIT 1`,
+            [opts.conversacionId]
+          )
+        : Promise.resolve({ rows: [] as any[] }),
     ]);
     const nombre = nombreR.rows[0]?.nombre_completo || 'este usuario';
     const capacidades = opts.rol === 'bodeguero' ? CAPACIDADES_BODEGUERO : CAPACIDADES_PRODUCTOR;
     const rolLabel = opts.rol === 'bodeguero' ? 'bodega' : 'productor';
+    const esPrimeraDelDia = primerMsgHoyR.rows.length === 0;
+    const saludo = saludoSegunHora();
+    const notaSaludo = esPrimeraDelDia
+      ? `Es la primera vez que le respondes hoy en esta conversación — por respeto, abre tu respuesta con "${saludo}" (ajustado a mayúscula/minúscula natural), antes de contestar su pregunta.`
+      : 'Ya le respondiste antes hoy en esta conversación — no hace falta volver a saludar, ve directo a la respuesta.';
 
     const res = await fetch(GROQ_API_URL, {
       method: 'POST',
@@ -204,7 +228,7 @@ export async function generarRespuestaBot(opts: {
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SISTEMA_PROMPT },
-          { role: 'system', content: `Usuario: ${nombre} (cuenta de tipo: ${rolLabel}).\n\nFunciones que existen para este tipo de cuenta:\n${capacidades}\n\nDatos actuales de este usuario:\n${contexto}` },
+          { role: 'system', content: `Usuario: ${nombre} (cuenta de tipo: ${rolLabel}).\n\nFunciones que existen para este tipo de cuenta:\n${capacidades}\n\nDatos actuales de este usuario:\n${contexto}\n\n${notaSaludo}` },
           { role: 'user', content: opts.mensaje },
         ],
       }),
