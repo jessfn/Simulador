@@ -136,6 +136,7 @@ function RequireBodeguero({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user?.rol === 'productor') return <Navigate to="/productor" replace />;
+  if (user?.rol === 'capturista') return <Navigate to="/tecnico" replace />;
   return <>{children}</>;
 }
 
@@ -190,6 +191,7 @@ function SmartRedirect() {
   const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/bienvenida" replace />;
   if (user?.rol === 'productor') return <Navigate to="/productor" replace />;
+  if (user?.rol === 'capturista') return <Navigate to="/tecnico" replace />;
   if (isAdminPanelUser(user)) return <Navigate to="/admin" replace />;
   return <Navigate to="/dashboard" replace />;
 }
