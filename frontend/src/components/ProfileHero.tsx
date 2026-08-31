@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef } from 'react';
-import { ChevronLeft, Warehouse, Sprout } from 'lucide-react';
+import { ChevronLeft, Warehouse, Sprout, ClipboardCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Props {
@@ -9,11 +9,11 @@ interface Props {
   back?: string | number;
   badges?: ReactNode;
   meta?: string;
-  variant?: 'productor' | 'bodega';
+  variant?: 'productor' | 'bodega' | 'tecnico';
 }
 
 /* ── Canvas de fondo animado (solo dentro del hero verde) ─────────────── */
-function HeroCanvas({ variant }: { variant: 'productor' | 'bodega' }) {
+function HeroCanvas({ variant }: { variant: 'productor' | 'bodega' | 'tecnico' }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -213,6 +213,57 @@ function HeroCanvas({ variant }: { variant: 'productor' | 'bodega' }) {
       ctx.stroke();
     };
 
+    /* ── Figuras del TÉCNICO ECA (registro en campo) ── */
+    // Pin de ubicación con núcleo — parcela geolocalizada
+    const drawPin = (s: number, a: number) => {
+      ctx.beginPath();
+      ctx.moveTo(0, s * 1.1);
+      ctx.bezierCurveTo(s * 0.85, s * 0.15, s * 0.8, -s * 0.75, 0, -s * 0.85);
+      ctx.bezierCurveTo(-s * 0.8, -s * 0.75, -s * 0.85, s * 0.15, 0, s * 1.1);
+      ctx.lineWidth = 0.9;
+      ctx.strokeStyle = `rgba(255,255,255,${a * 1.2})`;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, -s * 0.25, s * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
+    // Portapapeles con palomita — registro capturado
+    const drawClipboard = (s: number, a: number) => {
+      const w = s * 1.1, h = s * 1.35;
+      ctx.lineWidth = 0.85;
+      ctx.strokeStyle = `rgba(255,255,255,${a * 1.15})`;
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      // clip superior
+      ctx.beginPath();
+      ctx.rect(-w * 0.22, -h / 2 - s * 0.14, w * 0.44, s * 0.22);
+      ctx.stroke();
+      // palomita
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.22, h * 0.02);
+      ctx.lineTo(-w * 0.04, h * 0.22);
+      ctx.lineTo(w * 0.28, -h * 0.2);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    };
+
+    // Objetivo/GPS — precisión de captura
+    const drawTarget = (s: number, a: number) => {
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = `rgba(255,255,255,${a * 1.2})`;
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.85, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.45, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 1.15); ctx.lineTo(0, -s * 0.95);
+      ctx.moveTo(0, s * 0.95);  ctx.lineTo(0, s * 1.15);
+      ctx.moveTo(-s * 1.15, 0); ctx.lineTo(-s * 0.95, 0);
+      ctx.moveTo(s * 0.95, 0);  ctx.lineTo(s * 1.15, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
     let t = 0;
     const tick = () => {
       t += 1;
@@ -248,8 +299,8 @@ function HeroCanvas({ variant }: { variant: 'productor' | 'bodega' }) {
         }
       }
 
-      /* red de conexiones (solo bodega): líneas entre partículas cercanas */
-      if (variant === 'bodega') {
+      /* red de conexiones (bodega y técnico): líneas entre partículas cercanas */
+      if (variant === 'bodega' || variant === 'tecnico') {
         const front = parts.filter(p => p.depth === 2);
         ctx.lineWidth = 0.5;
         for (let i = 0; i < front.length; i++) {
@@ -299,6 +350,10 @@ function HeroCanvas({ variant }: { variant: 'productor' | 'bodega' }) {
             if (p.kind === 0)      drawHoja(p.s * 1.15, p.squeeze, flick);
             else if (p.kind === 1) drawEspiga(p.s * 1.1, flick);
             else                   drawSemilla(p.s);
+          } else if (variant === 'tecnico') {
+            if (p.kind === 0)      drawPin(p.s * 0.9, flick);
+            else if (p.kind === 1) drawClipboard(p.s * 0.85, flick);
+            else                   drawTarget(p.s * 0.85, flick);
           } else {
             if (p.kind === 0)      drawCaja3D(p.s * 0.95, flick);
             else if (p.kind === 1) drawHex(p.s * 0.9, flick);
@@ -393,12 +448,16 @@ export default function ProfileHero({ titulo, nombre, initials, back, badges, me
           <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold tracking-wide border backdrop-blur-sm
             ${variant === 'productor'
               ? 'bg-emerald-400/15 border-emerald-300/25 text-emerald-100'
+              : variant === 'tecnico'
+              ? 'bg-amber-400/15 border-amber-300/25 text-amber-100'
               : 'bg-sky-400/15 border-sky-300/25 text-sky-100'}`}
             style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
             {variant === 'productor'
               ? <Sprout size={12} strokeWidth={2} />
+              : variant === 'tecnico'
+              ? <ClipboardCheck size={12} strokeWidth={2} />
               : <Warehouse size={12} strokeWidth={2} />}
-            {variant === 'productor' ? 'Productor agrícola' : 'Bodega / Industria'}
+            {variant === 'productor' ? 'Productor agrícola' : variant === 'tecnico' ? 'Técnico ECA' : 'Bodega / Industria'}
           </div>
         </div>
 

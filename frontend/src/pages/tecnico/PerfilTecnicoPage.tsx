@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Phone, Mail, Users, MapPinned, CalendarCheck, LogOut,
-  KeyRound, AlertTriangle, Check, X, Edit2, Loader2,
+  KeyRound, AlertTriangle, Check, X, Edit2, Loader2, ChevronRight, UserPlus,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/auth';
-import { PageHeaderTecnico } from '../../components/LayoutTecnico';
+import ProfileHero from '../../components/ProfileHero';
 
 interface PerfilTecnico {
   id: number;
@@ -19,11 +19,31 @@ interface PerfilTecnico {
   total_ciclos?: number;
 }
 
+interface RegistroTecnico {
+  producer_id: number;
+  curp: string;
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno?: string | null;
+  municipality_id?: string | null;
+  state_id?: string | null;
+  estatus_registro: string;
+  fecha_captura: string;
+  total_ups: number;
+  total_ciclos: number;
+}
+
+function truncarCurp(curp: string) {
+  if (!curp || curp.length < 10) return curp || '';
+  return `${curp.slice(0, 4)}${'•'.repeat(curp.length - 6)}${curp.slice(-2)}`;
+}
+
 export default function PerfilTecnicoPage() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
 
   const [perfil, setPerfil] = useState<PerfilTecnico | null>(null);
+  const [registros, setRegistros] = useState<RegistroTecnico[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -46,6 +66,10 @@ export default function PerfilTecnicoPage() {
       })
       .catch(() => setError('No se pudo cargar tu perfil.'))
       .finally(() => setLoading(false));
+
+    api.tecnico.misRegistros()
+      .then((res: any) => setRegistros(res?.registros || []))
+      .catch(() => setRegistros([]));
   }, []);
 
   async function guardarTelefono() {
@@ -91,7 +115,6 @@ export default function PerfilTecnicoPage() {
 
   if (!perfil) return (
     <div className="min-h-full pb-8">
-      <PageHeaderTecnico title="Perfil" subtitle="Tu información como técnico ECA" />
       <div className="p-4">
         <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-red-600 text-[13px]">
           {error || 'No se pudo cargar tu perfil.'}
@@ -105,10 +128,31 @@ export default function PerfilTecnicoPage() {
     : 'T';
 
   return (
-    <div className="min-h-full pb-8">
-      <PageHeaderTecnico title="Perfil" subtitle="Tu información como técnico ECA" />
+    <div className="min-h-full pb-8 bg-[#eef8f2]">
 
-      <div className="p-4 space-y-4">
+      {/* ── Hero animado — igual lenguaje visual que productor/bodega ── */}
+      <ProfileHero
+        titulo="Mi Perfil"
+        nombre={perfil.nombre_completo || 'Técnico ECA'}
+        initials={initials}
+        meta={perfil.email}
+        variant="tecnico"
+        badges={
+          <>
+            <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-white/85 text-[11.5px] font-semibold">
+              <Users size={11} /> {perfil.total_registros ?? 0} registrados
+            </span>
+            <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-white/85 text-[11.5px] font-semibold">
+              <MapPinned size={11} /> {perfil.total_ups ?? 0} UPs
+            </span>
+            <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-white/85 text-[11.5px] font-semibold">
+              <CalendarCheck size={11} /> {perfil.total_ciclos ?? 0} ciclos
+            </span>
+          </>
+        }
+      />
+
+      <div className="px-4 -mt-2 space-y-4">
 
         {/* ── Aviso de contraseña temporal ── */}
         {perfil.debe_cambiar_pass && (
@@ -121,40 +165,61 @@ export default function PerfilTecnicoPage() {
           </div>
         )}
 
-        {/* ── Hero con iniciales ── */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#1A5C38] to-[#0e3d24] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#1A5C38]/20">
-            <span className="text-white font-black text-xl">{initials}</span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[16px] font-black text-slate-900 truncate">{perfil.nombre_completo || 'Técnico ECA'}</p>
-            <p className="text-[12px] text-slate-400 truncate mt-0.5">{perfil.email}</p>
-          </div>
-        </div>
-
-        {/* ── Estadísticas ── */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className="bg-white rounded-2xl border border-slate-100 p-3.5 text-center">
-            <div className="w-8 h-8 mx-auto rounded-xl bg-[#1A5C38]/10 flex items-center justify-center mb-1.5">
+        {/* ── A cargo de — lista real de lo que registró este técnico ── */}
+        <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] overflow-hidden">
+          <div className="flex items-center justify-between px-5 pt-4 pb-2">
+            <div className="flex items-center gap-2">
               <Users size={15} className="text-[#1A5C38]" />
+              <p className="text-[13px] font-bold text-slate-700">
+                A mi cargo
+                {registros && registros.length > 0 && <span className="ml-1.5 text-[11px] text-slate-400 font-normal">({registros.length})</span>}
+              </p>
             </div>
-            <p className="text-[18px] font-black text-slate-900 leading-none">{perfil.total_registros ?? 0}</p>
-            <p className="text-[9.5px] text-slate-500 font-semibold mt-1 leading-tight">Productores</p>
+            <button onClick={() => navigate('/tecnico/registrar')}
+              className="flex items-center gap-1 text-[#1A5C38] text-[12px] font-bold active:opacity-60 transition-opacity">
+              <UserPlus size={13} /> Registrar
+            </button>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-100 p-3.5 text-center">
-            <div className="w-8 h-8 mx-auto rounded-xl bg-emerald-100 flex items-center justify-center mb-1.5">
-              <MapPinned size={15} className="text-emerald-700" />
+
+          {registros === null ? (
+            <div className="px-5 pb-5 flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full border-2 border-[#1A5C38]/20 border-t-[#1A5C38] animate-spin" />
+              <span className="text-[13px] text-slate-400">Cargando tus registros…</span>
             </div>
-            <p className="text-[18px] font-black text-slate-900 leading-none">{perfil.total_ups ?? 0}</p>
-            <p className="text-[9.5px] text-slate-500 font-semibold mt-1 leading-tight">UPs capturadas</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-100 p-3.5 text-center">
-            <div className="w-8 h-8 mx-auto rounded-xl bg-blue-100 flex items-center justify-center mb-1.5">
-              <CalendarCheck size={15} className="text-blue-700" />
+          ) : registros.length === 0 ? (
+            <button onClick={() => navigate('/tecnico/registrar')}
+              className="w-full flex flex-col items-center py-6 gap-2 text-center px-5 active:opacity-80 transition-opacity">
+              <div className="w-11 h-11 rounded-2xl bg-[#eef8f2] flex items-center justify-center">
+                <UserPlus size={18} className="text-[#1A5C38]/40" />
+              </div>
+              <p className="text-[13px] font-semibold text-slate-500">Aún no has registrado productores</p>
+              <p className="text-[11.5px] text-slate-400">Toca para registrar el primero</p>
+            </button>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {registros.map(r => (
+                <button
+                  key={r.producer_id}
+                  onClick={() => navigate(`/tecnico/productor/${r.producer_id}`)}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-slate-50 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-[#eef8f2] flex items-center justify-center flex-shrink-0">
+                    <Users size={16} className="text-[#1A5C38]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-bold text-slate-800 truncate">
+                      {[r.nombres, r.apellido_paterno, r.apellido_materno].filter(Boolean).join(' ')}
+                    </p>
+                    <p className="text-[11.5px] text-slate-400 truncate mt-0.5">
+                      {truncarCurp(r.curp)} · {r.total_ups} UP{r.total_ups === 1 ? '' : 's'}
+                      {r.total_ciclos ? ` · ${r.total_ciclos} ciclo${r.total_ciclos === 1 ? '' : 's'}` : ''}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} className="text-slate-300 flex-shrink-0" />
+                </button>
+              ))}
             </div>
-            <p className="text-[18px] font-black text-slate-900 leading-none">{perfil.total_ciclos ?? 0}</p>
-            <p className="text-[9.5px] text-slate-500 font-semibold mt-1 leading-tight">Ciclos</p>
-          </div>
+          )}
         </div>
 
         {/* ── Contacto ── */}

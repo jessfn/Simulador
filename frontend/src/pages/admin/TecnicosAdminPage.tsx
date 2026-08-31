@@ -26,8 +26,8 @@ interface RegistroTecnico {
   apellido_paterno: string;
   apellido_materno?: string;
   curp?: string;
-  municipio_nombre?: string;
   total_ups?: number;
+  total_ciclos?: number;
   fecha_captura?: string;
 }
 
@@ -138,7 +138,9 @@ function ModalDetalleTecnico({
                       {r.nombres} {r.apellido_paterno} {r.apellido_materno || ''}
                     </p>
                     <p className="text-[10.5px] text-gray-400 truncate">
-                      {r.municipio_nombre || 'Sin municipio'} · {r.total_ups ?? 0} UP{(r.total_ups ?? 0) !== 1 ? 's' : ''}
+                      {r.curp ? `${r.curp.slice(0, 4)}${'•'.repeat(Math.max(r.curp.length - 6, 0))}${r.curp.slice(-2)} · ` : ''}
+                      {r.total_ups ?? 0} UP{(r.total_ups ?? 0) !== 1 ? 's' : ''}
+                      {r.total_ciclos ? ` · ${r.total_ciclos} ciclo${r.total_ciclos !== 1 ? 's' : ''}` : ''}
                     </p>
                   </div>
                 </div>

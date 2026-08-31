@@ -103,7 +103,8 @@ export default function DashboardTecnicoPage() {
                     </p>
                     <p className="text-[11.5px] text-slate-400 font-mono truncate">{curpTruncada(r.curp)}</p>
                     <p className="text-[11.5px] text-slate-500 mt-0.5">
-                      {r.municipio_nombre || 'Sin municipio'} · {r.total_ups ?? 0} UP{(r.total_ups ?? 0) !== 1 ? 's' : ''}
+                      {r.total_ups ?? 0} UP{(r.total_ups ?? 0) !== 1 ? 's' : ''}
+                      {r.total_ciclos ? ` · ${r.total_ciclos} ciclo${r.total_ciclos !== 1 ? 's' : ''}` : ''}
                     </p>
                   </div>
                   <ChevronRight size={16} className="text-slate-300 flex-shrink-0" />

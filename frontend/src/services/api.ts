@@ -277,6 +277,7 @@ export const api = {
   ups: {
     crearCiclo: (upId: number | string, data: Record<string, unknown>) =>
       request(`/ups/${upId}/cycles`, { method: 'POST', body: JSON.stringify(data) }),
+    listarCiclos: (upId: number | string) => request(`/ups/${upId}/cycles`),
   },
   cycles: {
     crearCultivo: (cycleId: number | string, data: Record<string, unknown>) =>
