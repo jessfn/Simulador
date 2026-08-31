@@ -53,7 +53,10 @@ async function request<T = any>(path: string, opts: RequestInit = {}): Promise<T
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `HTTP ${res.status}`);
+    const e: any = new Error(err.error || `HTTP ${res.status}`);
+    e.codigo = err.codigo;
+    e.status = res.status;
+    throw e;
   }
   return res.json();
 }

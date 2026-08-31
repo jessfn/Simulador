@@ -45,8 +45,14 @@ export default function BuscarProductorPage() {
         setError('Respuesta inesperada del servidor.');
       }
     } catch (err: any) {
-      if (String(err?.message || '').includes('409')) {
+      if (err?.codigo === 'CURP_DUPLICADA') {
         setResultado({ tipo: 'CURP_DUPLICADA' });
+      } else if (err?.codigo === 'CURP_FALLECIDO') {
+        setError('Esta CURP corresponde a una persona fallecida. No es posible registrarla.');
+      } else if (err?.codigo === 'CURP_NO_VALIDA_RENAPO') {
+        setError('Esta CURP no existe en el Registro Nacional de Población. Verifica que esté bien escrita.');
+      } else if (err?.codigo === 'INACTIVO_PADRON') {
+        setError('El registro de esta CURP en el padrón no está activo.');
       } else {
         setResultado({ tipo: 'ERROR_RED' });
       }
