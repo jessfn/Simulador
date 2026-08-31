@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Search, X, RefreshCw, AlertTriangle, Users, UserCheck, UserX,
-  MapPinned, Trash2, Pencil, KeyRound, Copy, CheckCheck, Mail,
-  Phone, Calendar, Clock, ShieldAlert, UserCog, Check,
+  Search, X, RefreshCw, AlertTriangle, Users,
+  Trash2, Pencil, KeyRound, Copy, CheckCheck,
+  ShieldAlert, UserCog, Check,
 } from 'lucide-react';
 import { usePermisosStore } from '../../store/permisos';
 import { api } from '../../services/api';
