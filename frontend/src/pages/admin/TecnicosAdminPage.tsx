@@ -383,8 +383,8 @@ export default function TecnicosAdminPage() {
 
   const totalTecnicos  = tecnicos.length;
   const totalActivos   = tecnicos.filter(t => t.activo).length;
-  const totalProdReg   = tecnicos.reduce((s, t) => s + (t.total_registros || 0), 0);
-  const totalUpsReg    = tecnicos.reduce((s, t) => s + (t.total_ups || 0), 0);
+  const totalProdReg   = tecnicos.reduce((s, t) => s + (Number(t.total_registros) || 0), 0);
+  const totalUpsReg    = tecnicos.reduce((s, t) => s + (Number(t.total_ups) || 0), 0);
 
   return (
     <div className="flex flex-col h-[calc(100vh-76px)] overflow-hidden gap-2">

@@ -96,7 +96,7 @@ export default function ChatsAdminPage() {
   const [pidiendoIA, setPidiendoIA] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorConexion, setErrorConexion] = useState(false);
-  const [filtro, setFiltro] = useState<'todos' | 'sin_leer' | 'productor' | 'bodega'>('todos');
+  const [filtro, setFiltro] = useState<'todos' | 'sin_leer' | 'productor' | 'bodega' | 'tecnico'>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [seleccionada, setSeleccionada] = useState<Conversacion | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
@@ -347,7 +347,8 @@ export default function ChatsAdminPage() {
   const filtradas = conversaciones.filter(c => {
     if (filtro === 'sin_leer' && c.no_leidos_admin === 0) return false;
     if (filtro === 'productor' && c.rol_usuario !== 'productor') return false;
-    if (filtro === 'bodega' && c.rol_usuario === 'productor') return false;
+    if (filtro === 'bodega' && c.rol_usuario !== 'bodeguero') return false;
+    if (filtro === 'tecnico' && c.rol_usuario !== 'capturista') return false;
     if (busqueda && !c.nombre_completo?.toLowerCase().includes(busqueda.toLowerCase())) return false;
     return true;
   });
@@ -358,7 +359,7 @@ export default function ChatsAdminPage() {
     <div className="flex flex-col h-[calc(100vh-88px)] gap-3 overflow-hidden">
       <div className="bg-[#eef8f2] flex-shrink-0 rounded-b-2xl border border-[#1A5C38]/30 border-t-0 px-3 py-1.5 flex items-center justify-between">
         <span className="text-[10px] font-bold text-[#1A5C38]/60 uppercase tracking-wide">
-          {totalNoLeidos > 0 ? `${totalNoLeidos} mensajes sin leer` : 'Soporte a productores y bodegas'}
+          {totalNoLeidos > 0 ? `${totalNoLeidos} mensajes sin leer` : 'Soporte a productores, bodegas y técnicos'}
         </span>
         <button onClick={cargarLista} disabled={loading}
           className="flex items-center gap-1.5 text-[11px] font-bold text-[#1A5C38] bg-[#d4efe1] hover:bg-[#1A5C38] hover:text-white border border-[#1A5C38]/20 hover:border-transparent px-2.5 py-1.5 rounded-lg active:scale-95 transition-all duration-150 disabled:opacity-50">
@@ -379,7 +380,7 @@ export default function ChatsAdminPage() {
             </div>
             <div className="flex gap-1.5 mt-2 flex-wrap">
               {([
-                ['todos', 'Todos'], ['sin_leer', 'Sin leer'], ['productor', 'Productores'], ['bodega', 'Bodegas'],
+                ['todos', 'Todos'], ['sin_leer', 'Sin leer'], ['productor', 'Productores'], ['bodega', 'Bodegas'], ['tecnico', 'Técnicos'],
               ] as const).map(([key, label]) => (
                 <button key={key} onClick={() => setFiltro(key)}
                   className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
@@ -411,7 +412,9 @@ export default function ChatsAdminPage() {
                     <span className="text-[12px] font-extrabold text-gray-900 truncate">{c.nombre_completo || 'Usuario'}</span>
                     <span className="text-[9px] text-gray-400 flex-shrink-0">{fmtFecha(c.ultimo_mensaje_at)}</span>
                   </div>
-                  <div className={`text-[8.5px] font-bold uppercase tracking-wide mt-0.5 ${c.rol_usuario === 'productor' ? 'text-[#1A5C38]' : 'text-blue-600'}`}>
+                  <div className={`text-[8.5px] font-bold uppercase tracking-wide mt-0.5 ${
+                    c.rol_usuario === 'productor' ? 'text-[#1A5C38]' : c.rol_usuario === 'capturista' ? 'text-indigo-600' : 'text-blue-600'
+                  }`}>
                     {c.rol_legible}
                   </div>
                   <div className={`text-[11px] truncate mt-0.5 flex items-center gap-1 ${escribiendoIds.has(c.id) ? 'text-emerald-600 font-semibold italic' : 'text-gray-500'}`}>
