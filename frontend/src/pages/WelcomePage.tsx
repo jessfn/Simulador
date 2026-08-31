@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wheat, Building2, ChevronRight, X, LogIn, UserPlus } from 'lucide-react';
+import { Wheat, Building2, ClipboardCheck, ChevronRight, X, LogIn, UserPlus } from 'lucide-react';
 
 type Menu = null | 'productor' | 'bodega';
 
@@ -186,6 +186,7 @@ export default function WelcomePage() {
   const [menu, setMenu] = useState<Menu>(menuInicial);
   const [visible, setVisible] = useState(false);
   const [pressed, setPressed] = useState<Menu>(null);
+  const [pressedTecnico, setPressedTecnico] = useState(false);
   const data = menu ? OPCIONES[menu] : null;
 
   useEffect(() => {
@@ -384,6 +385,42 @@ export default function WelcomePage() {
                     <p className="text-white/45 text-[13px] mt-0.5 leading-snug">Iniciar sesión o registrar tu bodega</p>
                   </div>
                   <ChevronRight size={18} className={`shrink-0 transition-all duration-150 ${pressed === 'bodega' ? 'text-emerald-400 translate-x-1' : 'text-white/25'}`} />
+                </div>
+              </div>
+            </button>
+
+            {/* Técnico ECA */}
+            <button
+              onClick={() => navigate('/tecnico/login')}
+              onPointerDown={() => setPressedTecnico(true)}
+              onPointerUp={() => setPressedTecnico(false)}
+              onPointerLeave={() => setPressedTecnico(false)}
+              className="w-full group relative overflow-hidden rounded-2xl p-[1px] transition-all duration-200"
+              style={{
+                opacity: visible ? 1 : 0,
+                transform: visible ? (pressedTecnico ? 'scale(0.97)' : 'none') : 'translateY(20px)',
+                transition: 'opacity 0.5s ease 0.24s, transform 0.5s ease 0.24s',
+                background: pressedTecnico
+                  ? 'linear-gradient(135deg, rgba(34,197,94,0.55) 0%, rgba(26,92,56,0.35) 100%)'
+                  : 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
+              }}
+            >
+              <div
+                className="relative backdrop-blur-xl rounded-[calc(1rem-1px)] p-5 text-left transition-colors duration-150"
+                style={{ background: pressedTecnico ? 'rgba(14,40,22,0.92)' : 'rgba(255,255,255,0.05)' }}
+              >
+                <div className="flex items-center gap-4 relative">
+                  <div
+                    className="w-13 h-13 rounded-xl flex items-center justify-center shrink-0 transition-all duration-150"
+                    style={{ background: pressedTecnico ? 'linear-gradient(135deg,#1A5C38,#0f3821)' : 'rgba(255,255,255,0.10)', boxShadow: pressedTecnico ? '0 4px 16px rgba(26,92,56,0.6)' : 'none' }}
+                  >
+                    <ClipboardCheck size={24} className={pressedTecnico ? 'text-emerald-300' : 'text-white/60'} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold text-[17px] leading-tight">Soy Técnico ECA</p>
+                    <p className="text-white/45 text-[13px] mt-0.5 leading-snug">Registro de productores en campo</p>
+                  </div>
+                  <ChevronRight size={18} className={`shrink-0 transition-all duration-150 ${pressedTecnico ? 'text-emerald-400 translate-x-1' : 'text-white/25'}`} />
                 </div>
               </div>
             </button>
