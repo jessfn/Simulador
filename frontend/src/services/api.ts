@@ -255,4 +255,26 @@ export const api = {
     actualizarPerfil: (data: { telefono?: string; programas_beneficiario?: string[] }) =>
       request('/productor/perfil', { method: 'PATCH', body: JSON.stringify(data) }),
   },
+  tecnico: {
+    login: (email: string, password: string) =>
+      request('/tecnico/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    consultarCurp: (curp: string) =>
+      request('/tecnico/consultar-curp', { method: 'POST', body: JSON.stringify({ curp }) }),
+    registroAlterno: (data: Record<string, unknown>) =>
+      request('/tecnico/registro-alterno', { method: 'POST', body: JSON.stringify(data) }),
+    misRegistros: () => request('/tecnico/mis-registros'),
+    productorUPs: (producerId: number | string) => request(`/tecnico/productor/${producerId}/ups`),
+    agregarUP: (producerId: number | string, data: Record<string, unknown>) =>
+      request(`/tecnico/productor/${producerId}/ups`, { method: 'POST', body: JSON.stringify(data) }),
+    editarProductor: (producerId: number | string, data: Record<string, unknown>) =>
+      request(`/tecnico/productor/${producerId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  },
+  ups: {
+    crearCiclo: (upId: number | string, data: Record<string, unknown>) =>
+      request(`/ups/${upId}/cycles`, { method: 'POST', body: JSON.stringify(data) }),
+  },
+  cycles: {
+    crearCultivo: (cycleId: number | string, data: Record<string, unknown>) =>
+      request(`/cycles/${cycleId}/crops`, { method: 'POST', body: JSON.stringify(data) }),
+  },
 };

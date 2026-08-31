@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { usePermisosStore } from './store/permisos';
 import { Layout } from './components/Layout';
 import { LayoutProductor } from './components/LayoutProductor';
+import { LayoutTecnico } from './components/LayoutTecnico';
 import { useAuthStore } from './store/auth';
 
 import WelcomePage from './pages/WelcomePage';
@@ -85,6 +86,15 @@ import CambiarPasswordPage from './pages/admin/CambiarPasswordPage';
 import MiPerfilAdminPage from './pages/admin/MiPerfilPage';
 import ParcelasAdminPage from './pages/admin/ParcelasAdminPage';
 
+// Técnicos ECA — Importaciones
+import LoginTecnicoPage from './pages/tecnico/LoginTecnicoPage';
+import DashboardTecnicoPage from './pages/tecnico/DashboardTecnicoPage';
+import BuscarProductorPage from './pages/tecnico/BuscarProductorPage';
+import DatosProductorPage from './pages/tecnico/DatosProductorPage';
+import AgregarUPTecnicoPage from './pages/tecnico/AgregarUPTecnicoPage';
+import DetalleProductorTecnicoPage from './pages/tecnico/DetalleProductorTecnicoPage';
+import CicloTecnicoPage from './pages/tecnico/CicloTecnicoPage';
+
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -100,8 +110,16 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
   if (isAuthenticated) {
     if (user?.rol === 'productor') return <Navigate to="/productor" replace />;
     if (isAdminPanelUser(user)) return <Navigate to="/admin" replace />;
+    if (user?.rol === 'capturista') return <Navigate to="/tecnico" replace />;
     return <Navigate to="/dashboard" replace />;
   }
+  return <>{children}</>;
+}
+
+function RequireCapturista({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/tecnico/login" replace />;
+  if (user?.rol !== 'capturista') return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -323,6 +341,22 @@ export const router = createBrowserRouter([
       { path: 'solicitud/:id', element: <EstadoSolicitudPage /> },
       { path: 'mis-solicitudes', element: <EstadoSolicitudPage /> },
       { path: 'perfil', element: <MiPerfilPage /> },
+    ],
+  },
+
+  // Rutas de Técnicos ECA (registro alterno de productores en campo)
+  { path: '/tecnico/login', element: <LoginTecnicoPage /> },
+  {
+    path: '/tecnico',
+    element: <RequireCapturista><LayoutTecnico><Outlet /></LayoutTecnico></RequireCapturista>,
+    children: [
+      { index: true, element: <DashboardTecnicoPage /> },
+      { path: 'registrar', element: <BuscarProductorPage /> },
+      { path: 'registrar/:curp/datos', element: <DatosProductorPage /> },
+      { path: 'registrar/:curp/up', element: <AgregarUPTecnicoPage /> },
+      { path: 'productor/:id', element: <DetalleProductorTecnicoPage /> },
+      { path: 'productor/:id/up/nueva', element: <AgregarUPTecnicoPage /> },
+      { path: 'productor/:id/ciclo', element: <CicloTecnicoPage /> },
     ],
   },
 

@@ -51,6 +51,15 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
   }
 }
 
+/** Solo permite continuar si el usuario autenticado tiene rol capturista (Técnico ECA). */
+export function requiereCapturista(req: AuthRequest, res: Response, next: NextFunction): void {
+  if (req.user?.rol !== 'capturista') {
+    res.status(403).json({ error: 'Acceso exclusivo para técnicos ECA' });
+    return;
+  }
+  next();
+}
+
 /** Solo permite continuar si el usuario autenticado tiene rol admin. */
 export function soloAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
   if (req.user?.rol !== 'admin') {

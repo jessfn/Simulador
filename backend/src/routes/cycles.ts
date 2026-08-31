@@ -26,8 +26,28 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
       return;
     }
 
-    // Verify UP exists
-    const upCheck = await pool.query('SELECT up_id FROM up WHERE up_id = $1', [up_id]);
+    // Verify UP exists AND belongs to the authenticated user (productor dueño, o
+    // técnico ECA que capturó el productor). Antes solo se verificaba que la UP
+    // existiera, sin validar ownership — explotable iterando up_id con cualquier
+    // token válido.
+    let ownershipQuery: string;
+    let ownershipParams: any[];
+
+    if (req.user!.rol === 'capturista') {
+      ownershipQuery = `
+        SELECT u.up_id FROM up u
+        JOIN producer p ON p.producer_id = u.producer_id
+        WHERE u.up_id = $1 AND p.usuario_capturista_id = $2`;
+      ownershipParams = [up_id, req.user!.userId];
+    } else {
+      ownershipQuery = `
+        SELECT u.up_id FROM up u
+        JOIN producer p ON p.producer_id = u.producer_id
+        WHERE u.up_id = $1 AND p.usuario_id = $2`;
+      ownershipParams = [up_id, req.user!.userId];
+    }
+
+    const upCheck = await pool.query(ownershipQuery, ownershipParams);
     if (upCheck.rows.length === 0) {
       res.status(404).json({ error: 'UP no encontrada' });
       return;
@@ -69,6 +89,29 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
 router.get('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { up_id } = req.params;
+
+    // Ownership: mismo criterio que POST /ups/:up_id/cycles — productor
+    // dueño, o técnico ECA que capturó al productor.
+    let ownershipQuery: string;
+    let ownershipParams: any[];
+    if (req.user!.rol === 'capturista') {
+      ownershipQuery = `
+        SELECT u.up_id FROM up u
+        JOIN producer p ON p.producer_id = u.producer_id
+        WHERE u.up_id = $1 AND p.usuario_capturista_id = $2`;
+      ownershipParams = [up_id, req.user!.userId];
+    } else {
+      ownershipQuery = `
+        SELECT u.up_id FROM up u
+        JOIN producer p ON p.producer_id = u.producer_id
+        WHERE u.up_id = $1 AND p.usuario_id = $2`;
+      ownershipParams = [up_id, req.user!.userId];
+    }
+    const upCheck = await pool.query(ownershipQuery, ownershipParams);
+    if (upCheck.rows.length === 0) {
+      res.status(404).json({ error: 'UP no encontrada' });
+      return;
+    }
 
     const result = await pool.query(
       `SELECT c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.created_at,
@@ -197,13 +240,30 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
       return;
     }
 
-    // Verify cycle exists + obtener superficie de la UP a la que pertenece
-    const cycleCheck = await pool.query(
-      `SELECT c.cycle_id, c.up_id, u.up_name, u.area_ha_calc, u.area_ha_real
-       FROM cycle c JOIN up u ON u.up_id = c.up_id
-       WHERE c.cycle_id = $1`,
-      [cycle_id]
-    );
+    // Verify cycle exists AND its UP belongs to the authenticated user
+    // (cycle → up → producer), obteniendo también la superficie de la UP.
+    // Mismo criterio de ownership que arriba: productor dueño, o técnico ECA
+    // que capturó al productor.
+    let cycleOwnershipQuery: string;
+    let cycleOwnershipParams: any[];
+    if (req.user!.rol === 'capturista') {
+      cycleOwnershipQuery = `
+        SELECT c.cycle_id, c.up_id, u.up_name, u.area_ha_calc, u.area_ha_real
+        FROM cycle c
+        JOIN up u ON u.up_id = c.up_id
+        JOIN producer p ON p.producer_id = u.producer_id
+        WHERE c.cycle_id = $1 AND p.usuario_capturista_id = $2`;
+      cycleOwnershipParams = [cycle_id, req.user!.userId];
+    } else {
+      cycleOwnershipQuery = `
+        SELECT c.cycle_id, c.up_id, u.up_name, u.area_ha_calc, u.area_ha_real
+        FROM cycle c
+        JOIN up u ON u.up_id = c.up_id
+        JOIN producer p ON p.producer_id = u.producer_id
+        WHERE c.cycle_id = $1 AND p.usuario_id = $2`;
+      cycleOwnershipParams = [cycle_id, req.user!.userId];
+    }
+    const cycleCheck = await pool.query(cycleOwnershipQuery, cycleOwnershipParams);
     if (cycleCheck.rows.length === 0) {
       res.status(404).json({ error: 'Ciclo no encontrado' });
       return;
