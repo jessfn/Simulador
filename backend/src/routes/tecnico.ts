@@ -312,7 +312,7 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
       producerId = producer_id_existente;
       const r = await client.query(
         `UPDATE producer SET
-           telefono = COALESCE($1, telefono),
+           phone = COALESCE($1, phone),
            state_id = COALESCE($2, state_id),
            municipality_id = COALESCE($3, municipality_id),
            usuario_capturista_id = $4,
@@ -343,7 +343,7 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
 
       const r = await client.query(
         `INSERT INTO producer
-           (curp, nombres, apellido_paterno, apellido_materno, telefono,
+           (curp, nombres, apellido_paterno, apellido_materno, phone,
             state_id, municipality_id, usuario_capturista_id, estatus_registro, fecha_captura)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'alterno', CURRENT_TIMESTAMP)
          RETURNING producer_id`,
@@ -392,7 +392,7 @@ router.get('/mis-registros', authMiddleware, requiereCapturista, async (req: Aut
     const tecnicoId = req.user!.userId;
     const result = await pool.query(
       `SELECT p.producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno,
-              p.telefono, p.state_id, p.municipality_id, p.estatus_registro, p.fecha_captura,
+              p.phone AS telefono, p.state_id, p.municipality_id, p.estatus_registro, p.fecha_captura,
               COUNT(DISTINCT u.up_id) AS total_ups, COUNT(DISTINCT c.cycle_id) AS total_ciclos
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
@@ -508,7 +508,7 @@ router.patch('/productor/:producer_id', authMiddleware, requiereCapturista, asyn
     if (nombres !== undefined) { updates.push(`nombres = $${idx++}`); vals.push(nombres); }
     if (apellido_paterno !== undefined) { updates.push(`apellido_paterno = $${idx++}`); vals.push(apellido_paterno); }
     if (apellido_materno !== undefined) { updates.push(`apellido_materno = $${idx++}`); vals.push(apellido_materno); }
-    if (telefono !== undefined) { updates.push(`telefono = $${idx++}`); vals.push(telefono); }
+    if (telefono !== undefined) { updates.push(`phone = $${idx++}`); vals.push(telefono); }
     if (state_id !== undefined) { updates.push(`state_id = $${idx++}`); vals.push(state_id); }
     if (municipality_id !== undefined) { updates.push(`municipality_id = $${idx++}`); vals.push(municipality_id); }
 
@@ -521,7 +521,7 @@ router.patch('/productor/:producer_id', authMiddleware, requiereCapturista, asyn
     const result = await pool.query(
       `UPDATE producer SET ${updates.join(', ')}
        WHERE producer_id = $${idx++} AND usuario_capturista_id = $${idx}
-       RETURNING producer_id, curp, nombres, apellido_paterno, apellido_materno, telefono, state_id, municipality_id`,
+       RETURNING producer_id, curp, nombres, apellido_paterno, apellido_materno, phone AS telefono, state_id, municipality_id`,
       vals
     );
 
