@@ -10,7 +10,7 @@ type Resultado =
   | { tipo: 'CURP_DUPLICADA' }
   | { tipo: 'ERROR_RED' };
 
-const validarCURP = (c: string) => /^[A-Z]{4}[0-9]{6}[A-Z0-9]{6}[0-9]{2}$/.test(c.toUpperCase().trim());
+const validarCURP = (c: string) => /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/.test(c.toUpperCase().trim());
 
 export default function BuscarProductorPage() {
   const navigate = useNavigate();
