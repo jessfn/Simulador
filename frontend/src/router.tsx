@@ -85,6 +85,7 @@ import PermisosAdminPage from './pages/admin/PermisosAdminPage';
 import CambiarPasswordPage from './pages/admin/CambiarPasswordPage';
 import MiPerfilAdminPage from './pages/admin/MiPerfilPage';
 import ParcelasAdminPage from './pages/admin/ParcelasAdminPage';
+import TecnicosAdminPage from './pages/admin/TecnicosAdminPage';
 
 // Técnicos ECA — Importaciones
 import LoginTecnicoPage from './pages/tecnico/LoginTecnicoPage';
@@ -94,6 +95,7 @@ import DatosProductorPage from './pages/tecnico/DatosProductorPage';
 import AgregarUPTecnicoPage from './pages/tecnico/AgregarUPTecnicoPage';
 import DetalleProductorTecnicoPage from './pages/tecnico/DetalleProductorTecnicoPage';
 import CicloTecnicoPage from './pages/tecnico/CicloTecnicoPage';
+import PerfilTecnicoPage from './pages/tecnico/PerfilTecnicoPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -161,7 +163,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 }
 
 /** Orden de vistas del panel admin — usado para hallar la primera disponible para un OREF. */
-const ORDEN_VISTAS = ['resumen', 'productores', 'parcelas', 'bodegas', 'alertas', 'precios', 'produccion', 'mercado', 'senasica', 'avisos-privacidad'];
+const ORDEN_VISTAS = ['resumen', 'productores', 'parcelas', 'bodegas', 'tecnicos', 'alertas', 'precios', 'produccion', 'mercado', 'senasica', 'avisos-privacidad'];
 
 function rutaDeVista(vista: string): string {
   return vista === 'resumen' ? '/admin' : `/admin/${vista}`;
@@ -357,6 +359,7 @@ export const router = createBrowserRouter([
       { path: 'productor/:id', element: <DetalleProductorTecnicoPage /> },
       { path: 'productor/:id/up/nueva', element: <AgregarUPTecnicoPage /> },
       { path: 'productor/:id/ciclo', element: <CicloTecnicoPage /> },
+      { path: 'perfil', element: <PerfilTecnicoPage /> },
     ],
   },
 
@@ -373,6 +376,7 @@ export const router = createBrowserRouter([
       { path: 'parcelas',       element: <RequireVista vista="parcelas"><ParcelasAdminPage /></RequireVista> },
       { path: 'bodegas',        element: <RequireVista vista="bodegas"><BodegasAdminPage /></RequireVista> },
       { path: 'bodegas/:id',    element: <RequireVista vista="bodegas"><BodegaDetalleAdminPage /></RequireVista> },
+      { path: 'tecnicos',       element: <RequireVista vista="tecnicos"><TecnicosAdminPage /></RequireVista> },
       { path: 'alertas',        element: <RequireVista vista="alertas"><AlertasAdminPage /></RequireVista> },
       { path: 'chats',          element: <RequireVista vista="chats_ayuda"><ChatsAdminPage /></RequireVista> },
       { path: 'precios',        element: <RequireVista vista="precios"><PreciosAdminPage /></RequireVista> },

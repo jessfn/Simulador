@@ -49,7 +49,14 @@ function tipoPorMime(mime: string): string {
 function rolLegible(rol: string): string {
   if (rol === 'productor') return 'Productor';
   if (rol === 'admin' || rol === 'responsable') return 'Administrador';
+  if (rol === 'capturista') return 'Técnico ECA';
   return 'Bodega';
+}
+
+function urlChatPorRol(rol: string): string {
+  if (rol === 'productor') return '/productor?abrirChat=1';
+  if (rol === 'capturista') return '/tecnico?abrirChat=1';
+  return '/dashboard?abrirChat=1';
 }
 
 // ─── SSE ────────────────────────────────────────────────────────────────
@@ -129,7 +136,7 @@ async function responderConBot(opts: {
       mensaje: respuesta.respuesta,
       referenciaId: opts.conversacionId,
       referenciaTipo: 'chat_ayuda',
-      url: opts.rolUsuario === 'productor' ? '/productor?abrirChat=1' : '/dashboard?abrirChat=1',
+      url: urlChatPorRol(opts.rolUsuario),
     }).catch(() => {});
 
     if (respuesta.escalar) {
@@ -446,7 +453,7 @@ adminChatRouter.post('/:id/mensaje', authMiddleware, responderChats, upload.sing
       mensaje: contenido?.trim() || 'Tienes una nueva respuesta del equipo de soporte',
       referenciaId: convId,
       referenciaTipo: 'chat_ayuda',
-      url: conv.rows[0].rol_usuario === 'productor' ? '/productor?abrirChat=1' : '/dashboard?abrirChat=1',
+      url: urlChatPorRol(conv.rows[0].rol_usuario),
     }).catch(() => {});
 
     res.json({ mensaje: msg.rows[0] });

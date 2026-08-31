@@ -268,6 +268,11 @@ export const api = {
       request(`/tecnico/productor/${producerId}/ups`, { method: 'POST', body: JSON.stringify(data) }),
     editarProductor: (producerId: number | string, data: Record<string, unknown>) =>
       request(`/tecnico/productor/${producerId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    perfil: () => request('/tecnico/perfil'),
+    actualizarPerfil: (data: { telefono?: string }) =>
+      request('/tecnico/perfil', { method: 'PATCH', body: JSON.stringify(data) }),
+    cambiarPassword: (password_actual: string, password_nueva: string) =>
+      request('/tecnico/perfil/cambiar-password', { method: 'POST', body: JSON.stringify({ password_actual, password_nueva }) }),
   },
   ups: {
     crearCiclo: (upId: number | string, data: Record<string, unknown>) =>
@@ -276,5 +281,17 @@ export const api = {
   cycles: {
     crearCultivo: (cycleId: number | string, data: Record<string, unknown>) =>
       request(`/cycles/${cycleId}/crops`, { method: 'POST', body: JSON.stringify(data) }),
+  },
+  admin: {
+    tecnicos: {
+      listar: (q?: string) => request(`/admin/tecnicos${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+      detalle: (id: number | string) => request(`/admin/tecnicos/${id}`),
+      editar: (id: number | string, data: Record<string, unknown>) =>
+        request(`/admin/tecnicos/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      resetPassword: (id: number | string) =>
+        request(`/admin/tecnicos/${id}/reset-password`, { method: 'POST' }),
+      eliminar: (id: number | string) =>
+        request(`/admin/tecnicos/${id}`, { method: 'DELETE' }),
+    },
   },
 };

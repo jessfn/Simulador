@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Warehouse, AlertTriangle,
   TrendingUp, LogOut, Menu, X, ShieldCheck, ChevronRight,
   Sprout, BarChart3, Settings, Leaf, KeyRound, CircleUserRound, Layers,
-  MessageCircle,
+  MessageCircle, UserCog,
 } from 'lucide-react';
 import { apiFetch, BASE } from '../../services/api';
 
@@ -29,6 +29,7 @@ const MENU: SidebarItem[] = [
   { label: 'Productores',       subtitle: 'Administración y gestión integral de agricultores registrados',    path: '/admin/productores',       icon: Users,           vista: 'productores' },
   { label: 'Parcelas',          subtitle: 'Mapa de todas las unidades de producción y parcelas registradas',  path: '/admin/parcelas',          icon: Layers,          vista: 'parcelas' },
   { label: 'Bodegas',           subtitle: 'Supervisión y control detallado de centros de acopio',             path: '/admin/bodegas',           icon: Warehouse,       vista: 'bodegas' },
+  { label: 'Técnicos',          subtitle: 'Gestión de técnicos ECA y registros capturados en campo',         path: '/admin/tecnicos',          icon: UserCog,         vista: 'tecnicos' },
   { label: 'Chats de Ayuda',    subtitle: 'Soporte en vivo a productores y bodegas',                          path: '/admin/chats',             icon: MessageCircle,   vista: 'chats_ayuda' },
   { label: 'Alertas',           subtitle: 'Centro de notificaciones y avisos en tiempo real',                 path: '/admin/alertas',           icon: AlertTriangle,   vista: 'alertas' },
   { label: 'Precios',           subtitle: 'Monitoreo de cotizaciones y variaciones del mercado',              path: '/admin/precios',           icon: TrendingUp,      vista: 'precios' },

@@ -62,7 +62,7 @@ function fmtHora(iso: string) {
 
 export default function ChatBubble() {
   const { user, token } = useAuthStore();
-  const esUsuarioFinal = user && (user.rol === 'productor' || user.rol === 'user' || user.rol === 'bodeguero');
+  const esUsuarioFinal = user && (user.rol === 'productor' || user.rol === 'user' || user.rol === 'bodeguero' || user.rol === 'capturista');
   const enHorario = useHorarioServicio();
 
   const [pos, setPos] = useState(() => {

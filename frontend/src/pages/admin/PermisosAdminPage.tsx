@@ -6,7 +6,7 @@ import {
   Loader2, RefreshCw, UserPlus,
   TriangleAlert, Sparkles, LayoutDashboard, Users, Warehouse,
   TrendingUp, Sprout, BarChart3, Leaf, Search, ChevronLeft, ChevronRight, Layers,
-  Eye, EyeOff, KeyRound, MessageCircle,
+  Eye, EyeOff, KeyRound, MessageCircle, UserCog,
 } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -33,6 +33,7 @@ const VISTAS_LABELS: Record<string, { label: string; icon: React.ReactNode }> = 
   senasica:            { label: 'SENASICA',          icon: <Leaf size={14} className="text-lime-600" /> },
   'avisos-privacidad': { label: 'Avisos Privacidad', icon: <ShieldCheck size={14} className="text-slate-500" /> },
   chats_ayuda:         { label: 'Chats de Ayuda',     icon: <MessageCircle size={14} className="text-teal-500" /> },
+  tecnicos:            { label: 'Técnicos',           icon: <UserCog size={14} className="text-indigo-500" /> },
 };
 
 const ACCION_LABELS: Record<string, string> = {
@@ -51,6 +52,7 @@ const VISTAS_ACCIONES: Record<string, string[]> = {
   senasica:            ['ver', 'crear', 'eliminar'],
   'avisos-privacidad': ['ver', 'exportar'],
   chats_ayuda:         ['ver', 'responder'],
+  tecnicos:            ['ver', 'ver_detalle', 'editar', 'eliminar'],
 };
 
 const ESTADOS_MX = [

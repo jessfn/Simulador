@@ -537,4 +537,124 @@ router.patch('/productor/:producer_id', authMiddleware, requiereCapturista, asyn
   }
 });
 
+// =============================================
+// GET /api/tecnico/perfil
+// =============================================
+router.get('/perfil', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tecnicoId = req.user!.userId;
+
+    const usuario = await pool.query(
+      `SELECT id, email, nombre_completo, telefono, activo, created_at
+       FROM usuarios WHERE id = $1 AND rol = 'capturista'`,
+      [tecnicoId]
+    );
+    if (usuario.rows.length === 0) {
+      res.status(404).json({ error: 'Técnico no encontrado' });
+      return;
+    }
+
+    const stats = await pool.query(
+      `SELECT COUNT(DISTINCT p.producer_id) AS total_registros,
+              COUNT(DISTINCT u.up_id) AS total_ups,
+              COUNT(DISTINCT c.cycle_id) AS total_ciclos
+       FROM producer p
+       LEFT JOIN up u ON u.producer_id = p.producer_id
+       LEFT JOIN cycle c ON c.up_id = u.up_id
+       WHERE p.usuario_capturista_id = $1`,
+      [tecnicoId]
+    );
+
+    res.json({ ...usuario.rows[0], ...stats.rows[0] });
+  } catch (error) {
+    console.error('Error en get perfil de técnico:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// =============================================
+// PATCH /api/tecnico/perfil
+// Solo permite actualizar el propio teléfono. NO permite cambiar email ni rol.
+// =============================================
+router.patch('/perfil', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tecnicoId = req.user!.userId;
+    const { telefono } = req.body;
+
+    const updates: string[] = [];
+    const vals: any[] = [];
+    let idx = 1;
+
+    if (telefono !== undefined) { updates.push(`telefono = $${idx++}`); vals.push(telefono); }
+
+    if (updates.length === 0) {
+      res.status(400).json({ error: 'No hay campos para actualizar' });
+      return;
+    }
+
+    vals.push(tecnicoId);
+    const result = await pool.query(
+      `UPDATE usuarios SET ${updates.join(', ')}
+       WHERE id = $${idx} AND rol = 'capturista'
+       RETURNING id, email, nombre_completo, telefono`,
+      vals
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Técnico no encontrado' });
+      return;
+    }
+
+    res.json({ usuario: result.rows[0] });
+  } catch (error) {
+    console.error('Error al editar perfil de técnico:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// =============================================
+// POST /api/tecnico/perfil/cambiar-password
+// =============================================
+router.post('/perfil/cambiar-password', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tecnicoId = req.user!.userId;
+    const { password_actual, password_nueva } = req.body;
+
+    if (!password_actual || !password_nueva) {
+      res.status(400).json({ error: 'password_actual y password_nueva son obligatorios' });
+      return;
+    }
+    if (String(password_nueva).length < 8) {
+      res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
+      return;
+    }
+
+    const usuario = await pool.query(
+      `SELECT id, password_hash FROM usuarios WHERE id = $1 AND rol = 'capturista'`,
+      [tecnicoId]
+    );
+    if (usuario.rows.length === 0) {
+      res.status(404).json({ error: 'Técnico no encontrado' });
+      return;
+    }
+
+    const passwordValido = await bcrypt.compare(password_actual, usuario.rows[0].password_hash);
+    if (!passwordValido) {
+      res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+      return;
+    }
+
+    const nuevoHash = await bcrypt.hash(password_nueva, 12);
+    await pool.query(
+      `UPDATE usuarios SET password_hash = $1, debe_cambiar_pass = false WHERE id = $2`,
+      [nuevoHash, tecnicoId]
+    );
+
+    res.json({ ok: true, message: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error('Error al cambiar contraseña de técnico:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 export default router;

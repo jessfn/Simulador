@@ -1,11 +1,13 @@
 import { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, UserPlus, LogOut, ShieldCheck, ChevronLeft } from 'lucide-react';
+import { Home, UserPlus, LogOut, ShieldCheck, ChevronLeft, UserCircle } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
+import ChatBubble from './ChatBubble';
 
 const NAV = [
   { path: '/tecnico', icon: Home, label: 'Inicio' },
   { path: '/tecnico/registrar', icon: UserPlus, label: 'Registrar' },
+  { path: '/tecnico/perfil', icon: UserCircle, label: 'Perfil' },
 ];
 
 export function LayoutTecnico({ children }: { children: ReactNode }) {
@@ -73,6 +75,8 @@ export function LayoutTecnico({ children }: { children: ReactNode }) {
           })}
         </div>
       </nav>
+
+      <ChatBubble />
     </div>
   );
 }
