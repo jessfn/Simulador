@@ -121,6 +121,10 @@ export default function AgregarUPTecnicoPage() {
           nombreProductor: state?.nombreProductor || 'Productor',
         });
       } else {
+        // El backend (POST /api/tecnico/registro-alterno) lee estos campos
+        // directamente en la raíz del body — no anidados bajo `up` — y usa
+        // `producer_id_existente` (no `producer_id`) para actualizar un
+        // productor ya existente en vez de crear uno nuevo.
         const payload = {
           curp: state.curp,
           nombres: state.nombres,
@@ -132,8 +136,8 @@ export default function AgregarUPTecnicoPage() {
           sexo: state.sexo,
           fecha_nac: state.fecha_nac,
           fuente: state.fuente,
-          producer_id: state.producer_id,
-          up: upPayload,
+          producer_id_existente: state.producer_id,
+          ...upPayload,
         };
         const res: any = await api.tecnico.registroAlterno(payload);
         setResultado({
