@@ -283,8 +283,10 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
   try {
     const {
       curp, nombres, apellido_paterno, apellido_materno, telefono, state_id, municipality_id,
+      sexo, fecha_nac, fuente,
       producer_id_existente,
     } = req.body;
+    const fechaNacValida = fecha_nac && !Number.isNaN(Date.parse(fecha_nac)) ? fecha_nac : null;
 
     if (!producer_id_existente) {
       if (!curp || String(curp).trim().length !== 18) {
@@ -315,12 +317,16 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
            phone = COALESCE($1, phone),
            state_id = COALESCE($2, state_id),
            municipality_id = COALESCE($3, municipality_id),
-           usuario_capturista_id = $4,
+           sexo = COALESCE($4, sexo),
+           fecha_nacimiento = COALESCE($5, fecha_nacimiento),
+           fuente_registro = COALESCE($6, fuente_registro),
+           usuario_capturista_id = $7,
            estatus_registro = 'alterno',
            fecha_captura = COALESCE(fecha_captura, CURRENT_TIMESTAMP)
-         WHERE producer_id = $5
+         WHERE producer_id = $8
          RETURNING producer_id`,
-        [telefono || null, state_id || null, municipality_id || null, tecnicoId, producerId]
+        [telefono || null, state_id || null, municipality_id || null,
+         sexo || null, fechaNacValida, fuente || null, tecnicoId, producerId]
       );
       if (r.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -344,11 +350,13 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
       const r = await client.query(
         `INSERT INTO producer
            (curp, nombres, apellido_paterno, apellido_materno, phone,
-            state_id, municipality_id, usuario_capturista_id, estatus_registro, fecha_captura)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'alterno', CURRENT_TIMESTAMP)
+            state_id, municipality_id, sexo, fecha_nacimiento, fuente_registro,
+            usuario_capturista_id, estatus_registro, fecha_captura)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'alterno', CURRENT_TIMESTAMP)
          RETURNING producer_id`,
         [curpN, nombres, apellido_paterno, apellido_materno || null,
-         telefono || null, state_id || null, municipality_id || null, tecnicoId]
+         telefono || null, state_id || null, municipality_id || null,
+         sexo || null, fechaNacValida, fuente || null, tecnicoId]
       );
       producerId = r.rows[0].producer_id;
     }

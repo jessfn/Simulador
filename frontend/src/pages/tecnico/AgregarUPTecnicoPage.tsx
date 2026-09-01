@@ -133,6 +133,8 @@ export default function AgregarUPTecnicoPage() {
           telefono: state.telefono,
           state_nombre: state.state_nombre,
           municipio_nombre: state.municipio_nombre,
+          state_id: state.state_id || undefined,
+          municipality_id: state.municipality_id || undefined,
           sexo: state.sexo,
           fecha_nac: state.fecha_nac,
           fuente: state.fuente,

@@ -17,6 +17,7 @@ export default function DatosProductorPage() {
   const [telefono, setTelefono] = useState('');
   const [estadoId, setEstadoId] = useState('');
   const [estadoNombre, setEstadoNombre] = useState('');
+  const [municipioId, setMunicipioId] = useState('');
   const [municipioNombre, setMunicipioNombre] = useState('');
   const [estados, setEstados] = useState<{ state_id: string; name: string }[]>([]);
   const [municipios, setMunicipios] = useState<{ municipality_id: string; name: string }[]>([]);
@@ -61,6 +62,8 @@ export default function DatosProductorPage() {
         telefono,
         state_nombre: estadoNombre,
         municipio_nombre: municipioNombre,
+        state_id: estadoId,
+        municipality_id: municipioId,
       },
     });
   }
@@ -104,6 +107,7 @@ export default function DatosProductorPage() {
                   setEstadoNombre(sel?.name || '');
                   setMunicipios([]);
                   setMunicipioNombre('');
+                  setMunicipioId('');
                 }}
                 className="w-full appearance-none border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1A5C38]/20">
                 <option value="">Selecciona el estado</option>
@@ -115,10 +119,16 @@ export default function DatosProductorPage() {
           <div>
             <label className="block text-[13px] font-bold text-slate-700 mb-2">Municipio</label>
             <div className="relative">
-              <select value={municipioNombre} onChange={e => setMunicipioNombre(e.target.value)} disabled={!estadoId}
+              <select value={municipioId}
+                onChange={e => {
+                  const sel = municipios.find(m => m.municipality_id === e.target.value);
+                  setMunicipioId(e.target.value);
+                  setMunicipioNombre(sel?.name || '');
+                }}
+                disabled={!estadoId}
                 className="w-full appearance-none border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1A5C38]/20 disabled:bg-[#f4fbf7] disabled:text-slate-400">
                 <option value="">{estadoId ? 'Selecciona el municipio' : 'Primero elige el estado'}</option>
-                {municipios.map(m => <option key={m.municipality_id} value={m.name}>{m.name}</option>)}
+                {municipios.map(m => <option key={m.municipality_id} value={m.municipality_id}>{m.name}</option>)}
               </select>
               <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
