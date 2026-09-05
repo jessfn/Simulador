@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Users, Plus, X, Eye, EyeOff, List, CheckCircle, Download, Database, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Settings, Save, Users, Plus, X, Eye, EyeOff, List, CheckCircle, Download, Database, FileSpreadsheet, FileJson, CheckCircle2, AlertCircle, MapPin } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -223,8 +223,252 @@ function ModalExportarBD({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Modal exportar polígonos de parcelas ────────────────────────────────────
+interface ParcelaExport {
+  up_id: number; up_name: string | null; state_name: string | null; municipality_name: string | null;
+  area_ha_calc: number | null; created_at: string | null; geom_geojson: any;
+  centroid_lat: number; centroid_lng: number; producer_id: number;
+  nombres: string; apellido_paterno: string; apellido_materno: string | null;
+  curp: string | null; correo: string | null; estado_validacion: string;
+  ciclo_activo: string | null; cultivo_principal: string | null; tipo_cultivo: string | null;
+}
+
+function csvCell(v: unknown): string {
+  const s = v == null ? '' : String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function descargarBlob(contenido: string, nombreArchivo: string, mime: string) {
+  const blob = new Blob([contenido], { type: `${mime};charset=utf-8;` });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: nombreArchivo });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function ModalExportarParcelas({ onClose }: { onClose: () => void }) {
+  const [formato, setFormato] = useState<'geojson' | 'csv'>('geojson');
+  const [estado, setEstado] = useState<ExportState>('idle');
+  const [progreso, setProgreso] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [totalExportado, setTotalExportado] = useState(0);
+  const rafRef = useRef<number | undefined>(undefined);
+
+  function animarProgreso(hasta: number) {
+    const inicio = 0;
+    const startTime = performance.now();
+    const DURACION = 4500;
+    function tick(now: number) {
+      const t = Math.min((now - startTime) / DURACION, 1);
+      const ease = 1 - Math.pow(1 - t, 4);
+      setProgreso(inicio + (hasta - inicio) * ease);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+  }
+  function cancelarAnim() { if (rafRef.current) cancelAnimationFrame(rafRef.current); }
+  useEffect(() => () => cancelarAnim(), []);
+
+  async function descargar() {
+    setEstado('loading');
+    setProgreso(0);
+    setErrorMsg('');
+    animarProgreso(88);
+    try {
+      const res = await fetch(`${BASE}/admin/parcelas`, { headers: HDR() });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Error al obtener las parcelas');
+      }
+      const data = await res.json();
+      const todas: ParcelaExport[] = data.parcelas || [];
+      const conPoligono = todas.filter(p => p.geom_geojson?.coordinates);
+      if (conPoligono.length === 0) throw new Error('No hay parcelas con polígono registrado');
+
+      const fecha = new Date().toISOString().slice(0, 10);
+
+      if (formato === 'geojson') {
+        const fc: GeoJSON.FeatureCollection = {
+          type: 'FeatureCollection',
+          features: conPoligono.map(p => ({
+            type: 'Feature',
+            geometry: p.geom_geojson,
+            properties: {
+              up_id: p.up_id, up_name: p.up_name,
+              productor: [p.nombres, p.apellido_paterno, p.apellido_materno].filter(Boolean).join(' '),
+              curp: p.curp, correo: p.correo, estado_validacion: p.estado_validacion,
+              estado: p.state_name, municipio: p.municipality_name, area_ha: p.area_ha_calc,
+              cultivo_principal: p.cultivo_principal, tipo_cultivo: p.tipo_cultivo,
+              ciclo_activo: p.ciclo_activo, fecha_registro: p.created_at,
+            },
+          })),
+        };
+        descargarBlob(JSON.stringify(fc), `parcelas_poligonos_simac_${fecha}.geojson`, 'application/geo+json');
+      } else {
+        const columnas = [
+          'up_id','up_name','productor','curp','correo','estado_validacion',
+          'estado','municipio','area_ha','cultivo_principal','tipo_cultivo',
+          'ciclo_activo','fecha_registro','centroid_lat','centroid_lng','poligono_geojson',
+        ];
+        const filas = conPoligono.map(p => [
+          p.up_id, p.up_name ?? '',
+          [p.nombres, p.apellido_paterno, p.apellido_materno].filter(Boolean).join(' '),
+          p.curp ?? '', p.correo ?? '', p.estado_validacion ?? '', p.state_name ?? '',
+          p.municipality_name ?? '', p.area_ha_calc ?? '', p.cultivo_principal ?? '',
+          p.tipo_cultivo ?? '', p.ciclo_activo ?? '', p.created_at ?? '',
+          p.centroid_lat ?? '', p.centroid_lng ?? '', JSON.stringify(p.geom_geojson),
+        ]);
+        const csv = [columnas.join(','), ...filas.map(f => f.map(csvCell).join(','))].join('\n');
+        descargarBlob('﻿' + csv, `parcelas_poligonos_simac_${fecha}.csv`, 'text/csv');
+      }
+
+      cancelarAnim();
+      setProgreso(100);
+      setTotalExportado(conPoligono.length);
+      setEstado('done');
+    } catch (err: any) {
+      cancelarAnim();
+      setProgreso(0);
+      setEstado('error');
+      setErrorMsg(err.message || 'Error de conexión');
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-6">
+      <div className="absolute inset-0 bg-gray-950/50 backdrop-blur-[14px]" style={{ animation: 'fadein 180ms ease both' }}
+        onClick={estado === 'loading' ? undefined : onClose} />
+
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-[28px] sm:rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.22)] overflow-hidden"
+        style={{ animation: 'modalUp 240ms cubic-bezier(0.32,1.6,0.56,1) both' }}>
+
+        {/* Header rojo */}
+        <div className="bg-gradient-to-br from-[#b91c1c] to-[#dc2626] px-5 py-5">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center">
+                <MapPin size={18} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-black text-white leading-tight">Polígonos de Parcelas</h3>
+                <p className="text-[11px] text-white/70 mt-0.5">Base completa de predios registrados</p>
+              </div>
+            </div>
+            {estado !== 'loading' && (
+              <button onClick={onClose} className="text-white/50 hover:text-white transition-colors mt-0.5">
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="px-5 pt-4 pb-5 space-y-4">
+
+          {estado === 'idle' && (
+            <>
+              <div>
+                <p className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wide mb-2">Formato de exportación</p>
+                <div className="flex flex-col gap-2">
+                  {([
+                    { key: 'geojson' as const, icon: <FileJson size={15} />, titulo: 'GeoJSON', desc: 'Polígono real de cada parcela — QGIS, ArcGIS, Google Earth.' },
+                    { key: 'csv' as const, icon: <FileSpreadsheet size={15} />, titulo: 'CSV', desc: 'Tabla de productor/ciclo + columna con el polígono completo (no solo centroide).' },
+                  ]).map(op => (
+                    <button key={op.key} onClick={() => setFormato(op.key)}
+                      className={`flex items-start gap-3 text-left px-3.5 py-3 rounded-2xl border transition-all ${
+                        formato === op.key ? 'border-red-300 ring-2 ring-red-100 bg-red-50/60' : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${formato === op.key ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                        {op.icon}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] font-bold text-gray-900">{op.titulo}</p>
+                        <p className="text-[10.5px] text-gray-500 mt-0.5 leading-snug">{op.desc}</p>
+                      </div>
+                      <span className={`w-4 h-4 rounded-full border-2 shrink-0 mt-1 flex items-center justify-center ${formato === op.key ? 'border-red-600 bg-red-600' : 'border-gray-300'}`}>
+                        {formato === op.key && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-2xl px-3.5 py-3">
+                <AlertCircle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[10.5px] text-amber-700 leading-relaxed">Incluye datos personales (nombre, CURP, correo). Úsalo conforme al aviso de privacidad vigente.</p>
+              </div>
+            </>
+          )}
+
+          {estado === 'loading' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold text-gray-700">Generando archivo…</p>
+                <span className="text-[11px] font-bold text-red-600">{Math.round(progreso)}%</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-none" style={{ width: `${progreso}%` }} />
+              </div>
+              <p className="text-[10.5px] text-gray-400 text-center">Consultando parcelas y construyendo el {formato.toUpperCase()}…</p>
+            </div>
+          )}
+
+          {estado === 'done' && (
+            <div className="flex flex-col items-center gap-2 py-2">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                <CheckCircle2 size={24} className="text-emerald-500" />
+              </div>
+              <p className="text-[13px] font-bold text-gray-800">¡Descarga lista!</p>
+              <p className="text-[11px] text-gray-400 text-center">{totalExportado.toLocaleString('es-MX')} polígonos exportados en {formato.toUpperCase()}.</p>
+            </div>
+          )}
+
+          {estado === 'error' && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl p-3.5">
+              <AlertCircle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[12px] font-bold text-red-700">Error al generar el archivo</p>
+                <p className="text-[11px] text-red-500 mt-0.5">{errorMsg}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2.5 pt-1">
+            {estado !== 'loading' && (
+              <button onClick={onClose}
+                className="flex-1 text-[12px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 py-2.5 rounded-2xl transition-all duration-150 active:scale-95">
+                {estado === 'done' ? 'Cerrar' : 'Cancelar'}
+              </button>
+            )}
+            {(estado === 'idle' || estado === 'error') && (
+              <button onClick={descargar}
+                className="flex-1 flex items-center justify-center gap-2 text-[12px] font-bold text-white bg-gradient-to-br from-[#b91c1c] to-[#dc2626] hover:from-[#991616] hover:to-[#c11f1f] py-2.5 rounded-2xl transition-all duration-150 active:scale-95 shadow-[0_4px_16px_rgba(220,38,38,0.3)]">
+                <Download size={13} />
+                {estado === 'error' ? 'Reintentar' : `Descargar ${formato.toUpperCase()}`}
+              </button>
+            )}
+            {estado === 'loading' && (
+              <div className="flex-1 flex items-center justify-center gap-2 text-[12px] font-bold text-white bg-red-600/70 py-2.5 rounded-2xl cursor-not-allowed">
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                Generando…
+              </div>
+            )}
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes fadein { from { opacity:0 } to { opacity:1 } }
+          @keyframes modalUp { from { opacity:0; transform:translateY(24px) scale(.97) } to { opacity:1; transform:none } }
+        `}</style>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function ConfiguracionAdminPage() {
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showParcelasModal, setShowParcelasModal] = useState(false);
   const [params, setParams]         = useState<Parametros | null>(null);
 
   const [editParams, setEditParams] = useState<Partial<Parametros>>({});
@@ -317,7 +561,7 @@ export default function ConfiguracionAdminPage() {
     <div className="flex flex-col gap-4 pt-4 pb-6">
 
       {/* ── Fila de tarjetas de acción rápida ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
         {/* Tarjeta: Exportar BD */}
         <div className="bg-gradient-to-br from-[#0d5530] to-[#1a7a44] rounded-2xl p-4 flex flex-col gap-3 shadow-[0_4px_24px_rgba(13,85,48,0.25)] relative overflow-hidden">
@@ -378,6 +622,28 @@ export default function ConfiguracionAdminPage() {
           >
             <Plus size={12} />
             Nuevo concepto
+          </button>
+        </div>
+
+        {/* Tarjeta: Polígonos de Parcelas (roja) */}
+        <div className="bg-gradient-to-br from-[#b91c1c] to-[#dc2626] rounded-2xl p-4 flex flex-col gap-3 shadow-[0_4px_24px_rgba(220,38,38,0.25)] relative overflow-hidden">
+          <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/5" />
+          <div className="absolute -bottom-6 -left-4 w-20 h-20 rounded-full bg-white/5" />
+          <div className="flex items-center gap-2.5 relative">
+            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+              <MapPin size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-[12.5px] font-black text-white leading-tight">Polígonos de Parcelas</p>
+              <p className="text-[10px] text-white/60 mt-0.5">GeoJSON o CSV · Predios completos</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowParcelasModal(true)}
+            className="relative flex items-center justify-center gap-2 text-[11.5px] font-bold text-[#b91c1c] bg-white hover:bg-white/90 py-2 rounded-xl transition-all duration-150 active:scale-95 shadow-sm"
+          >
+            <Download size={12} />
+            Descargar base
           </button>
         </div>
       </div>
@@ -580,6 +846,9 @@ export default function ConfiguracionAdminPage() {
 
       {/* Modal exportar BD */}
       {showExportModal && <ModalExportarBD onClose={() => setShowExportModal(false)} />}
+
+      {/* Modal exportar polígonos de parcelas */}
+      {showParcelasModal && <ModalExportarParcelas onClose={() => setShowParcelasModal(false)} />}
 
       {/* Modal usuario */}
       {showModal && (

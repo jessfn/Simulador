@@ -5,7 +5,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import {
   Search, SlidersHorizontal, X, ChevronDown, MapPin, Layers, RefreshCw,
   Map as MapIcon, List, Trash2, AlertTriangle, CheckCircle2, Sprout,
-  Users, BarChart3, Download, FileJson, FileSpreadsheet, Loader2,
+  Users, BarChart3,
 } from 'lucide-react';
 import { usePermisosStore } from '../../store/permisos';
 
@@ -191,110 +191,9 @@ function Toast({ msg, tipo }: { msg:string; tipo:'ok'|'err' }) {
   );
 }
 
-/* ─── Escapa un valor para una celda CSV (RFC 4180) ─────────────────── */
-function csvCell(v: unknown): string {
-  const s = v==null ? '' : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
-}
-
-/* ─── Modal: descargar base de datos de parcelas (polígonos reales) ──── */
-function ModalDescargarParcelas({
-  totalParcelas, onClose, onDescargar,
-}: {
-  totalParcelas: number;
-  onClose: () => void;
-  onDescargar: (formato: 'geojson'|'csv') => void;
-}) {
-  const [formato, setFormato] = useState<'geojson'|'csv'>('geojson');
-  const [descargando, setDescargando] = useState(false);
-
-  async function confirmar() {
-    setDescargando(true);
-    await new Promise(r => setTimeout(r, 350)); // feedback visual mínimo
-    onDescargar(formato);
-    setDescargando(false);
-    onClose();
-  }
-
-  const OPCIONES = [
-    {
-      key: 'geojson' as const,
-      icon: <FileJson size={16}/>,
-      titulo: 'GeoJSON',
-      desc: 'Polígonos completos de cada parcela, listos para abrir en QGIS, ArcGIS o Google Earth.',
-    },
-    {
-      key: 'csv' as const,
-      icon: <FileSpreadsheet size={16}/>,
-      titulo: 'CSV',
-      desc: 'Tabla con datos del productor y ciclo, más el polígono completo de la parcela en una columna GeoJSON (no solo el centroide).',
-    },
-  ];
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden" onClick={e=>e.stopPropagation()}>
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#0c4f2c] via-[#0e5c33] to-[#15753f] px-5 pt-5 pb-4 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.06]" style={{backgroundImage:'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)'}} />
-          <div className="relative flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
-                <Download size={16} className="text-white"/>
-              </div>
-              <div>
-                <p className="text-white text-[14px] font-black tracking-tight">Descargar base de parcelas</p>
-                <p className="text-white/60 text-[10.5px] mt-0.5">{totalParcelas.toLocaleString('es-MX')} parcelas con polígono registrado</p>
-              </div>
-            </div>
-            <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all active:scale-90">
-              <X size={12} className="text-white/70"/>
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="p-5 flex flex-col gap-3">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em]">Formato de exportación</p>
-          <div className="flex flex-col gap-2">
-            {OPCIONES.map(op => (
-              <button key={op.key} onClick={()=>setFormato(op.key)}
-                className={`flex items-start gap-3 text-left px-3.5 py-3 rounded-xl border transition-all ${
-                  formato===op.key ? 'border-[#0e5c33]/40 ring-2 ring-[#0e5c33]/15 bg-emerald-50/50' : 'border-gray-200 hover:border-gray-300 bg-white'
-                }`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${formato===op.key?'bg-[#0e5c33] text-white':'bg-gray-100 text-gray-400'}`}>
-                  {op.icon}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[12.5px] font-bold text-gray-900">{op.titulo}</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{op.desc}</p>
-                </div>
-                <span className={`w-4 h-4 rounded-full border-2 shrink-0 mt-1 flex items-center justify-center ${formato===op.key?'border-[#0e5c33] bg-[#0e5c33]':'border-gray-300'}`}>
-                  {formato===op.key && <span className="w-1.5 h-1.5 rounded-full bg-white"/>}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 mt-1">
-            <AlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5"/>
-            <p className="text-[10.5px] text-amber-700 leading-relaxed">Incluye datos personales de productores (nombre, CURP, correo). Úsalo conforme al aviso de privacidad vigente.</p>
-          </div>
-
-          <button onClick={confirmar} disabled={descargando}
-            className="w-full flex items-center justify-center gap-2 bg-[#0e5c33] hover:bg-[#0a4227] active:scale-[0.98] text-white text-[13px] font-bold py-3 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-60 mt-1">
-            {descargando ? <><Loader2 size={14} className="animate-spin"/>Preparando archivo…</> : <><Download size={14}/>Descargar {formato.toUpperCase()}</>}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function ParcelasAdminPage() {
   const puedo          = usePermisosStore(s => s.puedo);
   const permisosTotal  = usePermisosStore(s => s.permisosTotal);
-  const puedeExportar  = permisosTotal || puedo('parcelas', 'exportar');
   const puedeEliminar  = permisosTotal || puedo('parcelas', 'eliminar');
 
   const [parcelas, setParcelas]   = useState<Parcela[]>([]);
@@ -310,7 +209,6 @@ export default function ParcelasAdminPage() {
   const [parcelaAEliminar, setParcelaAEliminar] = useState<Parcela|null>(null);
   const [eliminando,       setEliminando]       = useState(false);
   const [toast,            setToast]            = useState<{msg:string;tipo:'ok'|'err'}|null>(null);
-  const [modalDescarga,    setModalDescarga]    = useState(false);
   const toastTimer = useRef<number|null>(null);
 
   const mapContainer  = useRef<HTMLDivElement|null>(null);
@@ -422,82 +320,6 @@ export default function ParcelasAdminPage() {
   }
 
   useEffect(()=>{cargar();},[]);
-
-  function descargarBlob(contenido: string, nombreArchivo: string, mime: string) {
-    const blob = new Blob([contenido], { type: `${mime};charset=utf-8;` });
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement('a'), { href: url, download: nombreArchivo });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  // Exporta TODAS las parcelas con polígono (no solo las filtradas en pantalla),
-  // con el contorno real de cada predio — nunca solo el centroide.
-  function exportarParcelas(formato: 'geojson'|'csv') {
-    const conPoligono = parcelas.filter(p => p.geom_geojson?.coordinates);
-    if (conPoligono.length === 0) { showToast('No hay parcelas con polígono para exportar', 'err'); return; }
-
-    const fecha = new Date().toISOString().slice(0,10);
-
-    if (formato === 'geojson') {
-      const fc: GeoJSON.FeatureCollection = {
-        type: 'FeatureCollection',
-        features: conPoligono.map(p => ({
-          type: 'Feature',
-          geometry: p.geom_geojson,
-          properties: {
-            up_id: p.up_id,
-            up_name: p.up_name,
-            productor: [p.nombres, p.apellido_paterno, p.apellido_materno].filter(Boolean).join(' '),
-            curp: p.curp,
-            correo: p.correo,
-            estado_validacion: p.estado_validacion,
-            estado: p.state_name,
-            municipio: p.municipality_name,
-            area_ha: p.area_ha_calc,
-            cultivo_principal: p.cultivo_principal,
-            tipo_cultivo: p.tipo_cultivo,
-            ciclo_activo: p.ciclo_activo,
-            fecha_registro: p.created_at,
-          },
-        })),
-      };
-      descargarBlob(JSON.stringify(fc), `parcelas_simac_${fecha}.geojson`, 'application/geo+json');
-      showToast(`${conPoligono.length.toLocaleString('es-MX')} polígonos exportados`, 'ok');
-      return;
-    }
-
-    // CSV — el polígono completo va en su propia columna (GeoJSON como texto),
-    // así la tabla nunca se reduce solo a coordenadas de centroide.
-    const columnas = [
-      'up_id','up_name','productor','curp','correo','estado_validacion',
-      'estado','municipio','area_ha','cultivo_principal','tipo_cultivo',
-      'ciclo_activo','fecha_registro','centroid_lat','centroid_lng','poligono_geojson',
-    ];
-    const filas = conPoligono.map(p => [
-      p.up_id,
-      p.up_name ?? '',
-      [p.nombres, p.apellido_paterno, p.apellido_materno].filter(Boolean).join(' '),
-      p.curp ?? '',
-      p.correo ?? '',
-      p.estado_validacion ?? '',
-      p.state_name ?? '',
-      p.municipality_name ?? '',
-      p.area_ha_calc ?? '',
-      p.cultivo_principal ?? '',
-      p.tipo_cultivo ?? '',
-      p.ciclo_activo ?? '',
-      p.created_at ?? '',
-      p.centroid_lat ?? '',
-      p.centroid_lng ?? '',
-      JSON.stringify(p.geom_geojson),
-    ]);
-    const csv = [columnas.join(','), ...filas.map(fila => fila.map(csvCell).join(','))].join('\n');
-    descargarBlob('﻿' + csv, `parcelas_simac_${fecha}.csv`, 'text/csv');
-    showToast(`${conPoligono.length.toLocaleString('es-MX')} parcelas exportadas`, 'ok');
-  }
 
   // Índice por up_id para resolver el popup al hacer click, sin depender
   // de closures viejas dentro de los listeners de Mapbox.
@@ -682,13 +504,6 @@ export default function ParcelasAdminPage() {
                     {[filtroEstado,filtroMunicipio].filter(Boolean).length}
                   </span>
                 )}
-              </button>
-            )}
-            {puedeExportar && (
-              <button onClick={()=>setModalDescarga(true)} disabled={loading || parcelas.length===0}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#1A5C38] text-white hover:bg-[#15482d] transition disabled:opacity-40">
-                <Download size={11}/>
-                <span className="hidden sm:inline">Descargar base</span>
               </button>
             )}
             <button onClick={cargar} disabled={loading}
@@ -964,13 +779,6 @@ export default function ParcelasAdminPage() {
       {/* Modal */}
       {parcelaAEliminar&&(
         <ModalEliminar parcela={parcelaAEliminar} onConfirm={eliminarParcela} onCancel={()=>setParcelaAEliminar(null)} loading={eliminando}/>
-      )}
-      {modalDescarga&&(
-        <ModalDescargarParcelas
-          totalParcelas={parcelas.filter(p=>p.geom_geojson?.coordinates).length}
-          onClose={()=>setModalDescarga(false)}
-          onDescargar={exportarParcelas}
-        />
       )}
       {toast&&<Toast msg={toast.msg} tipo={toast.tipo}/>}
 
