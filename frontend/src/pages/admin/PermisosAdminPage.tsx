@@ -43,7 +43,7 @@ const ACCION_LABELS: Record<string, string> = {
 const VISTAS_ACCIONES: Record<string, string[]> = {
   resumen:             ['ver'],
   productores:         ['ver', 'ver_detalle', 'editar', 'eliminar', 'exportar'],
-  parcelas:            ['ver', 'eliminar'],
+  parcelas:            ['ver', 'eliminar', 'exportar'],
   bodegas:             ['ver', 'ver_detalle', 'crear', 'editar', 'eliminar', 'exportar'],
   alertas:             ['ver', 'crear', 'eliminar'],
   precios:             ['ver', 'editar'],

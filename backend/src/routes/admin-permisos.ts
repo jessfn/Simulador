@@ -29,7 +29,7 @@ function generarPassTemporal(): string {
 const VISTAS_PERMISOS: Record<string, string[]> = {
   resumen:            ['ver'],
   productores:        ['ver', 'ver_detalle', 'editar', 'eliminar', 'exportar'],
-  parcelas:           ['ver', 'eliminar'],
+  parcelas:           ['ver', 'eliminar', 'exportar'],
   bodegas:            ['ver', 'ver_detalle', 'crear', 'editar', 'eliminar', 'exportar'],
   alertas:            ['ver', 'crear', 'eliminar'],
   precios:            ['ver', 'editar'],

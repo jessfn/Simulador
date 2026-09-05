@@ -1272,13 +1272,15 @@ router.delete('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: Aut
 // ─── PARCELAS ────────────────────────────────────────────────────────────────
 
 // GET /api/admin/parcelas/filtros — opciones para dropdowns de filtro
-router.get('/parcelas/filtros', authMiddleware, async (_req: import('express').Request, res: Response): Promise<void> => {
+router.get('/parcelas/filtros', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!esPanelAdmin(req.user)) { res.status(403).json({ error: 'Acceso denegado' }); return; }
   try {
+    const { sql: wSql, params: wParams } = estadoWhereClause(getEstadoFiltro(req.user), 1, 'UPPER(state_name)');
     const { rows: estadosRows } = await pool.query(
-      `SELECT DISTINCT state_name FROM up WHERE geom IS NOT NULL AND state_name IS NOT NULL ORDER BY state_name`
+      `SELECT DISTINCT state_name FROM up WHERE geom IS NOT NULL AND state_name IS NOT NULL ${wSql} ORDER BY state_name`, wParams
     );
     const { rows: municipiosRows } = await pool.query(
-      `SELECT DISTINCT state_name, municipality_name FROM up WHERE geom IS NOT NULL AND municipality_name IS NOT NULL ORDER BY state_name, municipality_name`
+      `SELECT DISTINCT state_name, municipality_name FROM up WHERE geom IS NOT NULL AND municipality_name IS NOT NULL ${wSql} ORDER BY state_name, municipality_name`, wParams
     );
     res.json({ estados: estadosRows.map((r: any) => r.state_name), municipios: municipiosRows });
   } catch (error) {
@@ -1288,7 +1290,8 @@ router.get('/parcelas/filtros', authMiddleware, async (_req: import('express').R
 });
 
 // GET /api/admin/parcelas — todas las UPs con polígono, productor y ciclo
-router.get('/parcelas', authMiddleware, async (req: any, res: Response): Promise<void> => {
+router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!esPanelAdmin(req.user)) { res.status(403).json({ error: 'Acceso denegado' }); return; }
   try {
     const { estado, municipio, q } = req.query as Record<string, string>;
     const params: any[] = [];
@@ -1298,6 +1301,9 @@ router.get('/parcelas', authMiddleware, async (req: any, res: Response): Promise
     if (estado)    { conds.push(`u.state_name = $${pi++}`);                       params.push(estado); }
     if (municipio) { conds.push(`u.municipality_name = $${pi++}`);                params.push(municipio); }
     if (q)         { conds.push(`(p.nombres ILIKE $${pi} OR p.apellido_paterno ILIKE $${pi++})`); params.push(`%${q}%`); }
+
+    const estadoForzado = getEstadoFiltro(req.user);
+    if (estadoForzado) { conds.push(`UPPER(u.state_name) = ANY(SELECT UPPER(unnest(string_to_array($${pi++}, ','))))`); params.push(estadoForzado); }
 
     const where = conds.join(' AND ');
 
