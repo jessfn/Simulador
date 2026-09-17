@@ -34,6 +34,10 @@ function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function fmtMes(iso: string) {
+  return new Date(iso).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+}
+
 export default function InsumosAdminPage() {
   const { puedo, permisosTotal } = usePermisosStore();
   const puedeExportar = permisosTotal || puedo('insumos', 'exportar');
@@ -222,7 +226,7 @@ export default function InsumosAdminPage() {
                       {l.producto_nombre_otro && <p className="text-[10px] text-gray-400">{l.producto_nombre_otro}</p>}
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap font-semibold text-gray-700">{Number(l.cantidad_base).toLocaleString('es-MX', { maximumFractionDigits: 2 })} {l.unidad_base}</td>
-                    <td className="py-2 px-3 whitespace-nowrap text-gray-500">{l.mes_compra}</td>
+                    <td className="py-2 px-3 whitespace-nowrap text-gray-500 capitalize">{fmtMes(l.mes_compra)}</td>
                     <td className="py-2 px-3 max-w-[220px] truncate text-gray-500" title={l.municipios_asociados || ''}>{l.municipios_asociados || '—'}</td>
                     <td className="py-2 px-3 whitespace-nowrap">
                       {l.identificacion_pendiente

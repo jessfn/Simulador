@@ -214,6 +214,7 @@ router.get('/lineas', checkPermiso('insumos', 'ver'), async (req: AuthRequest, r
 // al abrir en hoja de cálculo (Otro / nombre libre).
 function csvCelda(v: any): string {
   if (v === null || v === undefined) return '';
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
   let s = String(v);
   if (/^[=+\-@]/.test(s)) s = `'${s}`;
   if (/[",\n]/.test(s)) s = `"${s.replace(/"/g, '""')}"`;
