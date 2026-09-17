@@ -14,6 +14,11 @@ import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } fr
 import { authLimiter } from '../middleware/rateLimiters';
 import { insertarUP as crearUP } from '../utils/ups';
 import crypto from 'crypto';
+import {
+  EncuestaError, determinarContextoTerritorial, guardarEncuestaEnTransaccion,
+  huellaDe, resolverIdempotencia, guardarResultadoIdempotencia,
+  obtenerCatalogoPublico, obtenerRespuestaProductor, buscarPorAlias,
+} from '../services/encuestaService';
 
 // Directorio de almacenamiento para verificaciones biométricas
 const UPLOAD_DIR = process.env.NODE_ENV === 'production'
@@ -507,6 +512,8 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       aviso_privacidad_lng,
       aviso_privacidad_version,
       aviso_privacidad_foto_url,
+      encuesta_insumos,
+      idempotency_key,
     } = req.body;
 
     if (!pin || !/^\d{4}$/.test(pin)) {
@@ -524,14 +531,6 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       return;
     }
 
-    const existe = await pool.query(
-      `SELECT producer_id FROM producer WHERE UPPER(curp) = UPPER($1)`, [curp]
-    );
-    if (existe.rows.length) {
-      res.status(409).json({ error: 'Esta CURP ya está registrada' });
-      return;
-    }
-
     const hashedPin = await bcrypt.hash(pin, 10);
 
     // Lista de UPs a crear: usar `ups` (array, flujo nuevo) o la UP única (compatibilidad).
@@ -539,9 +538,31 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       ? ups
       : [{ lat, lng, poligono, area_calc_ha, area_real_ha, coincide_area, estado_up, municipio_up }];
 
+    // Clave de idempotencia del alta completa (cuenta + parcelas + encuesta):
+    // un reintento con la misma clave y el mismo contenido devuelve el mismo
+    // resultado sin duplicar nada; con contenido distinto, es un conflicto.
+    const { idempotency_key: _ik, ...huellaBody } = req.body;
+    const huella = huellaDe(huellaBody);
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      const { clave: claveIdempotencia, resultadoPrevio } = await resolverIdempotencia(client, idempotency_key, huella);
+      if (resultadoPrevio) {
+        await client.query('ROLLBACK');
+        res.status(201).json(resultadoPrevio);
+        return;
+      }
+
+      const existe = await client.query(
+        `SELECT producer_id FROM producer WHERE UPPER(curp) = UPPER($1)`, [curp]
+      );
+      if (existe.rows.length) {
+        await client.query('ROLLBACK');
+        res.status(409).json({ error: 'Esta CURP ya está registrada' });
+        return;
+      }
 
       // Normalizar nombres: MAYÚSCULAS sin acentos
       const nombresN = normalizeText(nombres || '');
@@ -583,12 +604,27 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
         await crearUP(client, producerId, upData);
       }
 
-      await client.query('COMMIT');
+      // Encuesta de insumos: solo si al menos una UP quedó en Sinaloa según
+      // el servidor (nunca según lo que mande el cliente). Si aplica y no
+      // llegó una respuesta válida, se rechaza toda el alta (rollback) — no
+      // se permite terminar registro "saltándose" la pantalla cuando aplica.
+      const contextoEncuesta = await determinarContextoTerritorial(client, producerId);
+      if (contextoEncuesta.elegible) {
+        if (!encuesta_insumos || typeof encuesta_insumos !== 'object') {
+          throw new EncuestaError('ENCUESTA_REQUERIDA', 'Falta responder la encuesta de insumos antes de continuar', 400);
+        }
+        await guardarEncuestaEnTransaccion(client, producerId, encuesta_insumos, { canal: 'productor' });
+      }
 
-      res.status(201).json({
+      const resultado = {
         mensaje: 'Registro completo. Tu cuenta ya está activa. Inicia sesión con tu CURP y PIN.',
         activo: true,
-      });
+        encuesta_aplicable: contextoEncuesta.elegible,
+      };
+      await guardarResultadoIdempotencia(client, claveIdempotencia, huella, resultado);
+
+      await client.query('COMMIT');
+      res.status(201).json(resultado);
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -596,6 +632,10 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       client.release();
     }
   } catch (error: any) {
+    if (error instanceof EncuestaError) {
+      res.status(error.status).json({ error: error.message, codigo: error.codigo, campo: error.campo });
+      return;
+    }
     console.error('Error en registro-nuevo:', error);
     if (error.code === 'UP_OVERLAP') {
       res.status(409).json({
@@ -628,6 +668,35 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
   }
 });
 
+// GET /api/productor/auth/catalogo-insumos
+// Catálogo público de la encuesta de insumos: solo opciones activas y
+// presentaciones necesarias para el registro. Sin datos de otros
+// productores, contactos ni metadatos internos. No requiere sesión porque
+// se usa antes de terminar el registro.
+router.get('/auth/catalogo-insumos', async (_req, res: Response): Promise<void> => {
+  try {
+    const catalogo = await obtenerCatalogoPublico();
+    if (!catalogo) { res.status(404).json({ error: 'No hay una edición de encuesta vigente' }); return; }
+    res.json(catalogo);
+  } catch (error) {
+    console.error('Error al obtener catálogo de insumos:', error);
+    res.status(500).json({ error: 'Error al obtener el catálogo' });
+  }
+});
+
+// GET /api/productor/auth/catalogo-insumos/buscar?q=
+router.get('/auth/catalogo-insumos/buscar', async (req, res: Response): Promise<void> => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) { res.json({ resultados: [] }); return; }
+    const resultados = await buscarPorAlias(q);
+    res.json({ resultados });
+  } catch (error) {
+    console.error('Error al buscar en catálogo de insumos:', error);
+    res.status(500).json({ error: 'Error al buscar' });
+  }
+});
+
 // ─────────────────────────────────────────────
 // PRODUCTOR — Endpoints protegidos
 // ─────────────────────────────────────────────
@@ -637,6 +706,42 @@ async function getProducerId(userId: number): Promise<number | null> {
   const r = await pool.query('SELECT producer_id FROM producer WHERE usuario_id = $1 LIMIT 1', [userId]);
   return r.rows[0]?.producer_id || null;
 }
+
+// GET /api/productor/encuesta-insumos — respuesta propia (si aplica)
+router.get('/encuesta-insumos', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const producerId = await getProducerId(req.user!.userId);
+    if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
+    const datos = await obtenerRespuestaProductor(producerId);
+    res.json(datos || { elegible: false });
+  } catch (error) {
+    console.error('Error al obtener encuesta de insumos:', error);
+    res.status(500).json({ error: 'Error al obtener la encuesta' });
+  }
+});
+
+// PUT /api/productor/encuesta-insumos — corregir la respuesta propia
+router.put('/encuesta-insumos', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    const producerId = await getProducerId(req.user!.userId);
+    if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); client.release(); return; }
+    await client.query('BEGIN');
+    const resultado = await guardarEncuestaEnTransaccion(client, producerId, req.body, { canal: 'productor' });
+    await client.query('COMMIT');
+    res.json(resultado);
+  } catch (error: any) {
+    await client.query('ROLLBACK');
+    if (error instanceof EncuestaError) {
+      res.status(error.status).json({ error: error.message, codigo: error.codigo, campo: error.campo });
+      return;
+    }
+    console.error('Error al actualizar encuesta de insumos:', error);
+    res.status(500).json({ error: 'Error al actualizar la encuesta' });
+  } finally {
+    client.release();
+  }
+});
 
 // GET /api/productor/dashboard
 router.get('/dashboard', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
