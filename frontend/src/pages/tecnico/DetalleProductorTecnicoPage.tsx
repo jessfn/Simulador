@@ -99,6 +99,26 @@ export default function DetalleProductorTecnicoPage() {
           </div>
         )}
 
+        {productor?.encuesta_estado && productor.encuesta_estado !== 'no_aplica' && (
+          <button
+            onClick={() => navigate(`/tecnico/productor/${id}/encuesta`, { state: { nombreProductor: `${productor.nombres} ${productor.apellido_paterno}` } })}
+            className={`w-full flex items-center justify-between rounded-2xl border p-4 text-left transition-colors ${
+              productor.encuesta_estado === 'pendiente'
+                ? 'bg-amber-50 border-amber-200 hover:bg-amber-100'
+                : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
+            }`}>
+            <div>
+              <p className={`text-[13px] font-bold ${productor.encuesta_estado === 'pendiente' ? 'text-amber-800' : 'text-emerald-800'}`}>
+                Encuesta de insumos {productor.encuesta_estado === 'pendiente' ? 'pendiente' : 'respondida'}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {productor.encuesta_estado === 'pendiente' ? 'Toca para capturarla ahora' : 'Toca para revisar o corregir'}
+              </p>
+            </div>
+            <Sprout size={20} className={productor.encuesta_estado === 'pendiente' ? 'text-amber-500' : 'text-emerald-500'} />
+          </button>
+        )}
+
         <div>
           <div className="flex items-center justify-between mb-2 px-1">
             <h3 className="text-[13px] font-black text-slate-800">

@@ -39,6 +39,7 @@ const VISTAS_PERMISOS: Record<string, string[]> = {
   'avisos-privacidad':['ver', 'exportar'],
   chats_ayuda:        ['ver', 'responder'],
   tecnicos:           ['ver', 'ver_detalle', 'editar', 'eliminar'],
+  insumos:            ['ver', 'exportar'],
 };
 
 async function insertarPermisosDefault(usuarioId: number, vistasDefault: Record<string, string[]>) {

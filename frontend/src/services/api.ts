@@ -276,6 +276,9 @@ export const api = {
       request('/tecnico/perfil', { method: 'PATCH', body: JSON.stringify(data) }),
     cambiarPassword: (password_actual: string, password_nueva: string) =>
       request('/tecnico/perfil/cambiar-password', { method: 'POST', body: JSON.stringify({ password_actual, password_nueva }) }),
+    obtenerEncuesta: (producerId: number | string) => request(`/tecnico/productor/${producerId}/encuesta-insumos`),
+    guardarEncuesta: (producerId: number | string, data: Record<string, unknown>) =>
+      request(`/tecnico/productor/${producerId}/encuesta-insumos`, { method: 'POST', body: JSON.stringify(data) }),
   },
   ups: {
     crearCiclo: (upId: number | string, data: Record<string, unknown>) =>

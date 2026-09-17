@@ -87,6 +87,7 @@ import CambiarPasswordPage from './pages/admin/CambiarPasswordPage';
 import MiPerfilAdminPage from './pages/admin/MiPerfilPage';
 import ParcelasAdminPage from './pages/admin/ParcelasAdminPage';
 import TecnicosAdminPage from './pages/admin/TecnicosAdminPage';
+import InsumosAdminPage from './pages/admin/InsumosAdminPage';
 
 // Técnicos ECA — Importaciones
 import LoginTecnicoPage from './pages/tecnico/LoginTecnicoPage';
@@ -96,6 +97,7 @@ import DatosProductorPage from './pages/tecnico/DatosProductorPage';
 import AgregarUPTecnicoPage from './pages/tecnico/AgregarUPTecnicoPage';
 import DetalleProductorTecnicoPage from './pages/tecnico/DetalleProductorTecnicoPage';
 import CicloTecnicoPage from './pages/tecnico/CicloTecnicoPage';
+import EncuestaInsumosTecnicoPage from './pages/tecnico/EncuestaInsumosTecnicoPage';
 import PerfilTecnicoPage from './pages/tecnico/PerfilTecnicoPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -152,7 +154,9 @@ function RequireProductor({ children }: { children: React.ReactNode }) {
   const [reintento, setReintento] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated || user?.rol !== 'productor') { setCargando(false); return; }
+    // Si no aplica (no autenticado o no es productor), este componente ya
+    // redirige antes de leer `cargando` — no hace falta tocar el estado.
+    if (!isAuthenticated || user?.rol !== 'productor') return;
     let cancelado = false;
     setErrorEstado(false);
     fetch(`${BASE_ESTADO_REGISTRO}/productor/estado-registro`, { headers: { Authorization: `Bearer ${token}` } })
@@ -428,6 +432,7 @@ export const router = createBrowserRouter([
       { path: 'productor/:id', element: <DetalleProductorTecnicoPage /> },
       { path: 'productor/:id/up/nueva', element: <AgregarUPTecnicoPage /> },
       { path: 'productor/:id/ciclo', element: <CicloTecnicoPage /> },
+      { path: 'productor/:id/encuesta', element: <EncuestaInsumosTecnicoPage /> },
       { path: 'perfil', element: <PerfilTecnicoPage /> },
     ],
   },
@@ -446,6 +451,7 @@ export const router = createBrowserRouter([
       { path: 'bodegas',        element: <RequireVista vista="bodegas"><BodegasAdminPage /></RequireVista> },
       { path: 'bodegas/:id',    element: <RequireVista vista="bodegas"><BodegaDetalleAdminPage /></RequireVista> },
       { path: 'tecnicos',       element: <RequireVista vista="tecnicos"><TecnicosAdminPage /></RequireVista> },
+      { path: 'insumos',        element: <RequireVista vista="insumos"><InsumosAdminPage /></RequireVista> },
       { path: 'alertas',        element: <RequireVista vista="alertas"><AlertasAdminPage /></RequireVista> },
       { path: 'chats',          element: <RequireVista vista="chats_ayuda"><ChatsAdminPage /></RequireVista> },
       { path: 'precios',        element: <RequireVista vista="precios"><PreciosAdminPage /></RequireVista> },

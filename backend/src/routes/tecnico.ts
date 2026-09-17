@@ -9,6 +9,10 @@ import { consultarPersonaPorCURP } from '../services/saderService';
 import { consultarCURPEnRENAPO } from '../services/renapoService';
 import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
 import { insertarUP } from '../utils/ups';
+import {
+  EncuestaError, determinarContextoTerritorial, guardarEncuestaEnTransaccion,
+  obtenerRespuestaProductor, obtenerEdicionVigente,
+} from '../services/encuestaService';
 
 const router = Router();
 
@@ -363,10 +367,35 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
 
     const upId = await insertarUP(client, producerId, req.body);
 
+    // Encuesta de insumos: a diferencia del alta que hace el propio
+    // productor, aquí NO es obligatoria en la misma llamada — el técnico
+    // puede capturarla por etapas en otra sesión (ticket 04). Si la manda
+    // en este mismo POST, se guarda ya dentro de la transacción del alta;
+    // si no, el registro queda "pendiente de encuesta" (se resuelve más
+    // tarde vía POST /tecnico/productor/:id/encuesta-insumos).
+    let encuestaGuardada: boolean | null = null;
+    if (req.body.encuesta_insumos && typeof req.body.encuesta_insumos === 'object') {
+      const r = await guardarEncuestaEnTransaccion(client, producerId, req.body.encuesta_insumos, {
+        canal: 'tecnico', capturistaId: tecnicoId,
+      });
+      encuestaGuardada = r.elegible;
+    }
+
     await client.query('COMMIT');
-    res.status(201).json({ producer_id: producerId, up_id: upId, message: 'Registro alterno creado' });
+    const contextoFinal = await determinarContextoTerritorial(pool, producerId);
+    res.status(201).json({
+      producer_id: producerId,
+      up_id: upId,
+      message: 'Registro alterno creado',
+      encuesta_aplicable: contextoFinal.elegible,
+      encuesta_pendiente: contextoFinal.elegible && encuestaGuardada === null,
+    });
   } catch (e: any) {
     await client.query('ROLLBACK');
+    if (e instanceof EncuestaError) {
+      res.status(e.status).json({ error: e.message, codigo: e.codigo, campo: e.campo });
+      return;
+    }
     if (e.code === 'UP_OVERLAP') {
       res.status(409).json({
         error: `La parcela se intersecta con otra parcela ya registrada ("${e.up_conflicto}").`,
@@ -398,22 +427,87 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
 router.get('/mis-registros', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tecnicoId = req.user!.userId;
+    const edicion = await obtenerEdicionVigente();
     const result = await pool.query(
       `SELECT p.producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno,
               p.phone AS telefono, p.state_id, p.municipality_id, p.estatus_registro, p.fecha_captura,
-              COUNT(DISTINCT u.up_id) AS total_ups, COUNT(DISTINCT c.cycle_id) AS total_ciclos
+              COUNT(DISTINCT u.up_id) AS total_ups, COUNT(DISTINCT c.cycle_id) AS total_ciclos,
+              BOOL_OR(u.state_id = '25') AS encuesta_aplica,
+              EXISTS (
+                SELECT 1 FROM encuesta_respuestas er
+                WHERE er.producer_id = p.producer_id AND er.edicion_id = $2
+              ) AS encuesta_respondida
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
        LEFT JOIN cycle c ON c.up_id = u.up_id
        WHERE p.usuario_capturista_id = $1
        GROUP BY p.producer_id
        ORDER BY p.fecha_captura DESC`,
-      [tecnicoId]
+      [tecnicoId, edicion?.id || 0]
     );
-    res.json({ registros: result.rows });
+    const registros = result.rows.map(r => ({
+      ...r,
+      encuesta_estado: !r.encuesta_aplica ? 'no_aplica' : r.encuesta_respondida ? 'respondida' : 'pendiente',
+    }));
+    res.json({ registros });
   } catch (error) {
     console.error('Error en mis-registros de técnico:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// =============================================
+// GET/POST /api/tecnico/productor/:producer_id/encuesta-insumos
+// Captura por etapas (ticket 04): el técnico puede responder la encuesta en
+// una sesión distinta a la del alta. No pide NIP ni suplanta el login del
+// productor — la propiedad se valida por usuario_capturista_id. Si el
+// productor ya respondió (por su cuenta o en otra visita del técnico), se
+// reemplaza dentro de una transacción con control de concurrencia.
+// =============================================
+router.get('/productor/:producer_id/encuesta-insumos', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tecnicoId = req.user!.userId;
+    const { producer_id } = req.params;
+    const own = await pool.query(
+      'SELECT producer_id FROM producer WHERE producer_id = $1 AND usuario_capturista_id = $2',
+      [producer_id, tecnicoId]
+    );
+    if (own.rows.length === 0) { res.status(403).json({ error: 'Este productor no fue registrado por ti' }); return; }
+    const datos = await obtenerRespuestaProductor(Number(producer_id));
+    res.json(datos || { elegible: false });
+  } catch (error) {
+    console.error('Error al obtener encuesta de insumos (técnico):', error);
+    res.status(500).json({ error: 'Error al obtener la encuesta' });
+  }
+});
+
+router.post('/productor/:producer_id/encuesta-insumos', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    const tecnicoId = req.user!.userId;
+    const { producer_id } = req.params;
+    const own = await pool.query(
+      'SELECT producer_id FROM producer WHERE producer_id = $1 AND usuario_capturista_id = $2',
+      [producer_id, tecnicoId]
+    );
+    if (own.rows.length === 0) { res.status(403).json({ error: 'Este productor no fue registrado por ti' }); client.release(); return; }
+
+    await client.query('BEGIN');
+    const resultado = await guardarEncuestaEnTransaccion(client, Number(producer_id), req.body, {
+      canal: 'tecnico', capturistaId: tecnicoId,
+    });
+    await client.query('COMMIT');
+    res.json(resultado);
+  } catch (error: any) {
+    await client.query('ROLLBACK');
+    if (error instanceof EncuestaError) {
+      res.status(error.status).json({ error: error.message, codigo: error.codigo, campo: error.campo });
+      return;
+    }
+    console.error('Error al guardar encuesta de insumos (técnico):', error);
+    res.status(500).json({ error: 'Error al guardar la encuesta' });
+  } finally {
+    client.release();
   }
 });
 

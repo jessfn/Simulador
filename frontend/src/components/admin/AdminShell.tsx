@@ -30,6 +30,7 @@ const MENU: SidebarItem[] = [
   { label: 'Parcelas',          subtitle: 'Mapa de todas las unidades de producción y parcelas registradas',  path: '/admin/parcelas',          icon: Layers,          vista: 'parcelas' },
   { label: 'Bodegas',           subtitle: 'Supervisión y control detallado de centros de acopio',             path: '/admin/bodegas',           icon: Warehouse,       vista: 'bodegas' },
   { label: 'Técnicos',          subtitle: 'Gestión de técnicos ECA y registros capturados en campo',         path: '/admin/tecnicos',          icon: UserCog,         vista: 'tecnicos' },
+  { label: 'Encuesta Insumos',  subtitle: 'Intención de compra de insumos para negociación de la Secretaría', path: '/admin/insumos',           icon: Sprout,          vista: 'insumos' },
   { label: 'Chats de Ayuda',    subtitle: 'Soporte en vivo a productores y bodegas',                          path: '/admin/chats',             icon: MessageCircle,   vista: 'chats_ayuda' },
   { label: 'Alertas',           subtitle: 'Centro de notificaciones y avisos en tiempo real',                 path: '/admin/alertas',           icon: AlertTriangle,   vista: 'alertas' },
   { label: 'Precios',           subtitle: 'Monitoreo de cotizaciones y variaciones del mercado',              path: '/admin/precios',           icon: TrendingUp,      vista: 'precios' },

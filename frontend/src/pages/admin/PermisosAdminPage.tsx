@@ -34,6 +34,7 @@ const VISTAS_LABELS: Record<string, { label: string; icon: React.ReactNode }> = 
   'avisos-privacidad': { label: 'Avisos Privacidad', icon: <ShieldCheck size={14} className="text-slate-500" /> },
   chats_ayuda:         { label: 'Chats de Ayuda',     icon: <MessageCircle size={14} className="text-teal-500" /> },
   tecnicos:            { label: 'Técnicos',           icon: <UserCog size={14} className="text-indigo-500" /> },
+  insumos:             { label: 'Encuesta de Insumos', icon: <Sprout size={14} className="text-amber-600" /> },
 };
 
 const ACCION_LABELS: Record<string, string> = {
@@ -53,6 +54,7 @@ const VISTAS_ACCIONES: Record<string, string[]> = {
   'avisos-privacidad': ['ver', 'exportar'],
   chats_ayuda:         ['ver', 'responder'],
   tecnicos:            ['ver', 'ver_detalle', 'editar', 'eliminar'],
+  insumos:             ['ver', 'exportar'],
 };
 
 const ESTADOS_MX = [

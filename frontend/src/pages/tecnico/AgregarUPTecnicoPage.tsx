@@ -170,6 +170,13 @@ export default function AgregarUPTecnicoPage() {
         </p>
 
         <div className="w-full max-w-sm mt-8 space-y-2.5">
+          {estadoUp.trim().toLowerCase() === 'sinaloa' && (
+            <button
+              onClick={() => navigate(`/tecnico/productor/${resultado.producer_id}/encuesta`, { state: { nombreProductor: resultado.nombreProductor } })}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-2xl font-bold text-[14.5px] active:scale-[0.98] transition-all">
+              Responder encuesta de insumos
+            </button>
+          )}
           {resultado.up_id && (
             <button
               onClick={() => navigate(`/tecnico/productor/${resultado.producer_id}/ciclo`, { state: { up_id: resultado.up_id } })}
