@@ -41,6 +41,34 @@ interface UPRegistrada {
   area_real_ha?: number | null;
 }
 
+interface CatalogoInsumos {
+  edicion_id: number;
+  version_catalogo: string;
+  periodo_inicio: string;
+  periodo_fin: string;
+  categorias: { id: string; nombre: string; ayuda: string | null }[];
+  productos: { id: string; categoria_id: string; nombre_visible: string; requiere_nombre_conocido: boolean; es_otro: boolean }[];
+  presentaciones: { id: string; producto_id: string; envase: string; contenido: number; unidad: string }[];
+}
+
+// Borrador/línea ya guardada de la encuesta de insumos, en formato de UI
+// (se traduce a lo que espera la API justo antes de enviar el registro).
+interface LineaEncuestaUI {
+  producto_id: string;
+  producto_nombre: string; // para mostrar en el resumen
+  presentacion_id: string | null;
+  presentacion_label: string; // para mostrar en el resumen
+  presentacion_otro_envase: string | null;
+  presentacion_otro_contenido: number | null;
+  presentacion_otro_unidad: string | null;
+  a_granel: boolean;
+  cantidad: number;
+  mes_compra: string; // 'YYYY-MM'
+  nombre_conocido: string | null;
+  preferencia_marca: string | null;
+  identificacion_no_disponible: boolean;
+}
+
 interface DatosManual {
   nombres: string;
   apellidoPaterno: string;
@@ -57,6 +85,11 @@ export default function RegistroNuevoPage() {
   const [searchParams] = useSearchParams();
   const esModoManual = searchParams.get('modo') === 'manual';
   const curpDesdeActivar = searchParams.get('curp') ?? '';
+
+  // Clave de idempotencia estable durante toda la sesión de registro: un
+  // reintento (doble clic, error de red) reusa la misma clave para que el
+  // backend nunca duplique la cuenta/encuesta.
+  const idempotencyKeyRef = useRef(crypto.randomUUID());
 
   const [paso, setPaso] = useState(1);
   const [cargando, setCargando] = useState(false);
@@ -132,6 +165,45 @@ export default function RegistroNuevoPage() {
   // Paso 6 — PIN
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+
+  // Paso 7 — Encuesta de insumos (solo si alguna parcela quedó en Sinaloa)
+  const [catalogoInsumos, setCatalogoInsumos] = useState<CatalogoInsumos | null>(null);
+  const [catalogoCargando, setCatalogoCargando] = useState(false);
+  const [catalogoError, setCatalogoError] = useState<string | null>(null);
+  const [encuestaRespuesta, setEncuestaRespuesta] = useState<'si' | 'no' | null>(null);
+  const [encuestaLineas, setEncuestaLineas] = useState<LineaEncuestaUI[]>([]);
+  const [mostrarFormLinea, setMostrarFormLinea] = useState(false);
+  const [lineaEnEdicion, setLineaEnEdicion] = useState<number | null>(null);
+  const [errorEncuesta, setErrorEncuesta] = useState<string | null>(null);
+
+  const draftLineaVacia = {
+    categoriaId: '', productoId: '', presentacionId: '',
+    modoPresentacion: 'catalogo' as 'catalogo' | 'otra' | 'granel',
+    presOtroEnvase: '', presOtroContenido: '', presOtroUnidad: '',
+    granelUnidad: '', cantidad: '', mesCompra: '',
+    nombreConocido: '', identificacionNoDisponible: false, preferenciaMarca: '',
+  };
+  const [draftLinea, setDraftLinea] = useState(draftLineaVacia);
+
+  // Elegibilidad: al menos una parcela cuyo estado sea Sinaloa (determinada
+  // por el nombre elegido en el selector de la parcela; el servidor vuelve a
+  // determinarla con autoridad final a partir de state_id al guardar).
+  const encuestaAplica = ups.some(u => (u.estado || '').trim().toLowerCase() === 'sinaloa');
+
+  const cargarCatalogoInsumos = async () => {
+    if (catalogoInsumos) return;
+    setCatalogoCargando(true); setCatalogoError(null);
+    try {
+      const r = await fetch(`${BASE}/productor/auth/catalogo-insumos`);
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      setCatalogoInsumos(d);
+    } catch {
+      setCatalogoError('No se pudo cargar el catálogo de insumos.');
+    } finally {
+      setCatalogoCargando(false);
+    }
+  };
 
   // Modo manual (registro sin padrón SADER)
   const [datosManual, setDatosManual] = useState<DatosManual>({
@@ -359,6 +431,23 @@ export default function RegistroNuevoPage() {
         ups: upsPayload,
       };
 
+      const encuestaInsumos = encuestaAplica ? {
+        respuesta: encuestaRespuesta,
+        lineas: encuestaRespuesta === 'si' ? encuestaLineas.map(l => ({
+          producto_id: l.producto_id,
+          presentacion_id: l.presentacion_id,
+          presentacion_otro_envase: l.presentacion_otro_envase,
+          presentacion_otro_contenido: l.presentacion_otro_contenido,
+          presentacion_otro_unidad: l.presentacion_otro_unidad,
+          a_granel: l.a_granel,
+          cantidad: l.cantidad,
+          mes_compra: l.mes_compra,
+          nombre_conocido: l.nombre_conocido,
+          preferencia_marca: l.preferencia_marca,
+          identificacion_no_disponible: l.identificacion_no_disponible,
+        })) : [],
+      } : undefined;
+
       const res = await fetch(`${BASE}/productor/auth/registro-nuevo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -370,6 +459,8 @@ export default function RegistroNuevoPage() {
           aviso_privacidad_lng: avisoData?.lng ?? null,
           aviso_privacidad_version: avisoData?.version ?? '1.0',
           aviso_privacidad_foto_url: avisoData?.fotoUrl ?? null,
+          encuesta_insumos: encuestaInsumos,
+          idempotency_key: idempotencyKeyRef.current,
         }),
       });
       const data = await res.json();
@@ -379,7 +470,8 @@ export default function RegistroNuevoPage() {
   };
 
   const handleBack = () => {
-    if (paso === 6) setPaso(5);
+    if (paso === 6) setPaso(encuestaAplica ? 7 : 5);
+    else if (paso === 7) setPaso(5);
     else if (paso === 5) {
       const lastUP = ups[ups.length - 1];
       if (lastUP) setUpActual({ estado: lastUP.estado, municipio: lastUP.municipio });
@@ -651,7 +743,7 @@ export default function RegistroNuevoPage() {
     if (paso === 1) return 1;
     if (paso === 2) return 2;
     if (paso >= 3 && paso <= 5) return 3;
-    if (paso === 6) return 4;
+    if (paso === 6 || paso === 7) return 4;
     return 4;
   };
 
@@ -669,6 +761,162 @@ export default function RegistroNuevoPage() {
       </div>
     </div>
   );
+
+  // ── Encuesta de insumos: helpers ──────────────────────────────────────
+  const productosDeCategoria = catalogoInsumos
+    ? catalogoInsumos.productos.filter(p => p.categoria_id === draftLinea.categoriaId)
+    : [];
+  const presentacionesDelProducto = catalogoInsumos
+    ? catalogoInsumos.presentaciones.filter(p => p.producto_id === draftLinea.productoId)
+    : [];
+  const productoSeleccionado = catalogoInsumos?.productos.find(p => p.id === draftLinea.productoId) || null;
+
+  const mesesDisponibles = (() => {
+    if (!catalogoInsumos) return [];
+    const inicio = new Date(catalogoInsumos.periodo_inicio);
+    const fin = new Date(catalogoInsumos.periodo_fin);
+    const meses: { valor: string; label: string }[] = [];
+    const cursor = new Date(inicio.getFullYear(), inicio.getMonth(), 1);
+    const finMes = new Date(fin.getFullYear(), fin.getMonth(), 1);
+    const nombresMes = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    while (cursor <= finMes) {
+      meses.push({
+        valor: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`,
+        label: `${nombresMes[cursor.getMonth()]} ${cursor.getFullYear()}`,
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return meses;
+  })();
+
+  // Vista previa de conversión (informativa; el servidor recalcula con autoridad).
+  const previaCantidadBase = (): string | null => {
+    const cantidad = Number(draftLinea.cantidad);
+    if (!Number.isFinite(cantidad) || cantidad <= 0) return null;
+    const convertir = (valor: number, unidad: string): { v: number; u: string } | null => {
+      if (unidad === 'semillas') return { v: valor, u: 'semillas' };
+      if (unidad === 'g') return { v: valor / 1000, u: 'kg' };
+      if (unidad === 'kg') return { v: valor, u: 'kg' };
+      if (unidad === 'ton') return { v: valor * 1000, u: 'kg' };
+      if (unidad === 'mL') return { v: valor / 1000, u: 'L' };
+      if (unidad === 'L') return { v: valor, u: 'L' };
+      return null;
+    };
+    if (draftLinea.modoPresentacion === 'granel') {
+      if (!draftLinea.granelUnidad) return null;
+      const c = convertir(cantidad, draftLinea.granelUnidad);
+      return c ? `${cantidad} ${draftLinea.granelUnidad} = ${c.v.toFixed(2)} ${c.u}` : null;
+    }
+    if (draftLinea.modoPresentacion === 'catalogo') {
+      const pres = presentacionesDelProducto.find(p => p.id === draftLinea.presentacionId);
+      if (!pres || !Number.isInteger(cantidad)) return null;
+      const c = convertir(pres.contenido * cantidad, pres.unidad);
+      return c ? `${cantidad} ${pres.envase.toLowerCase()}${cantidad !== 1 ? 's' : ''} de ${pres.contenido} ${pres.unidad} = ${c.v.toFixed(2)} ${c.u}` : null;
+    }
+    // otra
+    const contenido = Number(draftLinea.presOtroContenido);
+    if (!Number.isFinite(contenido) || contenido <= 0 || !draftLinea.presOtroUnidad || !Number.isInteger(cantidad)) return null;
+    const c = convertir(contenido * cantidad, draftLinea.presOtroUnidad);
+    return c ? `${cantidad} × ${contenido} ${draftLinea.presOtroUnidad} = ${c.v.toFixed(2)} ${c.u}` : null;
+  };
+
+  const resetDraftLinea = () => { setDraftLinea(draftLineaVacia); setLineaEnEdicion(null); setMostrarFormLinea(false); setErrorEncuesta(null); };
+
+  const guardarLineaDraft = () => {
+    setErrorEncuesta(null);
+    if (!draftLinea.categoriaId || !draftLinea.productoId) { setErrorEncuesta('Selecciona la categoría y el producto.'); return; }
+    const cantidad = Number(draftLinea.cantidad);
+    if (!Number.isFinite(cantidad) || cantidad <= 0) { setErrorEncuesta('Indica una cantidad válida.'); return; }
+    if (!draftLinea.mesCompra) { setErrorEncuesta('Indica el mes en que lo necesita.'); return; }
+
+    const necesitaNombre = productoSeleccionado?.es_otro || productoSeleccionado?.requiere_nombre_conocido;
+    if (productoSeleccionado?.es_otro && !draftLinea.nombreConocido.trim()) {
+      setErrorEncuesta('Escribe el nombre que conoces del producto.'); return;
+    }
+    if (necesitaNombre && !productoSeleccionado?.es_otro && !draftLinea.nombreConocido.trim() && !draftLinea.identificacionNoDisponible) {
+      setErrorEncuesta('Indica la variedad/fórmula que conoces, o marca que no la identificas.'); return;
+    }
+
+    let presentacionId: string | null = null;
+    let presOtroEnvase: string | null = null;
+    let presOtroContenido: number | null = null;
+    let presOtroUnidad: string | null = null;
+    let aGranel = false;
+    let presentacionLabel = '';
+
+    if (draftLinea.modoPresentacion === 'granel') {
+      if (!draftLinea.granelUnidad) { setErrorEncuesta('Indica la unidad de la compra a granel.'); return; }
+      if (!Number.isFinite(cantidad) || cantidad <= 0) { setErrorEncuesta('Indica una cantidad válida.'); return; }
+      aGranel = true;
+      presOtroUnidad = draftLinea.granelUnidad;
+      presentacionLabel = `A granel (${draftLinea.granelUnidad})`;
+    } else if (draftLinea.modoPresentacion === 'catalogo') {
+      const pres = presentacionesDelProducto.find(p => p.id === draftLinea.presentacionId);
+      if (!pres) { setErrorEncuesta('Selecciona una presentación.'); return; }
+      if (!Number.isInteger(cantidad)) { setErrorEncuesta('La cantidad de envases debe ser un número entero.'); return; }
+      presentacionId = pres.id;
+      presentacionLabel = `${pres.envase} de ${pres.contenido} ${pres.unidad}`;
+    } else {
+      if (!draftLinea.presOtroEnvase.trim() || !draftLinea.presOtroContenido || !draftLinea.presOtroUnidad) {
+        setErrorEncuesta('Especifica envase, contenido y unidad de la presentación.'); return;
+      }
+      if (!Number.isInteger(cantidad)) { setErrorEncuesta('La cantidad de envases debe ser un número entero.'); return; }
+      presOtroEnvase = draftLinea.presOtroEnvase.trim();
+      presOtroContenido = Number(draftLinea.presOtroContenido);
+      presOtroUnidad = draftLinea.presOtroUnidad;
+      presentacionLabel = `${presOtroEnvase} de ${presOtroContenido} ${presOtroUnidad}`;
+    }
+
+    const nueva: LineaEncuestaUI = {
+      producto_id: draftLinea.productoId,
+      producto_nombre: productoSeleccionado?.es_otro
+        ? `${productoSeleccionado.nombre_visible}: ${draftLinea.nombreConocido.trim()}`
+        : (productoSeleccionado?.nombre_visible || ''),
+      presentacion_id: presentacionId,
+      presentacion_label: presentacionLabel,
+      presentacion_otro_envase: presOtroEnvase,
+      presentacion_otro_contenido: presOtroContenido,
+      presentacion_otro_unidad: presOtroUnidad,
+      a_granel: aGranel,
+      cantidad,
+      mes_compra: draftLinea.mesCompra,
+      nombre_conocido: draftLinea.nombreConocido.trim() || null,
+      preferencia_marca: draftLinea.preferenciaMarca.trim() || null,
+      identificacion_no_disponible: draftLinea.identificacionNoDisponible,
+    };
+
+    setEncuestaLineas(prev => {
+      if (lineaEnEdicion !== null) {
+        const copia = [...prev]; copia[lineaEnEdicion] = nueva; return copia;
+      }
+      return [...prev, nueva];
+    });
+    resetDraftLinea();
+  };
+
+  const editarLinea = (i: number) => {
+    const l = encuestaLineas[i];
+    const producto = catalogoInsumos?.productos.find(p => p.id === l.producto_id);
+    setDraftLinea({
+      categoriaId: producto?.categoria_id || '',
+      productoId: l.producto_id,
+      presentacionId: l.presentacion_id || '',
+      modoPresentacion: l.a_granel ? 'granel' : (l.presentacion_id ? 'catalogo' : 'otra'),
+      presOtroEnvase: l.presentacion_otro_envase || '',
+      presOtroContenido: l.presentacion_otro_contenido != null ? String(l.presentacion_otro_contenido) : '',
+      presOtroUnidad: l.a_granel ? '' : (l.presentacion_otro_unidad || ''),
+      granelUnidad: l.a_granel ? (l.presentacion_otro_unidad || '') : '',
+      cantidad: String(l.cantidad),
+      mesCompra: l.mes_compra,
+      nombreConocido: l.nombre_conocido || '',
+      identificacionNoDisponible: l.identificacion_no_disponible,
+      preferenciaMarca: l.preferencia_marca || '',
+    });
+    setLineaEnEdicion(i);
+    setMostrarFormLinea(true);
+  };
+
+  const quitarLinea = (i: number) => setEncuestaLineas(prev => prev.filter((_, idx) => idx !== i));
 
   return (
     <div
@@ -1167,10 +1415,234 @@ export default function RegistroNuevoPage() {
                         className="py-3 bg-white/[0.08] hover:bg-white/[0.12] ring-1 ring-white/15 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.97]">
                         <Plus size={16} /> Agregar otra
                       </button>
-                      <button onClick={() => setPaso(6)} className="py-3 bg-white hover:bg-white/90 text-[#0b271a] rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.97]">
-                        Crear NIP <ChevronLeft size={14} className="rotate-180" />
+                      <button
+                        onClick={() => { if (encuestaAplica) { cargarCatalogoInsumos(); setPaso(7); } else setPaso(6); }}
+                        className="py-3 bg-white hover:bg-white/90 text-[#0b271a] rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.97]">
+                        {encuestaAplica ? 'Continuar' : 'Crear NIP'} <ChevronLeft size={14} className="rotate-180" />
                       </button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── PASO 7: ENCUESTA DE INSUMOS (solo Sinaloa) ── */}
+              {paso === 7 && (
+                <div className="animate-auth-in">
+                  {sectionTitle(<Search size={15} className="text-amber-300" />, '¿Qué insumos necesita comprar?', 'Paso adicional para productores de Sinaloa.', 'bg-amber-500/15 ring-1 ring-amber-400/20')}
+
+                  <div className={`${card} p-5 sm:p-6 space-y-4`}>
+                    <p className="text-white/60 text-[13px] leading-relaxed">
+                      Cuéntenos qué necesita comprar para sus parcelas de Sinaloa durante los próximos seis meses
+                      {catalogoInsumos && (
+                        <> ({new Date(catalogoInsumos.periodo_inicio).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })} – {new Date(catalogoInsumos.periodo_fin).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })})</>
+                      )}. La Secretaría usará esta información para buscar mejores condiciones de compra. No es un pedido ni garantiza un descuento.
+                    </p>
+
+                    {catalogoCargando && (
+                      <div className="flex items-center justify-center py-6 gap-2 text-white/50 text-sm"><Loader2 size={16} className="animate-spin" /> Cargando catálogo…</div>
+                    )}
+                    {catalogoError && (
+                      <div className="p-3 bg-red-500/15 ring-1 ring-red-400/25 rounded-xl text-red-200 text-sm text-center">
+                        {catalogoError}
+                        <button onClick={cargarCatalogoInsumos} className="block mx-auto mt-2 underline">Reintentar</button>
+                      </div>
+                    )}
+
+                    {catalogoInsumos && (
+                      <>
+                        <div>
+                          <p className={labelCls}>¿Tiene previsto comprar insumos?</p>
+                          <div className="grid grid-cols-2 gap-2.5 mt-1.5">
+                            <button
+                              onClick={() => { setEncuestaRespuesta('si'); setErrorEncuesta(null); }}
+                              className={`py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.97] ${encuestaRespuesta === 'si' ? 'bg-white text-[#0b271a]' : 'bg-white/[0.08] ring-1 ring-white/15 text-white'}`}>
+                              Sí
+                            </button>
+                            <button
+                              onClick={() => { setEncuestaRespuesta('no'); setEncuestaLineas([]); resetDraftLinea(); }}
+                              className={`py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.97] ${encuestaRespuesta === 'no' ? 'bg-white text-[#0b271a]' : 'bg-white/[0.08] ring-1 ring-white/15 text-white'}`}>
+                              No tengo compras previstas
+                            </button>
+                          </div>
+                        </div>
+
+                        {encuestaRespuesta === 'si' && !mostrarFormLinea && (
+                          <>
+                            {encuestaLineas.length > 0 && (
+                              <div className="space-y-2">
+                                {encuestaLineas.map((l, i) => (
+                                  <div key={i} className="bg-white/[0.05] rounded-xl p-3 ring-1 ring-white/[0.07]">
+                                    <p className="text-sm font-semibold text-white">{l.producto_nombre}</p>
+                                    <p className="text-xs text-white/45 mt-0.5">{l.cantidad} · {l.presentacion_label} · {mesesDisponibles.find(m => m.valor === l.mes_compra)?.label || l.mes_compra}</p>
+                                    <div className="flex gap-3 mt-1.5">
+                                      <button onClick={() => editarLinea(i)} className="text-[11px] font-semibold text-amber-300">Cambiar</button>
+                                      <button onClick={() => quitarLinea(i)} className="text-[11px] font-semibold text-red-300">Quitar</button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <button onClick={() => setMostrarFormLinea(true)}
+                              className="w-full py-3 bg-white/[0.08] hover:bg-white/[0.12] ring-1 ring-white/15 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.97]">
+                              <Plus size={16} /> Agregar {encuestaLineas.length > 0 ? 'otro' : 'un'} producto
+                            </button>
+                          </>
+                        )}
+
+                        {encuestaRespuesta === 'si' && mostrarFormLinea && (
+                          <div className="space-y-3.5 bg-white/[0.04] rounded-xl p-3.5 ring-1 ring-white/[0.08]">
+                            <div>
+                              <label className={labelCls}>Categoría</label>
+                              <select value={draftLinea.categoriaId}
+                                onChange={e => setDraftLinea(d => ({ ...d, categoriaId: e.target.value, productoId: '', presentacionId: '' }))}
+                                className={inputCls}>
+                                <option value="" className="text-black">Selecciona una categoría</option>
+                                {catalogoInsumos.categorias.map(c => <option key={c.id} value={c.id} className="text-black">{c.nombre}</option>)}
+                              </select>
+                              {draftLinea.categoriaId && (
+                                <p className="text-[11px] text-white/40 mt-1">{catalogoInsumos.categorias.find(c => c.id === draftLinea.categoriaId)?.ayuda}</p>
+                              )}
+                            </div>
+
+                            {draftLinea.categoriaId && (
+                              <div>
+                                <label className={labelCls}>Producto o fórmula</label>
+                                <select value={draftLinea.productoId}
+                                  onChange={e => setDraftLinea(d => ({ ...d, productoId: e.target.value, presentacionId: '', modoPresentacion: 'catalogo' }))}
+                                  className={inputCls}>
+                                  <option value="" className="text-black">Selecciona un producto</option>
+                                  {productosDeCategoria.map(p => <option key={p.id} value={p.id} className="text-black">{p.nombre_visible}</option>)}
+                                </select>
+                              </div>
+                            )}
+
+                            {productoSeleccionado?.es_otro && (
+                              <div>
+                                <label className={labelCls}>Nombre que conoce del producto</label>
+                                <input type="text" value={draftLinea.nombreConocido}
+                                  onChange={e => setDraftLinea(d => ({ ...d, nombreConocido: e.target.value }))}
+                                  placeholder="Ej. nombre en la etiqueta" className={inputCls} />
+                              </div>
+                            )}
+                            {productoSeleccionado?.requiere_nombre_conocido && !productoSeleccionado.es_otro && (
+                              <div>
+                                <label className={labelCls}>Variedad/fórmula que conoce</label>
+                                <input type="text" value={draftLinea.nombreConocido}
+                                  disabled={draftLinea.identificacionNoDisponible}
+                                  onChange={e => setDraftLinea(d => ({ ...d, nombreConocido: e.target.value }))}
+                                  placeholder="Ej. híbrido o fórmula" className={`${inputCls} disabled:opacity-40`} />
+                                <label className="flex items-center gap-2 mt-2 text-xs text-white/60">
+                                  <input type="checkbox" checked={draftLinea.identificacionNoDisponible}
+                                    onChange={e => setDraftLinea(d => ({ ...d, identificacionNoDisponible: e.target.checked, nombreConocido: e.target.checked ? '' : d.nombreConocido }))} />
+                                  No identifico la variedad/fórmula
+                                </label>
+                              </div>
+                            )}
+
+                            {draftLinea.productoId && (
+                              <div>
+                                <label className={labelCls}>Presentación</label>
+                                <div className="flex gap-2 mb-2">
+                                  {presentacionesDelProducto.length > 0 && (
+                                    <button onClick={() => setDraftLinea(d => ({ ...d, modoPresentacion: 'catalogo' }))}
+                                      className={`flex-1 py-2 rounded-lg text-xs font-semibold ${draftLinea.modoPresentacion === 'catalogo' ? 'bg-white text-[#0b271a]' : 'bg-white/[0.08] text-white/70'}`}>Del catálogo</button>
+                                  )}
+                                  <button onClick={() => setDraftLinea(d => ({ ...d, modoPresentacion: 'otra' }))}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-semibold ${draftLinea.modoPresentacion === 'otra' ? 'bg-white text-[#0b271a]' : 'bg-white/[0.08] text-white/70'}`}>Otra</button>
+                                  <button onClick={() => setDraftLinea(d => ({ ...d, modoPresentacion: 'granel' }))}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-semibold ${draftLinea.modoPresentacion === 'granel' ? 'bg-white text-[#0b271a]' : 'bg-white/[0.08] text-white/70'}`}>A granel</button>
+                                </div>
+
+                                {draftLinea.modoPresentacion === 'catalogo' && (
+                                  <select value={draftLinea.presentacionId}
+                                    onChange={e => setDraftLinea(d => ({ ...d, presentacionId: e.target.value }))}
+                                    className={inputCls}>
+                                    <option value="" className="text-black">Selecciona una presentación</option>
+                                    {presentacionesDelProducto.map(p => <option key={p.id} value={p.id} className="text-black">{p.envase} de {p.contenido} {p.unidad}</option>)}
+                                  </select>
+                                )}
+                                {draftLinea.modoPresentacion === 'otra' && (
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <input type="text" placeholder="Envase" value={draftLinea.presOtroEnvase}
+                                      onChange={e => setDraftLinea(d => ({ ...d, presOtroEnvase: e.target.value }))} className={`${inputCls} col-span-1`} />
+                                    <input type="number" placeholder="Contenido" value={draftLinea.presOtroContenido}
+                                      onChange={e => setDraftLinea(d => ({ ...d, presOtroContenido: e.target.value }))} className={`${inputCls} col-span-1`} />
+                                    <select value={draftLinea.presOtroUnidad}
+                                      onChange={e => setDraftLinea(d => ({ ...d, presOtroUnidad: e.target.value }))} className={`${inputCls} col-span-1`}>
+                                      <option value="" className="text-black">Unidad</option>
+                                      {['kg','g','ton','L','mL','semillas'].map(u => <option key={u} value={u} className="text-black">{u}</option>)}
+                                    </select>
+                                  </div>
+                                )}
+                                {draftLinea.modoPresentacion === 'granel' && (
+                                  <select value={draftLinea.granelUnidad}
+                                    onChange={e => setDraftLinea(d => ({ ...d, granelUnidad: e.target.value }))} className={inputCls}>
+                                    <option value="" className="text-black">Unidad de compra a granel</option>
+                                    {['kg','g','ton','L','mL'].map(u => <option key={u} value={u} className="text-black">{u}</option>)}
+                                  </select>
+                                )}
+                              </div>
+                            )}
+
+                            {draftLinea.productoId && (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className={labelCls}>¿Cuántos necesita comprar?</label>
+                                  <input type="number" inputMode="decimal" value={draftLinea.cantidad}
+                                    onChange={e => setDraftLinea(d => ({ ...d, cantidad: e.target.value }))}
+                                    placeholder="0" className={inputCls} />
+                                </div>
+                                <div>
+                                  <label className={labelCls}>¿Para qué mes los necesita?</label>
+                                  <select value={draftLinea.mesCompra}
+                                    onChange={e => setDraftLinea(d => ({ ...d, mesCompra: e.target.value }))} className={inputCls}>
+                                    <option value="" className="text-black">Selecciona el mes</option>
+                                    {mesesDisponibles.map(m => <option key={m.valor} value={m.valor} className="text-black">{m.label}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                            )}
+
+                            {previaCantidadBase() && (
+                              <p className="text-[11px] text-amber-200 bg-amber-500/10 ring-1 ring-amber-400/20 rounded-lg px-3 py-1.5">{previaCantidadBase()}</p>
+                            )}
+
+                            {draftLinea.productoId && (
+                              <div>
+                                <label className={labelCls}>Marca de preferencia (opcional)</label>
+                                <input type="text" value={draftLinea.preferenciaMarca}
+                                  onChange={e => setDraftLinea(d => ({ ...d, preferenciaMarca: e.target.value }))}
+                                  placeholder="Opcional" className={inputCls} />
+                              </div>
+                            )}
+
+                            <p className="text-[11px] text-white/40">Incluya solo lo que necesita comprar; no lo que ya tiene o recibirá como apoyo.</p>
+
+                            {errorEncuesta && <div className="p-2.5 bg-red-500/15 ring-1 ring-red-400/25 rounded-lg text-red-200 text-xs text-center">{errorEncuesta}</div>}
+
+                            <div className="grid grid-cols-2 gap-2.5">
+                              <button onClick={resetDraftLinea} className="py-3 bg-white/[0.08] ring-1 ring-white/15 text-white rounded-xl font-semibold text-sm">Cancelar</button>
+                              <button onClick={guardarLineaDraft} className="py-3 bg-white text-[#0b271a] rounded-xl font-bold text-sm">Guardar producto</button>
+                            </div>
+                          </div>
+                        )}
+
+                        {!mostrarFormLinea && (
+                          <>
+                            {errorEncuesta && <div className="p-2.5 bg-red-500/15 ring-1 ring-red-400/25 rounded-lg text-red-200 text-xs text-center">{errorEncuesta}</div>}
+                            <button
+                              onClick={() => {
+                                if (!encuestaRespuesta) { setErrorEncuesta('Responde si tiene o no compras previstas.'); return; }
+                                if (encuestaRespuesta === 'si' && encuestaLineas.length === 0) { setErrorEncuesta('Agrega al menos un producto.'); return; }
+                                setPaso(6);
+                              }}
+                              className={btnCls}>
+                              Continuar con mi registro
+                            </button>
+                          </>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               )}
