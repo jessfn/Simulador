@@ -52,7 +52,6 @@ export default function MiPerfilPage() {
   const [editProg, setEditProg]     = useState(false);
   const [programas, setProgramas]   = useState<string[]>([]);
   const [ciclos, setCiclos]         = useState<Ciclo[] | null>(null);
-  const [encuesta, setEncuesta]     = useState<{ elegible: boolean; respondida: boolean } | null>(null);
   const [parcelas, setParcelas]     = useState<any[]>([]);
   const [confirmDel, setConfirmDel] = useState<number | null>(null);
   const [eliminando, setEliminando] = useState<number | null>(null);
@@ -122,11 +121,6 @@ export default function MiPerfilPage() {
         const todosCiclos = resultados.flat().sort((a, b) => b.cycle_year - a.cycle_year || b.cycle_id - a.cycle_id);
         setCiclos(todosCiclos);
       }).catch(() => setCiclos([]));
-
-    fetch(`${BASE}/productor/encuesta-insumos`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => setEncuesta({ elegible: !!d.elegible, respondida: !!d.respuesta }))
-      .catch(() => setEncuesta({ elegible: false, respondida: false }));
 
     fetch(`${BASE}/alertas/notificaciones/mis`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
@@ -626,29 +620,6 @@ export default function MiPerfilPage() {
             </div>
           )}
         </div>
-
-        {/* ── Encuesta de insumos (solo si aplica: al menos una parcela en Sinaloa) ── */}
-        {encuesta?.elegible && (
-          <button onClick={() => navigate('/productor/insumos')}
-            style={delay(3)}
-            className="w-full flex items-center justify-between gap-3 bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] px-5 py-4 text-left active:scale-[0.98] transition-all">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${encuesta.respondida ? 'bg-[#eef8f2]' : 'bg-amber-50'}`}>
-                <ClipboardList size={17} className={encuesta.respondida ? 'text-[#1A5C38]' : 'text-amber-500'} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[13px] font-bold text-slate-700">Encuesta de insumos</p>
-                <p className="text-[11.5px] text-slate-400 truncate">
-                  {encuesta.respondida ? 'Ya respondida — toca para revisarla o corregirla' : 'Compras previstas de insumos para tu parcela en Sinaloa'}
-                </p>
-              </div>
-            </div>
-            {!encuesta.respondida && (
-              <span className="flex-shrink-0 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full">Pendiente</span>
-            )}
-            <ChevronRight size={16} className="text-slate-300 flex-shrink-0" />
-          </button>
-        )}
 
         {/* ── Programas de apoyo ── */}
         <div style={delay(4)} className="bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] overflow-hidden">

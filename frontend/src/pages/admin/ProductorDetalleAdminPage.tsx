@@ -67,6 +67,7 @@ export default function ProductorDetalleAdminPage() {
   const permisosTotal = usePermisosStore(s => s.permisosTotal);
   const puedeEditar     = permisosTotal || puedo('productores', 'editar');
   const puedeVerDetalle = permisosTotal || puedo('productores', 'ver_detalle');
+  const puedeVerInsumos = permisosTotal || puedo('insumos', 'ver');
   const [data, setData] = useState<ProductorDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [traslapeInfo, setTraslapeInfo] = useState<{
@@ -532,7 +533,7 @@ export default function ProductorDetalleAdminPage() {
       </div>
 
       {/* ── ESTADO DE REGISTRO Y ENCUESTA DE INSUMOS ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 ${puedeVerInsumos ? 'sm:grid-cols-2' : ''} gap-4`}>
         <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
             <ShieldCheck size={15} className="text-indigo-500" />
@@ -560,40 +561,42 @@ export default function ProductorDetalleAdminPage() {
           )}
         </div>
 
-        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 space-y-3">
-          <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
-            <Sprout size={15} className="text-amber-500" />
-            <h3 className="text-[13px] font-bold text-gray-900 uppercase tracking-wider">Encuesta de insumos</h3>
-          </div>
-          {!data.encuesta_insumos?.elegible ? (
-            <p className="text-[12px] text-gray-400 italic">No aplica — este productor no tiene ninguna parcela en Sinaloa.</p>
-          ) : !data.encuesta_insumos.respuesta ? (
-            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
-              <AlertTriangle size={15} className="text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-[12.5px] text-amber-800 font-medium">Aplica, pero aún no tiene respuesta registrada.</p>
+        {puedeVerInsumos && (
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+              <Sprout size={15} className="text-amber-500" />
+              <h3 className="text-[13px] font-bold text-gray-900 uppercase tracking-wider">Encuesta de insumos</h3>
             </div>
-          ) : (
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
-                <Check size={15} className="text-emerald-600 shrink-0" />
-                <p className="text-[12.5px] text-emerald-800 font-medium">
-                  Respondió <strong>{data.encuesta_insumos.respuesta.respuesta === 'si' ? 'Sí' : 'No'}</strong> tiene compras previstas
-                  {' · '}{new Date(data.encuesta_insumos.respuesta.updated_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
+            {!data.encuesta_insumos?.elegible ? (
+              <p className="text-[12px] text-gray-400 italic">No aplica — este productor no tiene ninguna parcela en Sinaloa.</p>
+            ) : !data.encuesta_insumos.respuesta ? (
+              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
+                <AlertTriangle size={15} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[12.5px] text-amber-800 font-medium">Aplica, pero aún no tiene respuesta registrada.</p>
               </div>
-              {data.encuesta_insumos.lineas && data.encuesta_insumos.lineas.length > 0 && (
-                <div className="space-y-1.5">
-                  {data.encuesta_insumos.lineas.map((l, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-[12px]">
-                      <span className="text-gray-700 font-semibold truncate">{l.producto_nombre}</span>
-                      <span className="text-gray-500 shrink-0">{Number(l.cantidad_base).toLocaleString('es-MX', { maximumFractionDigits: 2 })} {l.unidad_base}</span>
-                    </div>
-                  ))}
+            ) : (
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                  <Check size={15} className="text-emerald-600 shrink-0" />
+                  <p className="text-[12.5px] text-emerald-800 font-medium">
+                    Respondió <strong>{data.encuesta_insumos.respuesta.respuesta === 'si' ? 'Sí' : 'No'}</strong> tiene compras previstas
+                    {' · '}{new Date(data.encuesta_insumos.respuesta.updated_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+                {data.encuesta_insumos.lineas && data.encuesta_insumos.lineas.length > 0 && (
+                  <div className="space-y-1.5">
+                    {data.encuesta_insumos.lineas.map((l, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-[12px]">
+                        <span className="text-gray-700 font-semibold truncate">{l.producto_nombre}</span>
+                        <span className="text-gray-500 shrink-0">{Number(l.cantidad_base).toLocaleString('es-MX', { maximumFractionDigits: 2 })} {l.unidad_base}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── DISPONIBILIDADES DECLARADAS ── */}

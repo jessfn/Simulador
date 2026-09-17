@@ -661,10 +661,23 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
       return;
     }
     const producerId = Number(id);
-    const [estadoRegistro, encuesta] = await Promise.all([
-      evaluarEstadoRegistro(producerId).catch(() => null),
-      obtenerRespuestaProductor(producerId).catch(() => null),
-    ]);
+    const estadoRegistro = await evaluarEstadoRegistro(producerId).catch(() => null);
+
+    // Ticket 04: los datos de la encuesta de insumos (a diferencia del
+    // estado de ubicación/ciclo, que es información operativa general) solo
+    // se incluyen bajo el permiso explícito 'insumos' — no basta con poder
+    // ver el detalle general del productor (vista 'productores').
+    const rolRow = await pool.query('SELECT permisos_totales FROM roles_panel WHERE clave=$1', [req.user?.rol]);
+    let tienePermisoInsumos = !!rolRow.rows[0]?.permisos_totales;
+    if (!tienePermisoInsumos) {
+      const permisoRow = await pool.query(
+        'SELECT habilitado FROM admin_permisos WHERE usuario_id=$1 AND vista=$2 AND sub_accion=$3',
+        [req.user?.userId, 'insumos', 'ver']
+      );
+      tienePermisoInsumos = !!permisoRow.rows[0]?.habilitado;
+    }
+    const encuesta = tienePermisoInsumos ? await obtenerRespuestaProductor(producerId).catch(() => null) : null;
+
     res.json({ productor: { ...result.rows[0], estado_registro: estadoRegistro, encuesta_insumos: encuesta } });
   } catch (error) {
     console.error('Error al obtener productor:', error);
