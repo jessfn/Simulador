@@ -52,6 +52,12 @@ interface ProductorDetalle {
     created_at: string;
     activa: boolean;
   }[];
+  estado_registro: { requiere_ubicacion: boolean; requiere_ciclo: boolean; siguiente_paso: string } | null;
+  encuesta_insumos: {
+    elegible: boolean;
+    respuesta?: { respuesta: 'si' | 'no'; updated_at: string; canal: string } | null;
+    lineas?: { producto_nombre: string; cantidad_base: string; unidad_base: string; mes_compra: string; identificacion_pendiente: boolean }[];
+  } | null;
 }
 
 export default function ProductorDetalleAdminPage() {
@@ -135,6 +141,8 @@ export default function ProductorDetalleAdminPage() {
         up: upData,
         ups: Array.isArray(u.ups_geom) ? u.ups_geom : [],
         disponibilidades: dispList,
+        estado_registro: u.estado_registro || null,
+        encuesta_insumos: u.encuesta_insumos || null,
       });
 
     } catch (e) {
@@ -521,6 +529,71 @@ export default function ProductorDetalleAdminPage() {
 
         </div>
 
+      </div>
+
+      {/* ── ESTADO DE REGISTRO Y ENCUESTA DE INSUMOS ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+            <ShieldCheck size={15} className="text-indigo-500" />
+            <h3 className="text-[13px] font-bold text-gray-900 uppercase tracking-wider">Estado del registro</h3>
+          </div>
+          {data.estado_registro ? (
+            data.estado_registro.requiere_ubicacion ? (
+              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
+                <AlertTriangle size={15} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[12.5px] text-amber-800 font-medium">Le falta registrar la ubicación de al menos una parcela.</p>
+              </div>
+            ) : data.estado_registro.requiere_ciclo ? (
+              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
+                <AlertTriangle size={15} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[12.5px] text-amber-800 font-medium">Aún no captura su ciclo productivo — no puede usar el resto de la app hasta completarlo.</p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-3">
+                <Check size={15} className="text-emerald-600 shrink-0" />
+                <p className="text-[12.5px] text-emerald-800 font-medium">Ubicación y ciclo productivo completos.</p>
+              </div>
+            )
+          ) : (
+            <p className="text-[12px] text-gray-400 italic">No se pudo obtener el estado del registro.</p>
+          )}
+        </div>
+
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+            <Sprout size={15} className="text-amber-500" />
+            <h3 className="text-[13px] font-bold text-gray-900 uppercase tracking-wider">Encuesta de insumos</h3>
+          </div>
+          {!data.encuesta_insumos?.elegible ? (
+            <p className="text-[12px] text-gray-400 italic">No aplica — este productor no tiene ninguna parcela en Sinaloa.</p>
+          ) : !data.encuesta_insumos.respuesta ? (
+            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
+              <AlertTriangle size={15} className="text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-[12.5px] text-amber-800 font-medium">Aplica, pero aún no tiene respuesta registrada.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                <Check size={15} className="text-emerald-600 shrink-0" />
+                <p className="text-[12.5px] text-emerald-800 font-medium">
+                  Respondió <strong>{data.encuesta_insumos.respuesta.respuesta === 'si' ? 'Sí' : 'No'}</strong> tiene compras previstas
+                  {' · '}{new Date(data.encuesta_insumos.respuesta.updated_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              {data.encuesta_insumos.lineas && data.encuesta_insumos.lineas.length > 0 && (
+                <div className="space-y-1.5">
+                  {data.encuesta_insumos.lineas.map((l, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-[12px]">
+                      <span className="text-gray-700 font-semibold truncate">{l.producto_nombre}</span>
+                      <span className="text-gray-500 shrink-0">{Number(l.cantidad_base).toLocaleString('es-MX', { maximumFractionDigits: 2 })} {l.unidad_base}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── DISPONIBILIDADES DECLARADAS ── */}

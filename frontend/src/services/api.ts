@@ -257,6 +257,9 @@ export const api = {
     perfil: () => request('/productor/perfil'),
     actualizarPerfil: (data: { telefono?: string; programas_beneficiario?: string[] }) =>
       request('/productor/perfil', { method: 'PATCH', body: JSON.stringify(data) }),
+    obtenerEncuesta: () => request('/productor/encuesta-insumos'),
+    guardarEncuesta: (data: Record<string, unknown>) =>
+      request('/productor/encuesta-insumos', { method: 'PUT', body: JSON.stringify(data) }),
   },
   tecnico: {
     login: (email: string, password: string) =>

@@ -36,6 +36,7 @@ import IncentivosPage from './pages/productor/IncentivosPage';
 import VentanillasPage from './pages/productor/VentanillasPage';
 import EstadoSolicitudPage from './pages/productor/EstadoSolicitudPage';
 import MiPerfilPage from './pages/productor/MiPerfilPage';
+import EncuestaInsumosPage from './pages/productor/EncuestaInsumosPage';
 import B03SelectBodegas from './pages/B03SelectBodegas';
 import B04Dashboard from './pages/B04Dashboard';
 import B05MisBodegas from './pages/B05MisBodegas';
@@ -416,6 +417,7 @@ export const router = createBrowserRouter([
       { path: 'solicitud/:id', element: <EstadoSolicitudPage /> },
       { path: 'mis-solicitudes', element: <EstadoSolicitudPage /> },
       { path: 'perfil', element: <MiPerfilPage /> },
+      { path: 'insumos', element: <EncuestaInsumosPage /> },
     ],
   },
 

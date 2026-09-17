@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { CheckCircle2, Loader2, Plus, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, CheckCircle2, Loader2, Plus, AlertTriangle } from 'lucide-react';
 import { api } from '../../services/api';
-import { PageHeaderTecnico } from '../../components/LayoutTecnico';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -20,17 +19,13 @@ interface LineaUI {
   nombre_conocido: string | null; preferencia_marca: string | null; identificacion_no_disponible: boolean;
 }
 
-export default function EncuestaInsumosTecnicoPage() {
+export default function EncuestaInsumosPage() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { id: producerId } = useParams();
-  const nombreProductor = (location.state as any)?.nombreProductor || 'el productor';
 
   const [catalogo, setCatalogo] = useState<CatalogoInsumos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [noAplica, setNoAplica] = useState(false);
-  const [yaRespondida, setYaRespondida] = useState(false);
 
   const [respuesta, setRespuesta] = useState<'si' | 'no' | null>(null);
   const [lineas, setLineas] = useState<LineaUI[]>([]);
@@ -49,17 +44,15 @@ export default function EncuestaInsumosTecnicoPage() {
   const [draft, setDraft] = useState(draftVacio);
 
   useEffect(() => {
-    if (!producerId) return;
     (async () => {
       try {
         const [cat, encuesta]: any = await Promise.all([
           fetch(`${BASE}/productor/auth/catalogo-insumos`).then(r => r.json()),
-          api.tecnico.obtenerEncuesta(producerId),
+          api.productor.obtenerEncuesta(),
         ]);
         setCatalogo(cat);
         if (!encuesta.elegible) { setNoAplica(true); }
         else if (encuesta.respuesta) {
-          setYaRespondida(true);
           setRespuesta(encuesta.respuesta.respuesta);
           if (encuesta.lineas?.length) {
             setLineas(encuesta.lineas.map((l: any) => ({
@@ -79,7 +72,7 @@ export default function EncuestaInsumosTecnicoPage() {
         setCargando(false);
       }
     })();
-  }, [producerId]);
+  }, []);
 
   const productosDeCategoria = catalogo ? catalogo.productos.filter(p => p.categoria_id === draft.categoriaId) : [];
   const presentacionesDelProducto = catalogo ? catalogo.presentaciones.filter(p => p.producto_id === draft.productoId) : [];
@@ -107,9 +100,9 @@ export default function EncuestaInsumosTecnicoPage() {
     const cantidad = Number(draft.cantidad);
     if (!Number.isFinite(cantidad) || cantidad <= 0) { setErrorForm('Indica una cantidad válida.'); return; }
     if (!draft.mes) { setErrorForm('Indica el mes en que lo necesita.'); return; }
-    if (productoSel?.es_otro && !draft.nombreConocido.trim()) { setErrorForm('Escribe el nombre que conoce del producto.'); return; }
+    if (productoSel?.es_otro && !draft.nombreConocido.trim()) { setErrorForm('Escribe el nombre que conoces del producto.'); return; }
     if (productoSel?.requiere_nombre_conocido && !productoSel.es_otro && !draft.nombreConocido.trim() && !draft.sinIdentificar) {
-      setErrorForm('Indica la variedad/fórmula, o marca que no la identifica.'); return;
+      setErrorForm('Indica la variedad/fórmula, o marca que no la identificas.'); return;
     }
 
     let presentacion_id: string | null = null, otroEnvase: string | null = null, otroContenido: number | null = null, otroUnidad: string | null = null, aGranel = false, label = '';
@@ -160,7 +153,7 @@ export default function EncuestaInsumosTecnicoPage() {
     if (respuesta === 'si' && lineas.length === 0) { setError('Agrega al menos un producto.'); return; }
     setError(null); setGuardando(true);
     try {
-      await api.tecnico.guardarEncuesta(producerId!, {
+      await api.productor.guardarEncuesta({
         respuesta,
         lineas: respuesta === 'si' ? lineas.map(l => ({
           producto_id: l.producto_id, presentacion_id: l.presentacion_id,
@@ -187,15 +180,10 @@ export default function EncuestaInsumosTecnicoPage() {
 
   if (noAplica) {
     return (
-      <div className="min-h-full pb-8">
-        <PageHeaderTecnico title="Encuesta de insumos" subtitle={nombreProductor} back={-1} />
-        <div className="p-4">
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 text-center">
-            <AlertTriangle size={26} className="text-slate-300 mx-auto mb-2" />
-            <p className="text-[13.5px] font-semibold text-slate-600">Este productor no tiene ninguna parcela en Sinaloa.</p>
-            <p className="text-[12px] text-slate-400 mt-1">La encuesta solo aplica a productores con al menos una parcela en el estado de Sinaloa.</p>
-          </div>
-        </div>
+      <div className="min-h-screen bg-[#eef8f2] flex flex-col items-center justify-center px-6 py-10 text-center">
+        <AlertTriangle size={28} className="text-slate-300 mb-2" />
+        <p className="text-[14px] font-semibold text-slate-600 max-w-xs">Esta encuesta solo aplica a productores con al menos una parcela en el estado de Sinaloa.</p>
+        <button onClick={() => navigate(-1)} className="mt-6 text-[#1A5C38] font-bold text-[13.5px]">Volver</button>
       </div>
     );
   }
@@ -207,36 +195,40 @@ export default function EncuestaInsumosTecnicoPage() {
           <CheckCircle2 size={32} className="text-[#1A5C38]" />
         </div>
         <h1 className="text-[20px] font-black text-slate-900 text-center">Encuesta guardada</h1>
-        <p className="text-[13.5px] text-slate-500 text-center mt-1.5 max-w-xs">La respuesta de {nombreProductor} quedó registrada.</p>
-        <button onClick={() => navigate(`/tecnico/productor/${producerId}`)}
+        <p className="text-[13.5px] text-slate-500 text-center mt-1.5 max-w-xs">Gracias por responder, tu información quedó registrada.</p>
+        <button onClick={() => navigate('/productor/perfil')}
           className="mt-8 w-full max-w-sm bg-[#1A5C38] hover:bg-[#124227] text-white py-3.5 rounded-2xl font-bold text-[14.5px] active:scale-[0.98] transition-all">
-          Volver al productor
+          Volver a mi perfil
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-full pb-8">
-      <PageHeaderTecnico title="¿Qué insumos necesita comprar?" subtitle={`${nombreProductor} · Sinaloa`} back={-1} />
-      <div className="p-4 space-y-4">
-        {yaRespondida && (
-          <div className="bg-blue-50 border border-blue-100 rounded-xl px-3.5 py-2.5 text-[12px] text-blue-700">
-            Ya existe una respuesta para este productor. Guardar aquí la reemplaza.
-          </div>
-        )}
+    <div className="min-h-full pb-8 bg-[#f8faf9]">
+      <div className="sticky top-0 z-20 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-4 sm:px-6 pt-3.5 pb-4 shadow-sm">
+        <div className="max-w-[700px] mx-auto">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-0.5 text-[#1A5C38] text-[14px] font-bold mb-2 hover:opacity-70 transition-opacity">
+            <ChevronLeft size={18} strokeWidth={2.5} className="-ml-1" /> Volver
+          </button>
+          <h1 className="text-[19px] sm:text-[20px] font-bold text-slate-900 leading-tight">¿Qué insumos necesita comprar?</h1>
+          <p className="text-[12px] text-slate-500 font-medium mt-0.5">Para sus parcelas de Sinaloa</p>
+        </div>
+      </div>
+
+      <div className="p-4 max-w-[700px] mx-auto space-y-4">
         <p className="text-slate-500 text-[13px] leading-relaxed">
-          Compras previstas para las parcelas de Sinaloa en los próximos {catalogo ? Math.round((new Date(catalogo.periodo_fin).getTime() - new Date(catalogo.periodo_inicio).getTime()) / (1000 * 60 * 60 * 24 * 30)) : 6} meses.
-          No es un pedido ni garantiza un descuento.
+          Cuéntenos qué necesita comprar para sus parcelas de Sinaloa durante los próximos {catalogo ? Math.round((new Date(catalogo.periodo_fin).getTime() - new Date(catalogo.periodo_inicio).getTime()) / (1000 * 60 * 60 * 24 * 30)) : 6} meses.
+          La Secretaría usará esta información para buscar mejores condiciones de compra. No es un pedido ni garantiza un descuento.
         </p>
 
         <div>
           <p className={labelCls}>¿Tiene previsto comprar insumos?</p>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <button onClick={() => { setRespuesta('si'); setError(null); }}
               className={`py-3 rounded-xl font-bold text-[13.5px] ${respuesta === 'si' ? 'bg-[#1A5C38] text-white' : 'bg-white border border-slate-200 text-slate-700'}`}>Sí</button>
             <button onClick={() => { setRespuesta('no'); setLineas([]); resetForm(); }}
-              className={`py-3 rounded-xl font-bold text-[13.5px] ${respuesta === 'no' ? 'bg-[#1A5C38] text-white' : 'bg-white border border-slate-200 text-slate-700'}`}>No tiene compras previstas</button>
+              className={`py-3 rounded-xl font-bold text-[13.5px] ${respuesta === 'no' ? 'bg-[#1A5C38] text-white' : 'bg-white border border-slate-200 text-slate-700'}`}>No tengo compras previstas</button>
           </div>
         </div>
 
@@ -295,7 +287,7 @@ export default function EncuestaInsumosTecnicoPage() {
                 <label className="flex items-center gap-2 mt-2 text-[12px] text-slate-500">
                   <input type="checkbox" checked={draft.sinIdentificar}
                     onChange={e => setDraft(d => ({ ...d, sinIdentificar: e.target.checked, nombreConocido: e.target.checked ? '' : d.nombreConocido }))} />
-                  No identifica la variedad/fórmula
+                  No identifico la variedad/fórmula
                 </label>
               </div>
             )}

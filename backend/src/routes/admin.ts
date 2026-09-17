@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import pool from '../config/database';
 import { authMiddleware, requierePermisosTotales, AuthRequest } from '../middleware/auth';
+import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
+import { obtenerRespuestaProductor } from '../services/encuestaService';
 
 const router = Router();
 
@@ -658,7 +660,12 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
       res.status(404).json({ error: 'Productor no encontrado' });
       return;
     }
-    res.json({ productor: result.rows[0] });
+    const producerId = Number(id);
+    const [estadoRegistro, encuesta] = await Promise.all([
+      evaluarEstadoRegistro(producerId).catch(() => null),
+      obtenerRespuestaProductor(producerId).catch(() => null),
+    ]);
+    res.json({ productor: { ...result.rows[0], estado_registro: estadoRegistro, encuesta_insumos: encuesta } });
   } catch (error) {
     console.error('Error al obtener productor:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
