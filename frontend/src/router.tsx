@@ -1,4 +1,5 @@
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { usePermisosStore } from './store/permisos';
 import { Layout } from './components/Layout';
 import { LayoutProductor } from './components/LayoutProductor';
@@ -125,10 +126,76 @@ function RequireCapturista({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const BASE_ESTADO_REGISTRO = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+// Rutas del propio flujo de completar registro: siempre accesibles aunque
+// falte ubicación o ciclo (si no, nadie podría completarlos — ticket 05,
+// "evitar bloqueo circular").
+const RUTAS_COMPLETAR_REGISTRO = ['/productor/ubicacion', '/productor/ciclo'];
+
+interface EstadoRegistroProductor {
+  requiere_ubicacion: boolean;
+  requiere_ciclo: boolean;
+  siguiente_paso: 'ubicacion' | 'ciclo' | 'ninguno';
+}
+
+// Ciclo obligatorio al iniciar sesión (Ticket 05): consulta el estado real
+// del servidor al entrar a cualquier ruta de productor y, si falta ubicación
+// o ciclo, redirige — sin excepción por localStorage, parámetro de URL o
+// state de navegación. Nunca autoriza mientras el servicio de estado falla.
 function RequireProductor({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, token, logout } = useAuthStore();
+  const location = useLocation();
+  const [estado, setEstado] = useState<EstadoRegistroProductor | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [errorEstado, setErrorEstado] = useState(false);
+  const [reintento, setReintento] = useState(0);
+
+  useEffect(() => {
+    if (!isAuthenticated || user?.rol !== 'productor') { setCargando(false); return; }
+    let cancelado = false;
+    setErrorEstado(false);
+    fetch(`${BASE_ESTADO_REGISTRO}/productor/estado-registro`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => { if (!r.ok) throw new Error('estado-registro'); return r.json(); })
+      .then(d => { if (!cancelado) { setEstado(d); setCargando(false); } })
+      .catch(() => { if (!cancelado) { setErrorEstado(true); setCargando(false); } });
+    return () => { cancelado = true; };
+    // Se re-consulta en cada navegación dentro de /productor (no solo al
+    // rehidratar sesión/login) para no depender de una caché obsoleta —
+    // p.ej. al volver de /productor/ciclo justo después de completarlo. La
+    // pantalla de "Verificando…" solo se muestra en la primera carga
+    // (`cargando` no se reactiva en revalidaciones posteriores).
+  }, [isAuthenticated, user?.rol, token, reintento, location.pathname]);
+
   if (!isAuthenticated) return <Navigate to="/login-productor" replace />;
   if (user?.rol !== 'productor') return <Navigate to="/dashboard" replace />;
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0b271a] text-white/70 text-sm gap-2">
+        Verificando tu registro…
+      </div>
+    );
+  }
+
+  if (errorEstado) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0b271a] text-white gap-4 px-6 text-center">
+        <p className="text-sm text-white/70">No se pudo verificar el estado de tu registro. Intenta de nuevo.</p>
+        <div className="flex gap-3">
+          <button onClick={() => setReintento(n => n + 1)} className="px-4 py-2 rounded-xl bg-white text-[#0b271a] font-semibold text-sm">Reintentar</button>
+          <button onClick={() => logout()} className="px-4 py-2 rounded-xl bg-white/10 text-white font-semibold text-sm">Cerrar sesión</button>
+        </div>
+      </div>
+    );
+  }
+
+  const enRutaLibre = RUTAS_COMPLETAR_REGISTRO.includes(location.pathname);
+  if (estado && !enRutaLibre) {
+    if (estado.requiere_ubicacion) return <Navigate to="/productor/ubicacion" replace />;
+    if (estado.requiere_ciclo) return <Navigate to="/productor/ciclo" replace />;
+  }
+
   return <>{children}</>;
 }
 

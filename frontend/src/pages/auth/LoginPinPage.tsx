@@ -54,32 +54,11 @@ export default function LoginPinPage() {
         apellido_paterno: data.user.apellido_paterno,
       });
 
-      // Verificar completitud: polígono → ciclo → dashboard
-      try {
-        const upsData = await fetch(`${BASE}/mis-ups`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then(r => r.json());
-
-        const up = upsData.ups?.[0] ?? upsData[0];
-        const tienePoligono = up?.area_ha_calc != null;
-
-        if (!tienePoligono) {
-          navigate('/productor/ubicacion', { state: { desde: 'login', siguiente: '/productor/ciclo' } });
-          return;
-        }
-
-        const ciclosData = await fetch(`${BASE}/ups/${up.up_id}/cycles`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then(r => r.json());
-        const ciclos = ciclosData.cycles ?? ciclosData;
-
-        if (!ciclos?.length) {
-          localStorage.setItem('ciclo_pendiente', '1');
-          navigate('/productor/ciclo', { state: { desde: 'login' } });
-          return;
-        }
-      } catch { /* si falla la verificación, ir al dashboard */ }
-
+      // La verificación de completitud (ubicación/ciclo) ya no se hace aquí:
+      // RequireProductor consulta GET /productor/estado-registro con
+      // autoridad del servidor en cualquier ruta de /productor y redirige
+      // si falta algo — sin depender de un chequeo ad-hoc en el login que
+      // un error de red podía saltarse silenciosamente (Ticket 05).
       navigate('/productor');
     } catch {
       setError('Error de conexión. Intenta de nuevo.');

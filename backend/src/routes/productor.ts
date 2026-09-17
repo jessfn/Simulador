@@ -19,6 +19,33 @@ import {
   huellaDe, resolverIdempotencia, guardarResultadoIdempotencia,
   obtenerCatalogoPublico, obtenerRespuestaProductor, buscarPorAlias,
 } from '../services/encuestaService';
+import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
+
+// Bloquea las APIs "operativas" del rol productor (dashboard, precios,
+// solicitudes de apoyo, encuesta de insumos) mientras falte ubicación o
+// ciclo obligatorio (Ticket 05). No se aplica a otros roles ni a las APIs
+// necesarias para completar el alta (perfil, ubicación, ciclo/cultivo,
+// catálogo público) — esas rutas simplemente no usan este middleware.
+async function requiereRegistroCompleto(req: AuthRequest, res: Response, next: Function): Promise<void> {
+  if (req.user?.rol !== 'productor') { next(); return; }
+  try {
+    const producerId = await getProducerId(req.user.userId);
+    if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
+    const estado = await evaluarEstadoRegistro(producerId);
+    if (estado.requiere_ubicacion || estado.requiere_ciclo) {
+      res.status(403).json({
+        error: 'Completa tu registro para continuar',
+        codigo: 'REGISTRO_INCOMPLETO',
+        ...estado,
+      });
+      return;
+    }
+    next();
+  } catch (e) {
+    console.error('Error en requiereRegistroCompleto:', e);
+    res.status(500).json({ error: 'Error al verificar el estado del registro' });
+  }
+}
 
 // Directorio de almacenamiento para verificaciones biométricas
 const UPLOAD_DIR = process.env.NODE_ENV === 'production'
@@ -707,8 +734,24 @@ async function getProducerId(userId: number): Promise<number | null> {
   return r.rows[0]?.producer_id || null;
 }
 
+// GET /api/productor/estado-registro — servicio único de completitud
+// (Ticket 05). Sin este endpoint el frontend no puede decidir si mostrar
+// el dashboard o exigir ubicación/ciclo; por eso NUNCA lleva
+// requiereRegistroCompleto — sería un candado circular.
+router.get('/estado-registro', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const producerId = await getProducerId(req.user!.userId);
+    if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
+    const estado = await evaluarEstadoRegistro(producerId);
+    res.json(estado);
+  } catch (error) {
+    console.error('Error en estado-registro:', error);
+    res.status(500).json({ error: 'Error al obtener el estado del registro' });
+  }
+});
+
 // GET /api/productor/encuesta-insumos — respuesta propia (si aplica)
-router.get('/encuesta-insumos', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/encuesta-insumos', authMiddleware, requiereRegistroCompleto, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const producerId = await getProducerId(req.user!.userId);
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
@@ -721,7 +764,7 @@ router.get('/encuesta-insumos', authMiddleware, async (req: AuthRequest, res: Re
 });
 
 // PUT /api/productor/encuesta-insumos — corregir la respuesta propia
-router.put('/encuesta-insumos', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/encuesta-insumos', authMiddleware, requiereRegistroCompleto, async (req: AuthRequest, res: Response): Promise<void> => {
   const client = await pool.connect();
   try {
     const producerId = await getProducerId(req.user!.userId);
@@ -744,7 +787,7 @@ router.put('/encuesta-insumos', authMiddleware, async (req: AuthRequest, res: Re
 });
 
 // GET /api/productor/dashboard
-router.get('/dashboard', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
     const producerId = await getProducerId(userId);
@@ -900,7 +943,7 @@ router.get('/dashboard', authMiddleware, async (req: AuthRequest, res: Response)
 });
 
 // GET /api/productor/precios
-router.get('/precios', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/precios', authMiddleware, requiereRegistroCompleto, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
     const producerId = await getProducerId(userId);
@@ -1193,7 +1236,7 @@ router.get('/mi-up', authMiddleware, async (req: AuthRequest, res: Response): Pr
 });
 
 // POST /api/productor/solicitar-apoyo
-router.post('/solicitar-apoyo', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/solicitar-apoyo', authMiddleware, requiereRegistroCompleto, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { infraestructura_id, tipo_apoyo, notas } = req.body;
     const userId = req.user!.userId;
@@ -1260,7 +1303,7 @@ router.post('/solicitar-apoyo', authMiddleware, async (req: AuthRequest, res: Re
 });
 
 // GET /api/productor/mis-solicitudes
-router.get('/mis-solicitudes', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/mis-solicitudes', authMiddleware, requiereRegistroCompleto, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
     const producerId = await getProducerId(userId);

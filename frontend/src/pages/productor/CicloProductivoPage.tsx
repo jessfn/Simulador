@@ -191,16 +191,13 @@ export default function CicloProductivoPage() {
         setError(err.error || 'Error al guardar cultivo'); return;
       }
 
-      localStorage.removeItem('ciclo_pendiente');
-      localStorage.setItem('ciclo_completado', '1');
-      navigate('/productor/perfil', { state: { mensaje: 'Ciclo productivo guardado con éxito' } });
+      // El ciclo es obligatorio para el resto de SIMAC (Ticket 05): no basta
+      // con marcar un estado local — se vuelve a consultar el estado real
+      // del servidor y solo entonces se navega al inicio del productor.
+      await fetch(`${BASE}/productor/estado-registro`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      navigate('/productor', { state: { mensaje: 'Ciclo productivo guardado con éxito' } });
     } catch { setError('Error de conexión al servidor. Revisa tu internet e intenta de nuevo.');
     } finally { setLoading(false); }
-  };
-
-  const saltar = () => {
-    localStorage.setItem('ciclo_pendiente', '1');
-    navigate(-1);
   };
 
   // C8 — Cancelar ciclo (estado_ciclo = 'cancelado'). No borra el registro.
@@ -1180,10 +1177,6 @@ export default function CicloProductivoPage() {
                 {loading ? <><div className="w-4 h-4 border-[3px] border-white/30 border-t-white rounded-full animate-spin" /> Guardando...</> : <><Check size={16} /> Finalizar y guardar</>}
               </button>
             )}
-            
-            <button onClick={saltar} className="w-full py-1 text-slate-400 hover:text-slate-600 text-[12px] font-bold transition-colors active:scale-95">
-              Omitir por ahora
-            </button>
           </div>
         </div>
       </div>
