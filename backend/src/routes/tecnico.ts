@@ -315,6 +315,34 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
     let producerId: number;
 
     if (producer_id_existente) {
+      // CRIT-02 (auditoría seguridad 2026-09-21): sin este chequeo, cualquier
+      // técnico autenticado podía iterar producer_id y reasignarse como
+      // capturista de un productor que ya gestiona otro técnico, o de uno
+      // que ya tiene cuenta propia activa (secuestro de productor).
+      const propietarioActual = await client.query(
+        `SELECT producer_id, usuario_id, usuario_capturista_id FROM producer WHERE producer_id = $1`,
+        [producer_id_existente]
+      );
+      if (propietarioActual.rows.length === 0) {
+        await client.query('ROLLBACK');
+        res.status(404).json({ error: 'El productor indicado no existe' });
+        client.release();
+        return;
+      }
+      const { usuario_id: usuarioIdPropio, usuario_capturista_id: capturistaActual } = propietarioActual.rows[0];
+      if (usuarioIdPropio) {
+        await client.query('ROLLBACK');
+        res.status(409).json({ error: 'Este productor ya tiene cuenta propia activa' });
+        client.release();
+        return;
+      }
+      if (capturistaActual && capturistaActual !== tecnicoId) {
+        await client.query('ROLLBACK');
+        res.status(403).json({ error: 'Este productor ya está asignado a otro técnico' });
+        client.release();
+        return;
+      }
+
       producerId = producer_id_existente;
       const r = await client.query(
         `UPDATE producer SET

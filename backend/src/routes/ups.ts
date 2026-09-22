@@ -4,6 +4,17 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
  
 const router = Router();
 
+// DESACTIVADO 2026-09-21 — CRIT-01 (auditoría seguridad). Los handlers de
+// abajo (POST /, GET /, GET /:up_id, PATCH /:up_id) solo verificaban
+// authMiddleware (JWT válido) pero nunca si el recurso pertenece a quien
+// hace la petición — cualquier técnico autenticado podía leer o modificar
+// parcelas y datos de CUALQUIER productor del sistema (IDOR). Confirmado
+// que ningún cliente activo los usa; el flujo real de alta/edición de UP
+// vive en backend/src/routes/tecnico.ts y backend/src/routes/productor.ts,
+// con ownership verificado contra producer.usuario_id / usuario_capturista_id.
+// GET /geometrias (abajo) sí sigue activo: es público, sin PII, y lo usa
+// el mapa de dibujo de parcelas.
+/*
 // =============================================
 // POST /api/ups - Crear UP (incluye geom_geojson)
 // =============================================
@@ -113,9 +124,12 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
   }
 });
 
+*/
+
 // =============================================
 // GET /api/ups/geometrias — todas las geometrías (sin PII, público)
 // Usado por el mapa de dibujo para mostrar parcelas existentes en gris
+// SIGUE ACTIVO — no forma parte de CRIT-01 (sin PII, público por diseño).
 // =============================================
 router.get('/geometrias', async (_req, res: Response): Promise<void> => {
   try {
@@ -132,6 +146,8 @@ router.get('/geometrias', async (_req, res: Response): Promise<void> => {
   }
 });
 
+// DESACTIVADO 2026-09-21 — CRIT-01 (ver nota completa arriba de POST /).
+/*
 // =============================================
 // GET /api/ups?curp=... - Listar UPs del productor
 // =============================================
@@ -262,5 +278,6 @@ router.patch('/:up_id', authMiddleware, async (req: AuthRequest, res: Response):
     res.status(500).json({ error: 'Error al actualizar la UP: ' + (error.message || '') });
   }
 });
+*/
 
 export default router;

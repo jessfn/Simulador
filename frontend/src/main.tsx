@@ -6,6 +6,17 @@ import { installConnectionGuard } from './services/connectionGuard'
 
 installConnectionGuard()
 
+// CRIT-04 (auditoría seguridad 2026-09-21): aviso visible si el dev local
+// termina apuntando a producción real (por ejemplo, alguien descomenta
+// VITE_API_URL en .env.development.local sin darse cuenta de que quedó así).
+if (import.meta.env.DEV && import.meta.env.VITE_API_URL?.includes('agricultura.gob.mx')) {
+  console.warn(
+    '%c⚠️ ATENCIÓN: Estás en modo desarrollo pero VITE_API_URL apunta a PRODUCCIÓN REAL. ' +
+    'Las pruebas que hagas crearán registros reales.',
+    'color: red; font-weight: bold; font-size: 14px'
+  );
+}
+
 // ── Recuperación automática tras un despliegue (PWA / Service Worker) ──
 // Si un chunk hasheado deja de existir (build nuevo) el navegador lanza
 // "vite:preloadError" o un error de import dinámico. En vez de quedar en

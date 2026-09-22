@@ -328,6 +328,47 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
       area_harvested_ha, destination, production_qty, production_unit
     } = req.body;
 
+    // CRIT-03 (auditoría seguridad 2026-09-21): antes este UPDATE no
+    // verificaba dueño — cualquier usuario autenticado podía editar el
+    // cultivo de cualquier ciclo del sistema. Mismo criterio de ownership
+    // que POST /cycles/:cycle_id/crops (productor dueño o técnico que lo
+    // capturó), y de paso trae area_sown_ha actual para validar
+    // area_harvested_ha aunque no venga en este PATCH.
+    const propio = await pool.query(
+      `SELECT cc.cycle_crop_id, cc.area_sown_ha
+       FROM cycle_crop cc
+       JOIN cycle cy ON cy.cycle_id = cc.cycle_id
+       JOIN up u ON u.up_id = cy.up_id
+       JOIN producer p ON p.producer_id = u.producer_id
+       WHERE cc.cycle_crop_id = $1
+         AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)`,
+      [id, req.user!.userId]
+    );
+    if (propio.rows.length === 0) {
+      res.status(403).json({ error: 'No tienes permiso para editar este cultivo' });
+      return;
+    }
+
+    // Rendimiento esperado válido para maíz en México: 1–15 ton/ha (misma
+    // regla que POST /cycles/:cycle_id/crops).
+    if (yield_expected !== undefined && yield_expected !== null && yield_expected !== '') {
+      const yieldNum = Number(yield_expected);
+      if (Number.isNaN(yieldNum) || yieldNum < 1 || yieldNum > 15) {
+        res.status(400).json({ error: 'El rendimiento debe estar entre 1 y 15 ton/ha.' });
+        return;
+      }
+    }
+    // area_harvested_ha no puede superar el área sembrada — usa la que
+    // venga en este PATCH si la actualiza, si no la que ya tenía guardada.
+    if (area_harvested_ha !== undefined && area_harvested_ha !== null && area_harvested_ha !== '') {
+      const harvestedNum = Number(area_harvested_ha);
+      const sownNum = area_sown_ha !== undefined ? Number(area_sown_ha) : Number(propio.rows[0].area_sown_ha);
+      if (Number.isNaN(harvestedNum) || harvestedNum < 0 || (sownNum > 0 && harvestedNum > sownNum)) {
+        res.status(400).json({ error: `area_harvested_ha debe ser >= 0 y <= area_sown_ha (${sownNum} ha)` });
+        return;
+      }
+    }
+
     const sets: string[] = [];
     const params: any[] = [];
     let idx = 1;

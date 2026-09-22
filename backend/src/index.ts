@@ -8,7 +8,8 @@ import bodegasRoutes from './routes/bodegas';
 import misBodegasRoutes from './routes/mis-bodegas';
 import misInventariosRoutes from './routes/mis-inventarios';
 import preciosMaizRoutes from './routes/precios-maiz';
-import producersRoutes from './routes/producers';
+// DESACTIVADO 2026-09-21 — CRIT-01, ver app.use más abajo.
+// import producersRoutes from './routes/producers';
 import upsRoutes from './routes/ups';
 import cyclesRoutes from './routes/cycles';
 import catalogosProductorRoutes from './routes/catalogos-productor';
@@ -120,7 +121,18 @@ app.use('/api/bodegas', bodegasRoutes);
 app.use('/api/mis-bodegas', misBodegasRoutes);
 app.use('/api/mis-inventarios', misInventariosRoutes);
 app.use('/api/precios-maiz', preciosMaizRoutes);
-app.use('/api/producers', producersRoutes);
+// DESACTIVADO 2026-09-21 — CRIT-01 (auditoría seguridad). POST /api/producers
+// y GET /api/producers/:curp eran accesibles por cualquier técnico
+// autenticado sin verificación de propiedad (IDOR) y ningún cliente activo
+// los usa — el flujo real de alta de productor vive en
+// backend/src/routes/tecnico.ts (registro-alterno) y
+// backend/src/routes/productor.ts (registro-nuevo). Router entero fuera.
+// app.use('/api/producers', producersRoutes);
+// ups.ts sigue montado porque GET /api/ups/geometrias es público, sin PII,
+// y lo usa el mapa de dibujo de parcelas (DibujarPoligonoUP,
+// ParcelasExistentesLayer). Los demás handlers de ups.ts (POST /, GET /,
+// GET /:up_id, PATCH /:up_id) quedaron comentados dentro del propio archivo
+// por el mismo motivo — ver ups.ts.
 app.use('/api/ups', upsRoutes);
 app.use('/api', cyclesRoutes);
 app.use('/api/catalogos-productor', catalogosProductorRoutes);
