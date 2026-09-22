@@ -117,8 +117,10 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
           (SELECT ROUND(SUM(cc2.area_sown_ha)::numeric, 4)::text FROM cycle_crop cc2 WHERE cc2.cycle_id = c.cycle_id)
         ) AS hectareas_sembradas,
         c.fecha_siembra,
+        -- MED-13 (auditoría Fase 4): variety_other (texto libre real) tiene
+        -- prioridad sobre la etiqueta genérica del catálogo ("Otra variedad").
         COALESCE(NULLIF(c.variedad_nombre,''),
-          (SELECT STRING_AGG(DISTINCT COALESCE(cv2.label, cc2.variety_id), ', ')
+          (SELECT STRING_AGG(DISTINCT COALESCE(NULLIF(cc2.variety_other,''), cv2.label, cc2.variety_id), ', ')
            FROM cycle_crop cc2
            LEFT JOIN cat_crop_variety cv2 ON cv2.code = cc2.variety_id
            WHERE cc2.cycle_id = c.cycle_id)
@@ -165,7 +167,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         u.up_name, u.state_name AS estado,
         p.nombres || ' ' || p.apellido_paterno AS productor,
         cc.variety_id AS variedad_code,
-        COALESCE(cv.label, cc.variety_other, cc.variety_id) AS variedad_nombre,
+        COALESCE(NULLIF(cc.variety_other,''), cv.label, cc.variety_id) AS variedad_nombre,
         COALESCE(cv.tipo_maiz, cc.tipo_maiz) AS tipo_maiz,
         cc.area_sown_ha, cc.area_harvested_ha, cc.destination,
         cc.production_qty, cc.production_unit,

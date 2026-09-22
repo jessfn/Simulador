@@ -645,7 +645,10 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
         SELECT
           CONCAT(c.cycle_type, ' ', c.cycle_year) AS ciclo_activo,
           CASE cc.crop WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.crop) END AS cultivo_principal,
-          COALESCE(cv.label, cc.variety_id, '') AS variedad
+          -- MED-13 (auditoría Fase 4): variety_other (nombre libre que el
+          -- técnico/productor escribió) tiene prioridad sobre la etiqueta
+          -- genérica del catálogo ("Otra variedad") cuando existe.
+          COALESCE(NULLIF(cc.variety_other, ''), cv.label, cc.variety_id, '') AS variedad
         FROM cycle c
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
         LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.is_active = TRUE
@@ -1359,7 +1362,10 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
           -- del catálogo (o el texto libre capturado si es "OTRA").
           COALESCE(
             NULLIF(INITCAP(cc.tipo_maiz), ''),
-            CASE WHEN cc.variety_id = 'OTRA' THEN NULLIF(cc.variety_other, '') END,
+            -- MED-13 (auditoría Fase 4): además de 'OTRA', también
+            -- 'OTRA_AMARILLO' y 'OTRA_CRIOLLO' son códigos de "texto libre".
+            CASE WHEN cc.variety_id IN ('OTRA', 'OTRA_AMARILLO', 'OTRA_CRIOLLO')
+                 THEN NULLIF(cc.variety_other, '') END,
             cv.label
           ) AS tipo_cultivo
         FROM cycle c

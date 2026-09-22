@@ -146,21 +146,35 @@ export async function insertarUP(client: any, producerId: number, up: any): Prom
   let upId: number;
   if (hasCoords) {
     const useGeom = hasPoligono && postgisActivo;
-    const geomSql = useGeom ? `ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($6::text), 4326))` : 'NULL';
-    const aIdx = useGeom ? 7 : 6;
-    const params = [
-      producerId, estadoFinal, municipioFinal, lng, lat,
-      ...(useGeom ? [geojson] : []),
-      areaCalc, areaReal, coincide_area ?? null, upName,
-    ];
+    const params: any[] = [producerId, estadoFinal, municipioFinal, lng, lat];
+    let geomSql = 'NULL';
+    // MED-09 (auditoría Fase 4, 2026-09-22): area_ha_calc SIEMPRE se calcula
+    // server-side a partir del polígono cuando hay geometría — antes se
+    // aceptaba tal cual la mandaba el cliente, solo con un tope numérico.
+    // area_ha_calc se usa como techo de area_sown_ha en los ciclos
+    // productivos, así que un área inflada por el cliente permitía declarar
+    // más superficie sembrada de la que realmente existe. area_ha_real (lo
+    // que el usuario declaró conscientemente si difiere) se sigue tomando
+    // del cliente sin cambio.
+    let areaCalcSql: string;
+    if (useGeom) {
+      const geomIdx = params.push(geojson);
+      geomSql = `ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($${geomIdx}::text), 4326))`;
+      areaCalcSql = `ROUND((ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($${geomIdx}::text), 4326)::geography) / 10000.0)::numeric, 4)`;
+    } else {
+      areaCalcSql = `$${params.push(areaCalc)}`;
+    }
+    const areaRealIdx = params.push(areaReal);
+    const coincideIdx = params.push(coincide_area ?? null);
+    const upNameIdx = params.push(upName);
     const r = await client.query(
       `INSERT INTO up
          (producer_id, up_name, up_type, production_system, water_regime,
           state_name, municipality_name, centroid, geom,
           area_ha_calc, area_ha_real, coincide_area, location_confirmed, centroid_source)
-       VALUES ($1, $${aIdx + 3}, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en cycle.tipo_riego */,
+       VALUES ($1, $${upNameIdx}, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en cycle.tipo_riego */,
                $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ${geomSql},
-               $${aIdx}, $${aIdx + 1}, $${aIdx + 2}, TRUE, 'productor')
+               ${areaCalcSql}, $${areaRealIdx}, $${coincideIdx}, TRUE, 'productor')
        RETURNING up_id`,
       params
     );
@@ -171,13 +185,14 @@ export async function insertarUP(client: any, producerId: number, up: any): Prom
          (producer_id, up_name, up_type, production_system, water_regime,
           state_name, municipality_name, centroid, geom,
           area_ha_calc, area_ha_real, coincide_area, location_confirmed, centroid_source)
-       VALUES ($1, $8, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en cycle.tipo_riego */,
+       VALUES ($1, $7, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en cycle.tipo_riego */,
                $2, $3,
                ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON($4::text), 4326)),
                ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($4::text), 4326)),
-               $5, $6, $7, TRUE, 'poligono_calculado')
+               ROUND((ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($4::text), 4326)::geography) / 10000.0)::numeric, 4),
+               $5, $6, TRUE, 'poligono_calculado')
        RETURNING up_id`,
-      [producerId, estadoFinal, municipioFinal, geojson, areaCalc, areaReal, coincide_area ?? null, upName]
+      [producerId, estadoFinal, municipioFinal, geojson, areaReal, coincide_area ?? null, upName]
     );
     upId = r.rows[0].up_id;
   } else {

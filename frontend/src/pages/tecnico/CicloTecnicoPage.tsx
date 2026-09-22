@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { CheckCircle2, AlertTriangle, Home, Store, Globe, Package } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Home, Store, Globe, Package, Wheat, Sun, Sprout, Check } from 'lucide-react';
 import { api } from '../../services/api';
 import { PageHeaderTecnico } from '../../components/LayoutTecnico';
 
@@ -19,6 +19,16 @@ const DESTINOS = [
   { valor: 'mixto', label: 'Mixto (varios)', icon: Package },
 ];
 
+// MED-13 (auditoría Fase 4, 2026-09-22): códigos del catálogo cat_crop_variety
+// reservados para "el técnico escribió un nombre que no está en el listado" —
+// variety_id NUNCA se guarda como texto libre (rompía los JOIN de reportes);
+// en su lugar se guarda uno de estos códigos válidos y el texto real va en
+// variety_other. Mismo patrón ya usado en el flujo del productor
+// (CicloProductivoPage.tsx).
+const CODIGOS_OTRA = ['OTRA', 'OTRA_AMARILLO', 'OTRA_CRIOLLO', 'CRIOLLO_LOCAL'];
+
+interface Variedad { code: string; label: string; }
+
 export default function CicloTecnicoPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,6 +36,8 @@ export default function CicloTecnicoPage() {
   const upIdInicial = (location.state as any)?.up_id ?? '';
 
   const [upId] = useState<string | number>(upIdInicial);
+  const [tipoMaiz, setTipoMaiz] = useState<'blanco' | 'amarillo' | 'criollo' | ''>('');
+  const [variedades, setVariedades] = useState<Variedad[]>([]);
   const [form, setForm] = useState({
     cycle_year: AÑO_ACTUAL,
     cycle_type: '',
@@ -41,6 +53,15 @@ export default function CicloTecnicoPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [exito, setExito] = useState(false);
+
+  const esCriollo = CODIGOS_OTRA.includes(form.variety_id) || variedades.find(v => v.code === form.variety_id)?.label.toLowerCase().includes('criollo');
+
+  useEffect(() => {
+    if (!tipoMaiz) { setVariedades([]); return; }
+    api.catalogos.variedadesCultivo(tipoMaiz)
+      .then((d: any) => setVariedades(d?.varieties?.maiz ?? []))
+      .catch(() => setVariedades([]));
+  }, [tipoMaiz]);
 
   const inputCls = 'w-full border border-slate-200 rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#1A5C38]/20 focus:border-[#1A5C38] transition-all';
 
@@ -61,10 +82,20 @@ export default function CicloTecnicoPage() {
     // ciclo ya se había creado en el paso anterior y quedaba huérfano
     // (bloqueando reintentos con el mismo año/tipo, sin forma de borrarlo
     // desde la UI). Se valida ANTES de crear nada.
-    if (!form.variety_id.trim() && !form.variety_other.trim()) {
-      setError('Indica la variedad (código o "otro") — es obligatoria para el cultivo.'); return;
+    if (!form.variety_id) {
+      setError('Selecciona el tipo de maíz y la variedad — es obligatoria para el cultivo.'); return;
+    }
+    // MED-13: si la variedad elegida es de las "otra/criollo", el nombre
+    // libre es obligatorio (salvo CRIOLLO_LOCAL, que puede quedar genérico).
+    if (esCriollo && form.variety_id !== 'CRIOLLO_LOCAL' && !form.variety_other.trim()) {
+      setError('Escribe el nombre de la variedad.'); return;
     }
     if (!form.planting_date) { setError('Indica la fecha de siembra.'); return; }
+    // MED-14 (auditoría Fase 4, 2026-09-22): sin esto se podía registrar
+    // "cosecha en enero, siembra en diciembre" sin que el sistema lo detectara.
+    if (form.estimated_harvest_date && new Date(form.estimated_harvest_date) <= new Date(form.planting_date)) {
+      setError('La fecha estimada de cosecha debe ser posterior a la fecha de siembra.'); return;
+    }
 
     setLoading(true);
     setError('');
@@ -83,8 +114,8 @@ export default function CicloTecnicoPage() {
       cycleIdCreado = cycleId;
       await api.cycles.crearCultivo(cycleId, {
         crop: 'maiz',
-        variety_id: form.variety_id.trim() || 'OTRA',
-        variety_other: form.variety_other || null,
+        variety_id: form.variety_id,
+        variety_other: esCriollo ? (form.variety_other.trim() || null) : null,
         area_sown_ha: Number(form.area_sown_ha),
         planting_date: form.planting_date,
         yield_expected: form.yield_expected ? Number(form.yield_expected) : null,
@@ -178,17 +209,52 @@ export default function CicloTecnicoPage() {
 
         <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <div>
-            <label className="block text-[13px] font-bold text-slate-700 mb-2">Variedad (código)</label>
-            <input type="text" value={form.variety_id}
-              onChange={e => setForm(f => ({ ...f, variety_id: e.target.value }))}
-              placeholder="Ej: MC_CRIOLLO" className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-[13px] font-bold text-slate-700 mb-2">Variedad (otro nombre, si no hay código)</label>
-            <input type="text" value={form.variety_other}
-              onChange={e => setForm(f => ({ ...f, variety_other: e.target.value }))}
-              placeholder="Ej: Olotillo" className={inputCls} />
-            <p className="text-[11px] text-slate-400 mt-1">Llena al menos uno de los dos — es obligatorio para guardar el cultivo.</p>
+            <p className="text-[13px] font-bold text-slate-700 mb-2">Tipo de maíz</p>
+            {!tipoMaiz ? (
+              <div className="grid grid-cols-3 gap-2">
+                {(['blanco', 'amarillo', 'criollo'] as const).map(t => (
+                  <button key={t} type="button" onClick={() => setTipoMaiz(t)}
+                    className="p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-[#1A5C38]/30 text-center transition-all">
+                    <div className="flex justify-center mb-1 text-slate-500">
+                      {t === 'blanco' ? <Wheat size={16} /> : t === 'amarillo' ? <Sun size={16} /> : <Sprout size={16} />}
+                    </div>
+                    <p className="text-[12px] font-bold text-slate-800 capitalize">{t}</p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[12.5px] font-bold text-slate-700 capitalize">Maíz {tipoMaiz}</p>
+                  <button type="button" onClick={() => { setTipoMaiz(''); setForm(f => ({ ...f, variety_id: '', variety_other: '' })); }}
+                    className="text-[#1A5C38] text-[11.5px] font-bold bg-white border border-slate-200 px-2.5 py-1 rounded-lg">
+                    Cambiar
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                  {variedades.map(v => (
+                    <button key={v.code} type="button"
+                      onClick={() => setForm(f => ({ ...f, variety_id: v.code, variety_other: '' }))}
+                      className={`w-full rounded-xl p-2.5 border-2 text-left flex items-center gap-2 transition-all ${form.variety_id === v.code ? 'border-[#1A5C38] bg-[#1A5C38]/5' : 'border-slate-100 bg-white'}`}>
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${form.variety_id === v.code ? 'bg-[#1A5C38] border-[#1A5C38]' : 'border-slate-300'}`}>
+                        {form.variety_id === v.code && <Check size={8} className="text-white" strokeWidth={4} />}
+                      </div>
+                      <span className="text-[12.5px] font-bold text-slate-700">{v.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {esCriollo && (
+                  <div className="mt-3">
+                    <label className="block text-[13px] font-bold text-slate-700 mb-2">
+                      {form.variety_id === 'CRIOLLO_LOCAL' ? '¿Cómo se llama la variedad criolla? (opcional)' : '¿Cuál es el nombre de la variedad?'}
+                    </label>
+                    <input type="text" value={form.variety_other}
+                      onChange={e => setForm(f => ({ ...f, variety_other: e.target.value }))}
+                      placeholder="Ej: Olotillo, Pepitilla, Bolita..." className={inputCls} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-[13px] font-bold text-slate-700 mb-2">Superficie sembrada (ha)</label>

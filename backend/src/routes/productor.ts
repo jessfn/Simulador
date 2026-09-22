@@ -1509,7 +1509,15 @@ router.post('/ciclo', authMiddleware, async (req: AuthRequest, res: Response): P
     );
 
     res.status(201).json({ ok: true, ciclo: result.rows[0] });
-  } catch (error) {
+  } catch (error: any) {
+    // MED-10 (auditoría Fase 4, 2026-09-22): el índice único parcial
+    // idx_unique_ciclo_activo (migrate_v47) es la barrera real contra
+    // ciclos duplicados por condición de carrera; aquí se traduce su
+    // violación (23505) a un 409 legible en vez de un 500 genérico.
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `Ya existe un ciclo activo para este año y tipo en esta parcela.` });
+      return;
+    }
     console.error('Error en ciclo:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }

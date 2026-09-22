@@ -296,6 +296,12 @@ export default function AgregarUPPage() {
                 if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
                 overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 2500);
               }}
+              onKinkError={() => {
+                setAdvertenciaOverlap(null);
+                setErrorOverlap('El polígono tiene trazos cruzados. Ajusta los vértices para que los lados no se crucen entre sí.');
+                if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+                overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 2500);
+              }}
             />
             {pendingUP && (
               <Polygon

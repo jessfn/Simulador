@@ -3,6 +3,7 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import area from '@turf/area';
 import centroid from '@turf/centroid';
+import kinks from '@turf/kinks';
 import { polygon } from '@turf/helpers';
 import { calcularTraslape, type ParcelaExistente } from '../../utils/overlap';
 
@@ -52,6 +53,11 @@ interface Props {
    *  bloquearse (ver misUpIds/UMBRAL_BLOQUEO_AJENA) — el polígono NO se
    *  confirma (no se llama a onPoligonoCompleto) hasta que se corrija. */
   onOverlap?: (info: { pctOverlap: number; esPropia: boolean }) => void;
+  /** MED-16 (auditoría Fase 4, 2026-09-22): se dispara cuando el polígono
+   *  cerrado tiene trazos cruzados (auto-intersección, ej. forma de "8") —
+   *  el polígono NO se confirma (no se llama a onPoligonoCompleto) hasta
+   *  que se corrija. */
+  onKinkError?: () => void;
 }
 
 const GREEN = '#34d079';
@@ -66,7 +72,7 @@ const RED = '#ef4444';
 const RED_DARK = '#b91c1c';
 
 const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
-  ({ poligonoInicial, onPoligonoCompleto, onPoligonoEliminado, onModeChange, onPointCountChange, excluirUpIds, misUpIds, onOverlap }, ref) => {
+  ({ poligonoInicial, onPoligonoCompleto, onPoligonoEliminado, onModeChange, onPointCountChange, excluirUpIds, misUpIds, onOverlap, onKinkError }, ref) => {
     const map = useMap();
     const groupRef = useRef(new L.FeatureGroup());
     const verticesRef = useRef<[number, number][]>([]);
@@ -110,6 +116,17 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
       const v = verticesRef.current;
       if (v.length < 3) return;
 
+      // MED-16 (auditoría Fase 4, 2026-09-22): solo se validaba el mínimo de
+      // 3 vértices — un trazo cruzado (forma de "8", espiral) es
+      // geométricamente inválido y da un área/centroide sin sentido.
+      // PostGIS lo acepta con ST_MakeValid pero el resultado es impredecible,
+      // así que se rechaza aquí antes de calcular nada.
+      const ringKink = [...v.map(([la, ln]) => [ln, la]), [v[0][1], v[0][0]]];
+      if (kinks(polygon([ringKink])).features.length > 0) {
+        onKinkError?.();
+        return;
+      }
+
       const traslape = calcularTraslape(v, parcelasExistentesRef.current, excluirUpIds, misUpIds);
       if (traslape.bloqueado) {
         overlapRef.current = true;
@@ -132,7 +149,7 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
         areaHa
       );
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [onPoligonoCompleto, onOverlap, excluirUpIds, misUpIds]);
+    }, [onPoligonoCompleto, onOverlap, onKinkError, excluirUpIds, misUpIds]);
 
     const vertexIcon = (index: number, editing: boolean) => {
       const size = editing ? 20 : 13;

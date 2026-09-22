@@ -241,6 +241,7 @@ export const api = {
   catalogos: {
     tipoMaiz: () => request('/bodegas/catalogos'),
     variedades: () => request('/infraestructura/catalogos'),
+    variedadesCultivo: (tipoMaiz: string) => request(`/catalogos-productor?tipo_maiz=${encodeURIComponent(tipoMaiz)}`),
   },
   productor: {
     loginPin: (curp: string, pin: string) =>

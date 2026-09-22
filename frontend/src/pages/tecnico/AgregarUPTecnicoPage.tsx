@@ -329,6 +329,11 @@ export default function AgregarUPTecnicoPage() {
                   if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
                   overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 4000);
                 }}
+                onKinkError={() => {
+                  setErrorOverlap('El polígono tiene trazos cruzados. Ajusta los vértices para que los lados no se crucen entre sí.');
+                  if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+                  overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 4000);
+                }}
               />
               {pendingUP && (
                 <Polygon

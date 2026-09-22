@@ -77,7 +77,17 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
     );
 
     res.status(201).json({ cycle: result.rows[0], message: 'Ciclo creado exitosamente' });
-  } catch (error) {
+  } catch (error: any) {
+    // MED-10 (auditoría Fase 4, 2026-09-22): el check de duplicado de arriba
+    // (SELECT + INSERT en dos pasos) tiene una condición de carrera — dos
+    // requests casi simultáneos pueden pasar ambos el SELECT antes de que
+    // cualquiera inserte. El índice único parcial idx_unique_ciclo_activo
+    // (migrate_v47) es la barrera real; aquí se traduce su violación (23505)
+    // a un 409 legible en vez de un 500 genérico.
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `Ya existe un ciclo activo para este año y tipo en esta parcela.` });
+      return;
+    }
     console.error('Error creando ciclo:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
@@ -236,9 +246,27 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
       return;
     }
 
-    // Require variety_other when variety_id is CRIOLLO_LOCAL or OTRA
-    if ((variety_id === 'CRIOLLO_LOCAL' || variety_id === 'OTRA') && !variety_other) {
+    // MED-13 (auditoría Fase 4, 2026-09-22): variety_id nunca debe llegar
+    // como texto libre — rompía los JOIN de reportes contra
+    // cat_crop_variety. Se exige que sea un código real del catálogo, y
+    // cuando el código es uno de los "otra/criollo" el nombre real va en
+    // variety_other (obligatorio salvo CRIOLLO_LOCAL, que puede quedar
+    // genérico).
+    const codigosOtra = ['CRIOLLO_LOCAL', 'OTRA', 'OTRA_AMARILLO', 'OTRA_CRIOLLO'];
+    if (codigosOtra.includes(variety_id) && variety_id !== 'CRIOLLO_LOCAL' && !variety_other) {
       res.status(400).json({ error: 'Debe especificar la variedad cuando selecciona Criollo/local u Otra' });
+      return;
+    }
+    const varietyExiste = await pool.query('SELECT 1 FROM cat_crop_variety WHERE code = $1', [variety_id]);
+    if (varietyExiste.rows.length === 0) {
+      res.status(400).json({ error: 'La variedad seleccionada no es válida. Selecciona una variedad del catálogo.' });
+      return;
+    }
+
+    // MED-14 (auditoría Fase 4, 2026-09-22): sin esto se podía registrar
+    // "cosecha en enero, siembra en diciembre" sin que el sistema lo detecte.
+    if (planting_date && estimated_harvest_date && new Date(estimated_harvest_date) <= new Date(planting_date)) {
+      res.status(400).json({ error: 'La fecha estimada de cosecha debe ser posterior a la fecha de siembra.' });
       return;
     }
 
@@ -371,6 +399,22 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
       }
     }
 
+    // MED-13/MED-14 (auditoría Fase 4, 2026-09-22): mismas reglas que
+    // POST /cycles/:cycle_id/crops, aplicadas también en edición.
+    if (variety_id !== undefined) {
+      const existe = await pool.query('SELECT 1 FROM cat_crop_variety WHERE code = $1', [variety_id]);
+      if (existe.rows.length === 0) {
+        res.status(400).json({ error: 'La variedad seleccionada no es válida. Selecciona una variedad del catálogo.' });
+        return;
+      }
+    }
+    if (planting_date !== undefined && estimated_harvest_date !== undefined &&
+        planting_date && estimated_harvest_date &&
+        new Date(estimated_harvest_date) <= new Date(planting_date)) {
+      res.status(400).json({ error: 'La fecha estimada de cosecha debe ser posterior a la fecha de siembra.' });
+      return;
+    }
+
     const sets: string[] = [];
     const params: any[] = [];
     let idx = 1;
@@ -424,13 +468,17 @@ router.patch('/cycles/:cycle_id/estado', authMiddleware, async (req: AuthRequest
       return;
     }
 
-    // Verificar que el ciclo pertenece a una UP del productor autenticado
+    // MED-12 (auditoría Fase 4, 2026-09-22): solo se verificaba p.usuario_id
+    // (dueño-productor con cuenta propia). Para productores de Registro
+    // Alterno (capturados por técnico) usuario_id es NULL, así que el
+    // técnico que creó el ciclo no podía cambiar su estado — se agrega la
+    // rama usuario_capturista_id, mismo patrón usado en DELETE /cycles/:id.
     const check = await pool.query(
       `SELECT c.cycle_id
        FROM cycle c
        JOIN up u ON u.up_id = c.up_id
        JOIN producer p ON p.producer_id = u.producer_id
-       WHERE c.cycle_id = $1 AND p.usuario_id = $2`,
+       WHERE c.cycle_id = $1 AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)`,
       [cycle_id, req.user?.userId]
     );
 
