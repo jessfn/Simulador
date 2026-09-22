@@ -1,10 +1,67 @@
 import { reverseGeocode, canonicalizarEstado } from './geocode';
+import { postgisDisponible } from './postgis';
 
 // Cap de área a NUMERIC(10,4) → máx 999999.9999 ha (evita overflow 22003)
 function capAreaHa(v: any): number | null {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.min(n, 999999.9999);
+}
+
+export interface ResultadoTraslape {
+  bloqueado: boolean;
+  advertencia: boolean;
+  traslapeProducerId?: number;
+  upNombre?: string;
+  pct?: number;
+}
+
+// H5 (auditoría Fase 3, 2026-09-22): función compartida para calcular el
+// traslape entre un polígono nuevo y las UPs de OTROS productores. Antes
+// esta lógica estaba duplicada en 3 lugares (ups.ts, y dos veces en
+// productor.ts) y el porcentaje se calculaba SOLO dividiendo entre el área
+// del polígono nuevo — una parcela nueva enorme que sepulta completamente
+// una parcela chica ya registrada daba un pct casi 0% y no se detectaba.
+// Ahora se calcula el porcentaje en ambas direcciones (respecto al área
+// nueva y respecto al área existente) y se usa el máximo (GREATEST), así
+// una parcela chica devorada por una grande sí se detecta sin importar
+// cuál de las dos sea "la nueva".
+export async function validarTraslape(
+  db: any,
+  producerIdPropietario: number,
+  nuevaGeomGeoJSON: string,
+  excluirUpId?: number
+): Promise<ResultadoTraslape> {
+  const result = await db.query(
+    `SELECT traslape_producer_id, up_name, pct FROM (
+       SELECT u.producer_id AS traslape_producer_id, u.up_name,
+         GREATEST(
+           ST_Area(ST_Intersection(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
+             / NULLIF(ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326)::geography), 0),
+           ST_Area(ST_Intersection(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
+             / NULLIF(ST_Area(u.geom::geography), 0)
+         ) AS pct
+       FROM up u
+       WHERE u.producer_id != $1 AND u.geom IS NOT NULL
+         AND ST_Overlaps(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
+         AND ($3::bigint IS NULL OR u.up_id != $3)
+     ) t WHERE t.pct > 0.02 ORDER BY t.pct DESC LIMIT 1`,
+    [producerIdPropietario, nuevaGeomGeoJSON, excluirUpId ?? null]
+  );
+
+  if (result.rows.length === 0) {
+    return { bloqueado: false, advertencia: false };
+  }
+
+  const fila = result.rows[0];
+  const pct = Number(fila.pct);
+  return {
+    bloqueado: pct > 0.10,
+    advertencia: pct <= 0.10,
+    traslapeProducerId: fila.traslape_producer_id,
+    upNombre: fila.up_name,
+    pct,
+  };
 }
 
 // Crea una UP para un productor dentro de una transacción.
@@ -24,7 +81,7 @@ export async function insertarUP(client: any, producerId: number, up: any): Prom
 
   const hasCoords = lat != null && lng != null && lat !== 0 && lng !== 0;
   const hasPoligono = poligono && Array.isArray(poligono) && poligono.length >= 3;
-  const postgisActivo = process.env.POSTGIS_ENABLED === 'true';
+  const postgisActivo = await postgisDisponible();
 
   if (hasCoords) {
     const g = await reverseGeocode(Number(lat), Number(lng));
@@ -75,25 +132,14 @@ export async function insertarUP(client: any, producerId: number, up: any): Prom
   // registrando pero queda marcado para revisión.
   let traslapeProducerId: number | null = null;
   if (hasPoligono && postgisActivo) {
-    const ovCruz = await client.query(
-      `SELECT traslape_producer_id, pct, up_name FROM (
-         SELECT u.producer_id AS traslape_producer_id, u.up_name,
-           ST_Area(ST_Intersection(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
-           / NULLIF(ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326)::geography), 0) AS pct
-         FROM up u
-         WHERE u.producer_id != $1 AND u.geom IS NOT NULL
-           AND ST_Overlaps(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
-       ) t WHERE t.pct > 0.02 ORDER BY t.pct DESC LIMIT 1`,
-      [producerId, geojson]
-    );
-    if (ovCruz.rows.length > 0) {
-      const fila = ovCruz.rows[0];
-      if (Number(fila.pct) > 0.10) {
-        const e: any = new Error('overlap_cross');
-        e.code = 'UP_OVERLAP_CROSS';
-        throw e;
-      }
-      traslapeProducerId = fila.traslape_producer_id;
+    const traslape = await validarTraslape(client, producerId, geojson!);
+    if (traslape.bloqueado) {
+      const e: any = new Error('overlap_cross');
+      e.code = 'UP_OVERLAP_CROSS';
+      throw e;
+    }
+    if (traslape.advertencia) {
+      traslapeProducerId = traslape.traslapeProducerId ?? null;
     }
   }
 

@@ -420,8 +420,11 @@ export default function ProductorDetalleAdminPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[12.5px] font-bold text-amber-800">Posible traslape con otro productor</p>
                   <p className="text-[11.5px] text-amber-700 mt-0.5">
-                    Esta parcela se superpone en más del 10% con una parcela de <strong>{traslapeInfo.nombre}</strong>.
-                    Puede ser una situación ejidal o familiar normal — confirma antes de actuar.
+                    {/* H7 (auditoría Fase 3, 2026-09-22): solo llega a este estado el rango
+                        2%-10% — todo lo que supera 10% se bloquea antes de guardarse, así
+                        que el texto anterior ("más del 10%") sobreestimaba la gravedad. */}
+                    Esta parcela comparte entre 2% y 10% de su superficie con una parcela de <strong>{traslapeInfo.nombre}</strong>.
+                    Puede ser una situación ejidal o familiar normal — verifica antes de actuar.
                   </p>
                 </div>
                 <button

@@ -45,6 +45,7 @@ import exportarBdRoutes from './routes/exportar-bd';
 import chatRoutes, { adminChatRouter } from './routes/chat';
 import { scheduleBodegaDailyJobs } from './jobs/bodegaDailyJobs';
 import { schedulePreciosCron } from './jobs/preciosCron';
+import { postgisDisponible } from './utils/postgis';
 import pool from './config/database';
 
 dotenv.config();
@@ -197,6 +198,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📦 API disponible en http://localhost:${PORT}/api`);
+  postgisDisponible(); // H4 (auditoría Fase 3): log del estado real de PostGIS al arrancar
   scheduleBodegaDailyJobs();
   schedulePreciosCron();
 });

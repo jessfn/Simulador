@@ -14,6 +14,9 @@ const router = Router();
 // con ownership verificado contra producer.usuario_id / usuario_capturista_id.
 // GET /geometrias (abajo) sí sigue activo: es público, sin PII, y lo usa
 // el mapa de dibujo de parcelas.
+// H1 (auditoría Fase 3, 2026-09-22): este desmontaje ya resuelve el hallazgo
+// H1 (POST /:up_id y PATCH /:up_id sin validación de traslape) — quedan
+// desactivados, no solo sin ownership check.
 /*
 // =============================================
 // POST /api/ups - Crear UP (incluye geom_geojson)
