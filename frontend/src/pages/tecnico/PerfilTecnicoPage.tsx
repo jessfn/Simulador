@@ -40,7 +40,7 @@ function truncarCurp(curp: string) {
 
 export default function PerfilTecnicoPage() {
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
+  const { logout, token, user, setAuth } = useAuthStore();
 
   const [perfil, setPerfil] = useState<PerfilTecnico | null>(null);
   const [registros, setRegistros] = useState<RegistroTecnico[] | null>(null);
@@ -86,7 +86,7 @@ export default function PerfilTecnicoPage() {
 
   async function handleCambiarPassword() {
     setPwError('');
-    if (pwNueva.length < 6) { setPwError('La nueva contraseña debe tener al menos 6 caracteres.'); return; }
+    if (pwNueva.length < 8) { setPwError('La nueva contraseña debe tener al menos 8 caracteres.'); return; }
     if (pwNueva !== pwConfirmar) { setPwError('Las contraseñas no coinciden.'); return; }
     setPwLoading(true);
     try {
@@ -94,6 +94,11 @@ export default function PerfilTecnicoPage() {
       setPwExito(true);
       setPwActual(''); setPwNueva(''); setPwConfirmar('');
       setPerfil(prev => prev ? { ...prev, debe_cambiar_pass: false } : prev);
+      // CRIT-05: si no se actualiza también el store global (el que lee
+      // RequireCapturista en router.tsx), el técnico queda atrapado en esta
+      // misma pantalla para siempre tras cambiar su contraseña — el guard
+      // seguiría viendo el debe_cambiar_pass viejo hasta cerrar sesión.
+      if (token && user) setAuth(token, { ...user, debe_cambiar_pass: false });
       setTimeout(() => setPwExito(false), 3000);
     } catch (e: any) {
       setPwError(e.message || 'No se pudo cambiar la contraseña.');
@@ -160,12 +165,16 @@ export default function PerfilTecnicoPage() {
             <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-[13px] font-bold text-amber-800">Tienes una contraseña temporal</p>
-              <p className="text-[12px] text-amber-700 mt-0.5">Por seguridad, cámbiala ahora desde la sección de abajo.</p>
+              <p className="text-[12px] text-amber-700 mt-0.5">Por seguridad, debes cambiarla ahora para poder usar el resto del sistema.</p>
             </div>
           </div>
         )}
 
         {/* ── A cargo de — lista real de lo que registró este técnico ── */}
+        {/* CRIT-05: oculta mientras haya que cambiar la contraseña, para que
+            el formulario de abajo quede visible sin scroll y sea claro que
+            es lo único que se puede hacer por ahora. */}
+        {!perfil.debe_cambiar_pass && (
         <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-4 pb-2">
             <div className="flex items-center gap-2">
@@ -221,8 +230,10 @@ export default function PerfilTecnicoPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* ── Contacto ── */}
+        {!perfil.debe_cambiar_pass && (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-5 pt-4 pb-0">Contacto</p>
 
@@ -273,6 +284,7 @@ export default function PerfilTecnicoPage() {
             )}
           </div>
         </div>
+        )}
 
         {/* ── Cambiar contraseña ── */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
@@ -285,7 +297,7 @@ export default function PerfilTecnicoPage() {
             <input type="password" placeholder="Contraseña actual" value={pwActual}
               onChange={e => setPwActual(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#1A5C38]/40 transition-colors" />
-            <input type="password" placeholder="Nueva contraseña (mín. 6 caracteres)" value={pwNueva}
+            <input type="password" placeholder="Nueva contraseña (mín. 8 caracteres)" value={pwNueva}
               onChange={e => setPwNueva(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#1A5C38]/40 transition-colors" />
             <input type="password" placeholder="Confirmar nueva contraseña" value={pwConfirmar}

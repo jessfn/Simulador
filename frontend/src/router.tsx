@@ -123,8 +123,17 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
 
 function RequireCapturista({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
+  const location = useLocation();
   if (!isAuthenticated) return <Navigate to="/tecnico/login" replace />;
   if (user?.rol !== 'capturista') return <Navigate to="/login" replace />;
+  // CRIT-05 (auditoría seguridad 2026-09-21): antes debe_cambiar_pass solo
+  // se mostraba como aviso de 1.8s en el login y nunca se aplicaba — un
+  // técnico con contraseña temporal podía usar todo el sistema sin
+  // cambiarla jamás. Se bloquea cualquier ruta de /tecnico que no sea el
+  // perfil (donde está el formulario de cambio de contraseña).
+  if (user?.debe_cambiar_pass && location.pathname !== '/tecnico/perfil') {
+    return <Navigate to="/tecnico/perfil" replace />;
+  }
   return <>{children}</>;
 }
 

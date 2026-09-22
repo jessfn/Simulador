@@ -47,14 +47,28 @@ export default function CicloTecnicoPage() {
   async function guardar() {
     if (!upId) { setError('No se encontró la unidad productiva (UP).'); return; }
     if (!form.cycle_type) { setError('Selecciona el tipo de ciclo.'); return; }
+    if (!Number.isInteger(form.cycle_year) || form.cycle_year < 2000 || form.cycle_year > 2030) {
+      setError('El año del ciclo debe estar entre 2000 y 2030.'); return;
+    }
     if (!form.area_sown_ha || Number(form.area_sown_ha) <= 0) { setError('Ingresa la superficie sembrada.'); return; }
     if (form.yield_expected) {
       const r = Number(form.yield_expected);
       if (r < 1 || r > 15) { setError('El rendimiento debe estar entre 1 y 15 ton/ha para maíz en México.'); return; }
     }
+    // CRIT-07 (auditoría seguridad 2026-09-21): el backend exige variety_id
+    // y planting_date para crear el cultivo (POST /cycles/:cycle_id/crops),
+    // pero el formulario los marcaba como "opcional" — si faltaban, el
+    // ciclo ya se había creado en el paso anterior y quedaba huérfano
+    // (bloqueando reintentos con el mismo año/tipo, sin forma de borrarlo
+    // desde la UI). Se valida ANTES de crear nada.
+    if (!form.variety_id.trim() && !form.variety_other.trim()) {
+      setError('Indica la variedad (código o "otro") — es obligatoria para el cultivo.'); return;
+    }
+    if (!form.planting_date) { setError('Indica la fecha de siembra.'); return; }
 
     setLoading(true);
     setError('');
+    let cycleIdCreado: number | string | null = null;
     try {
       const cicloRes: any = await api.ups.crearCiclo(upId, {
         cycle_year: form.cycle_year,
@@ -65,19 +79,28 @@ export default function CicloTecnicoPage() {
         setError(cicloRes?.error || 'Error al crear el ciclo.');
         return;
       }
-      await api.cycles.crearCultivo(cicloRes.cycle.cycle_id, {
+      const cycleId: number | string = cicloRes.cycle.cycle_id;
+      cycleIdCreado = cycleId;
+      await api.cycles.crearCultivo(cycleId, {
         crop: 'maiz',
-        variety_id: form.variety_id || undefined,
+        variety_id: form.variety_id.trim() || 'OTRA',
         variety_other: form.variety_other || null,
         area_sown_ha: Number(form.area_sown_ha),
-        planting_date: form.planting_date || undefined,
+        planting_date: form.planting_date,
         yield_expected: form.yield_expected ? Number(form.yield_expected) : null,
         estimated_harvest_date: form.estimated_harvest_date || null,
         destination: form.destination || null,
       });
       setExito(true);
     } catch (err: any) {
-      setError(err?.message || 'Error de conexión al guardar el ciclo.');
+      // Si el ciclo ya se creó pero el cultivo falló, no dejarlo huérfano:
+      // se borra automáticamente para que el técnico pueda reintentar sin
+      // chocar con "ya existe un ciclo activo" de ese mismo año/tipo.
+      if (cycleIdCreado) {
+        try { await api.cycles.eliminarCiclo(cycleIdCreado); }
+        catch { console.error('[CRIT-07] No se pudo limpiar ciclo huérfano, cycle_id:', cycleIdCreado); }
+      }
+      setError(err?.message || 'Error al guardar el cultivo. Verifica los datos e inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -155,16 +178,17 @@ export default function CicloTecnicoPage() {
 
         <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <div>
-            <label className="block text-[13px] font-bold text-slate-700 mb-2">Variedad (código, opcional)</label>
+            <label className="block text-[13px] font-bold text-slate-700 mb-2">Variedad (código)</label>
             <input type="text" value={form.variety_id}
               onChange={e => setForm(f => ({ ...f, variety_id: e.target.value }))}
               placeholder="Ej: MC_CRIOLLO" className={inputCls} />
           </div>
           <div>
-            <label className="block text-[13px] font-bold text-slate-700 mb-2">Variedad (otro, opcional)</label>
+            <label className="block text-[13px] font-bold text-slate-700 mb-2">Variedad (otro nombre, si no hay código)</label>
             <input type="text" value={form.variety_other}
               onChange={e => setForm(f => ({ ...f, variety_other: e.target.value }))}
               placeholder="Ej: Olotillo" className={inputCls} />
+            <p className="text-[11px] text-slate-400 mt-1">Llena al menos uno de los dos — es obligatorio para guardar el cultivo.</p>
           </div>
           <div>
             <label className="block text-[13px] font-bold text-slate-700 mb-2">Superficie sembrada (ha)</label>

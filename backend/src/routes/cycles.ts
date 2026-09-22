@@ -158,12 +158,14 @@ router.delete('/cycles/:cycle_id', authMiddleware, async (req: AuthRequest, res:
     const { cycle_id } = req.params;
     const userId = req.user!.userId;
 
-    // Verificar que el ciclo pertenece al usuario
+    // Verificar que el ciclo pertenece al usuario — productor dueño O
+    // técnico que lo capturó (antes solo aceptaba usuario_id, así que un
+    // técnico nunca podía limpiar sus propios ciclos huérfanos: CRIT-07).
     const own = await client.query(
       `SELECT c.cycle_id FROM cycle c
        JOIN up u ON u.up_id = c.up_id
        JOIN producer p ON p.producer_id = u.producer_id
-       WHERE c.cycle_id = $1 AND p.usuario_id = $2
+       WHERE c.cycle_id = $1 AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)
          AND COALESCE(c.estado_ciclo, 'activo') = 'activo'`,
       [cycle_id, userId]
     );

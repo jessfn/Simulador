@@ -14,10 +14,29 @@ export default function AgregarUPTecnicoPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id: producerIdParam } = useParams();
-  const state = (location.state || {}) as Record<string, any>;
 
   // Modo "adicional": llegamos con :id en la ruta y sin datos nuevos de productor.
   const modoAdicional = Boolean(producerIdParam);
+
+  // CRIT-06 (auditoría seguridad 2026-09-21): en el flujo de registro NUEVO
+  // (registrar/:curp/up) los datos del productor (CURP, nombre, teléfono…)
+  // solo vivían en location.state. Si el técnico refrescaba la página
+  // después de dibujar el polígono en campo, el state desaparecía y el
+  // backend rechazaba el guardado con 400 — se perdía todo el trabajo. Se
+  // respalda en sessionStorage al llegar y se recupera de ahí si el state
+  // llega vacío (refresh); se limpia al terminar con éxito.
+  const SESSION_KEY = 'up_wizard_producer';
+  const state = (() => {
+    if (location.state && Object.keys(location.state as object).length > 0) {
+      try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(location.state)); } catch { /* ignorar */ }
+      return location.state as Record<string, any>;
+    }
+    try {
+      const respaldo = sessionStorage.getItem(SESSION_KEY);
+      if (respaldo) return JSON.parse(respaldo) as Record<string, any>;
+    } catch { /* ignorar */ }
+    return {} as Record<string, any>;
+  })();
 
   const mapRef = useRef<any>(null);
   const dibujarRef = useRef<DibujarPoligonoHandle>(null);
@@ -32,6 +51,12 @@ export default function AgregarUPTecnicoPage() {
   const [paso, setPaso] = useState<'info' | 'mapa' | 'exito'>('info');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // CRIT-08 (auditoría seguridad 2026-09-21): antes esta pantalla no traía
+  // onOverlap ni misUpIds — un traslape pintaba el polígono de rojo sin
+  // ningún mensaje, y el técnico en campo no sabía qué corregir.
+  const [errorOverlap, setErrorOverlap] = useState<string | null>(null);
+  const [existentesIds, setExistentesIds] = useState<number[]>([]);
+  const overlapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [drawMode, setDrawMode] = useState<DrawMode>('idle');
   const [pointCount, setPointCount] = useState(0);
@@ -64,6 +89,18 @@ export default function AgregarUPTecnicoPage() {
       .then(d => setMunicipios(d.municipalities || (Array.isArray(d) ? d : [])))
       .catch(() => {});
   }, [estadoId]);
+
+  // Parcelas que ya tiene este productor (propias o del reactivado con
+  // producer_id): se excluyen del chequeo de traslape consigo mismas y se
+  // usan para distinguir "te traslapas contigo mismo" de "con otro productor".
+  useEffect(() => {
+    const idProductor = producerIdParam || state.producer_id;
+    if (!idProductor) return;
+    api.tecnico.productorUPs(idProductor)
+      .then((res: any) => setExistentesIds((res?.ups || []).map((u: any) => u.up_id)))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [producerIdParam]);
 
   useEffect(() => {
     if (paso === 'mapa' && navigator.geolocation) {
@@ -148,6 +185,7 @@ export default function AgregarUPTecnicoPage() {
           nombreProductor: `${state.nombres || ''} ${state.apellido_paterno || ''}`.trim(),
         });
       }
+      try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignorar */ }
       setPaso('exito');
     } catch (err: any) {
       setError(err?.message || 'Error al guardar la parcela.');
@@ -277,10 +315,20 @@ export default function AgregarUPTecnicoPage() {
                 attribution="© Esri" />
               <DibujarPoligonoUP
                 ref={dibujarRef}
-                onModeChange={setDrawMode}
+                misUpIds={existentesIds}
+                onModeChange={mode => { setDrawMode(mode); if (mode !== 'idle') setErrorOverlap(null); }}
                 onPointCountChange={setPointCount}
-                onPoligonoCompleto={onUPDibujada}
+                onPoligonoCompleto={(poly, centro, area) => { setErrorOverlap(null); onUPDibujada(poly, centro, area); }}
                 onPoligonoEliminado={() => {}}
+                onOverlap={({ pctOverlap, esPropia }) => {
+                  setErrorOverlap(
+                    esPropia
+                      ? 'Este polígono se traslapa con otra parcela de este mismo productor. Ajusta el contorno para que no haya superposición.'
+                      : `Este polígono se superpone con una parcela ya registrada de otro productor (${Math.round(pctOverlap * 100)}% de traslape). Ajusta el trazo para que no se encime.`
+                  );
+                  if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+                  overlapTimerRef.current = setTimeout(() => setErrorOverlap(null), 4000);
+                }}
               />
               {pendingUP && (
                 <Polygon
@@ -291,11 +339,17 @@ export default function AgregarUPTecnicoPage() {
             </MapContainer>
 
             {!pendingUP && (
-              <div className="absolute top-3 left-3 right-3 z-[1000] max-w-md mx-auto">
+              <div className="absolute top-3 left-3 right-3 z-[1000] max-w-md mx-auto space-y-2">
                 <NominatimSearch
                   placeholder="Buscar dirección o localidad…"
                   onSelect={(lat, lng) => mapRef.current?.flyTo([lat, lng], 16)}
                 />
+                {errorOverlap && (
+                  <div className="bg-red-600 text-white rounded-xl px-3.5 py-3 text-[12.5px] font-medium shadow-lg flex items-start gap-2">
+                    <span>⚠️</span>
+                    <span>{errorOverlap}</span>
+                  </div>
+                )}
               </div>
             )}
 

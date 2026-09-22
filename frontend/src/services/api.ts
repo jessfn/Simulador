@@ -291,6 +291,8 @@ export const api = {
   cycles: {
     crearCultivo: (cycleId: number | string, data: Record<string, unknown>) =>
       request(`/cycles/${cycleId}/crops`, { method: 'POST', body: JSON.stringify(data) }),
+    eliminarCiclo: (cycleId: number | string) =>
+      request(`/cycles/${cycleId}`, { method: 'DELETE' }),
   },
   admin: {
     tecnicos: {
