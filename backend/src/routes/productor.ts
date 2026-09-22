@@ -1062,11 +1062,18 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
 
     // Resolver la parcela a actualizar: la indicada (up_id) o, si no, la principal
     // (la más antigua). Así editar una parcela NO sobreescribe las demás.
+    // Una sola consulta que siempre referencia $1: cuando no viene up_id,
+    // la rama "$1::bigint IS NULL" recurre a la parcela más antigua. La versión
+    // anterior armaba dos textos de SQL distintos y, cuando up_id faltaba,
+    // mandaba un parámetro $1 que el segundo texto nunca usaba — Postgres no
+    // podía inferir su tipo y tronaba con "could not determine data type of
+    // parameter $1" (el error que reportaron los productores).
     const upRes = await pool.query(
-      up_id
-        ? `SELECT up_id FROM up WHERE up_id = $1 AND producer_id = $2`
-        : `SELECT up_id FROM up WHERE producer_id = $2 ORDER BY created_at ASC LIMIT 1`,
-      up_id ? [up_id, producerId] : [null, producerId]
+      `SELECT up_id FROM up
+       WHERE producer_id = $2 AND ($1::bigint IS NULL OR up_id = $1)
+       ORDER BY created_at ASC
+       LIMIT 1`,
+      [up_id ?? null, producerId]
     );
     const targetUpId = upRes.rows[0]?.up_id;
     if (!targetUpId) { res.status(404).json({ error: 'Parcela no encontrada' }); return; }
