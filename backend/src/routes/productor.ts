@@ -1087,8 +1087,8 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
         return;
       }
       const newUp = await pool.query(
-        `INSERT INTO up (producer_id, up_name, location_confirmed, centroid_source)
-         VALUES ($1, 'Mi parcela', FALSE, 'productor') RETURNING up_id`,
+        `INSERT INTO up (producer_id, up_name, up_type, production_system, water_regime, location_confirmed, centroid_source)
+         VALUES ($1, 'Mi parcela', 'parcela', 'monocultivo', 'temporal', FALSE, 'productor') RETURNING up_id`,
         [producerId]
       );
       targetUpId = newUp.rows[0].up_id;
