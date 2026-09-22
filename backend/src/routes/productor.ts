@@ -1076,8 +1076,23 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
        LIMIT 1`,
       [up_id ?? null, producerId]
     );
-    const targetUpId = upRes.rows[0]?.up_id;
-    if (!targetUpId) { res.status(404).json({ error: 'Parcela no encontrada' }); return; }
+    let targetUpId: number = upRes.rows[0]?.up_id;
+
+    if (!targetUpId) {
+      // Si se indicó up_id concreto pero no existe/pertenece → error real.
+      // Si no vino up_id y no hay UPs (primer registro auto-servicio), crear
+      // una UP vacía ahora — el flujo de ubicación la rellenará enseguida.
+      if (up_id) {
+        res.status(404).json({ error: 'Parcela no encontrada' });
+        return;
+      }
+      const newUp = await pool.query(
+        `INSERT INTO up (producer_id, location_confirmed, centroid_source)
+         VALUES ($1, FALSE, 'productor') RETURNING up_id`,
+        [producerId]
+      );
+      targetUpId = newUp.rows[0].up_id;
+    }
 
     const hasPoligono = poligono && Array.isArray(poligono) && poligono.length >= 3;
     const postgisActivo = await postgisDisponible();
