@@ -675,7 +675,7 @@ router.get('/perfil', authMiddleware, requiereCapturista, async (req: AuthReques
     const tecnicoId = req.user!.userId;
 
     const usuario = await pool.query(
-      `SELECT id, email, nombre_completo, telefono, activo, created_at
+      `SELECT id, email, nombre_completo, telefono, activo, created_at, debe_cambiar_pass
        FROM usuarios WHERE id = $1 AND rol = 'capturista'`,
       [tecnicoId]
     );
