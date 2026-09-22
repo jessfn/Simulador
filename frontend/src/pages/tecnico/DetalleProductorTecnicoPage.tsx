@@ -75,6 +75,25 @@ export default function DetalleProductorTecnicoPage() {
     );
   }
 
+  // MEN (revisión Fase 5, 2026-09-22): si el id no aparece en mis-registros
+  // (link viejo, id equivocado, o un productor que no es de este técnico),
+  // antes se renderizaba la pantalla vacía con título genérico "Productor" y
+  // sin ningún aviso — confuso. Se muestra un estado explícito en su lugar.
+  if (!error && !productor) {
+    return (
+      <div className="min-h-full pb-8">
+        <PageHeaderTecnico title="Productor" subtitle="Detalle del registro" back="/tecnico" />
+        <div className="p-4">
+          <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center">
+            <p className="text-[13px] text-slate-500 font-medium">
+              Este productor no existe o no está a tu cargo.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-full pb-8">
       <PageHeaderTecnico

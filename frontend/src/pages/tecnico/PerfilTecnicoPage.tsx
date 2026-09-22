@@ -50,6 +50,7 @@ export default function PerfilTecnicoPage() {
   const [editTel, setEditTel] = useState(false);
   const [telefono, setTelefono] = useState('');
   const [savedTel, setSavedTel] = useState(false);
+  const [errorTel, setErrorTel] = useState('');
 
   const [pwActual, setPwActual] = useState('');
   const [pwNueva, setPwNueva] = useState('');
@@ -73,6 +74,15 @@ export default function PerfilTecnicoPage() {
   }, []);
 
   async function guardarTelefono() {
+    // MEN (revisión Fase 5, 2026-09-22): antes se podía guardar un teléfono
+    // de 1-9 dígitos sin ningún aviso (el backend tampoco lo valida) —
+    // mismo criterio de 10 dígitos que ya usa DatosProductorPage.tsx.
+    // Vacío sí se permite: es cómo se borra el teléfono guardado.
+    if (telefono && telefono.length < 10) {
+      setErrorTel('Ingresa un teléfono válido de 10 dígitos, o déjalo vacío.');
+      return;
+    }
+    setErrorTel('');
     try {
       await api.tecnico.actualizarPerfil({ telefono });
       setPerfil(prev => prev ? { ...prev, telefono } : prev);
@@ -268,18 +278,21 @@ export default function PerfilTecnicoPage() {
               )}
             </div>
             {editTel && (
-              <div className="mt-2.5 flex gap-2">
-                <input type="tel" inputMode="numeric" autoFocus value={telefono} maxLength={10}
-                  onChange={e => setTelefono(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  className="flex-1 bg-[#f4fbf7] border-2 border-[#1A5C38]/20 focus:border-[#1A5C38] rounded-xl px-3 py-2.5 text-[15px] outline-none transition-colors" />
-                <button onClick={guardarTelefono}
-                  className="w-11 h-11 rounded-xl bg-[#1A5C38] flex items-center justify-center active:scale-95 transition-all shadow-sm shadow-[#1A5C38]/20">
-                  <Check size={16} className="text-white" />
-                </button>
-                <button onClick={() => { setEditTel(false); setTelefono(perfil.telefono || ''); }}
-                  className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center active:scale-95 transition-transform">
-                  <X size={15} className="text-slate-400" />
-                </button>
+              <div className="mt-2.5">
+                <div className="flex gap-2">
+                  <input type="tel" inputMode="numeric" autoFocus value={telefono} maxLength={10}
+                    onChange={e => setTelefono(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="flex-1 bg-[#f4fbf7] border-2 border-[#1A5C38]/20 focus:border-[#1A5C38] rounded-xl px-3 py-2.5 text-[15px] outline-none transition-colors" />
+                  <button onClick={guardarTelefono}
+                    className="w-11 h-11 rounded-xl bg-[#1A5C38] flex items-center justify-center active:scale-95 transition-all shadow-sm shadow-[#1A5C38]/20">
+                    <Check size={16} className="text-white" />
+                  </button>
+                  <button onClick={() => { setEditTel(false); setErrorTel(''); setTelefono(perfil.telefono || ''); }}
+                    className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center active:scale-95 transition-transform">
+                    <X size={15} className="text-slate-400" />
+                  </button>
+                </div>
+                {errorTel && <p className="text-[11.5px] text-red-500 font-medium mt-1.5">{errorTel}</p>}
               </div>
             )}
           </div>

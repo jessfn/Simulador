@@ -290,7 +290,14 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
       sexo, fecha_nac, fuente,
       producer_id_existente,
     } = req.body;
-    const fechaNacValida = fecha_nac && !Number.isNaN(Date.parse(fecha_nac)) ? fecha_nac : null;
+    // MEN (revisión Fase 5, 2026-09-22): antes solo se validaba que la fecha
+    // fuera parseable — una fecha futura o del siglo pasado (año 1850, por
+    // ejemplo) pasaba directo a producer.fecha_nacimiento sin detectarse.
+    const fechaNacParsed = fecha_nac ? Date.parse(fecha_nac) : NaN;
+    const HACE_100_ANIOS = Date.now() - 100 * 365.25 * 24 * 60 * 60 * 1000;
+    const fechaNacValida = !Number.isNaN(fechaNacParsed) && fechaNacParsed <= Date.now() && fechaNacParsed >= HACE_100_ANIOS
+      ? fecha_nac
+      : null;
 
     if (!producer_id_existente) {
       if (!curp || String(curp).trim().length !== 18) {
@@ -771,6 +778,15 @@ router.post('/perfil/cambiar-password', authMiddleware, requiereCapturista, asyn
     const passwordValido = await bcrypt.compare(password_actual, usuario.rows[0].password_hash);
     if (!passwordValido) {
       res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+      return;
+    }
+
+    // MEN (revisión Fase 5, 2026-09-22): sin este chequeo, un técnico con
+    // debe_cambiar_pass=true podía "cambiar" la contraseña a la misma que
+    // ya tenía y el gate de CRIT-05 se daba por satisfecho sin rotación real.
+    const mismaPassword = await bcrypt.compare(password_nueva, usuario.rows[0].password_hash);
+    if (mismaPassword) {
+      res.status(400).json({ error: 'La nueva contraseña debe ser diferente a la actual' });
       return;
     }
 

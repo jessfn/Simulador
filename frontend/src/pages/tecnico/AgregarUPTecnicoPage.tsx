@@ -73,7 +73,7 @@ export default function AgregarUPTecnicoPage() {
   const [coincideArea, setCoincideArea] = useState<boolean | null>(null);
   const [areaReal, setAreaReal] = useState('');
 
-  const [resultado, setResultado] = useState<{ producer_id: number; up_id?: number; nombreProductor: string } | null>(null);
+  const [resultado, setResultado] = useState<{ producer_id: number; up_id?: number; nombreProductor: string; encuestaAplicable: boolean } | null>(null);
 
   useEffect(() => {
     fetch(`${BASE}/auth/states`)
@@ -156,6 +156,10 @@ export default function AgregarUPTecnicoPage() {
           producer_id: Number(producerIdParam),
           up_id: res?.up_id ?? res?.up?.up_id,
           nombreProductor: state?.nombreProductor || 'Productor',
+          // MEN (revisión Fase 5, 2026-09-22): este endpoint no devuelve
+          // encuesta_aplicable — se usa el mismo heurístico de estado que
+          // antes como mejor aproximación disponible aquí.
+          encuestaAplicable: estadoUp.trim().toLowerCase() === 'sinaloa',
         });
       } else {
         // El backend (POST /api/tecnico/registro-alterno) lee estos campos
@@ -183,6 +187,12 @@ export default function AgregarUPTecnicoPage() {
           producer_id: res?.producer_id,
           up_id: res?.up_id,
           nombreProductor: `${state.nombres || ''} ${state.apellido_paterno || ''}`.trim(),
+          // MEN (revisión Fase 5, 2026-09-22): antes se re-derivaba con un
+          // match de texto sobre el nombre del estado elegido en el
+          // formulario ('sinaloa'), inconsistente con la regla real
+          // (state_id='25') que ya usa el backend en determinarContextoTerritorial.
+          // Se usa directamente lo que el backend ya calculó y devolvió.
+          encuestaAplicable: !!res?.encuesta_aplicable,
         });
       }
       try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignorar */ }
@@ -208,7 +218,7 @@ export default function AgregarUPTecnicoPage() {
         </p>
 
         <div className="w-full max-w-sm mt-8 space-y-2.5">
-          {estadoUp.trim().toLowerCase() === 'sinaloa' && (
+          {resultado.encuestaAplicable && (
             <button
               onClick={() => navigate(`/tecnico/productor/${resultado.producer_id}/encuesta`, { state: { nombreProductor: resultado.nombreProductor } })}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-2xl font-bold text-[14.5px] active:scale-[0.98] transition-all">

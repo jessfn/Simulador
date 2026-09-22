@@ -150,7 +150,7 @@ export default function LoginTecnicoPage() {
               {avisoCambioPass && (
                 <div className="p-3 bg-amber-500/15 ring-1 ring-amber-400/30 rounded-xl text-amber-200 text-sm flex items-start gap-2">
                   <Info size={15} className="shrink-0 mt-0.5" />
-                  <span>Por seguridad, deberás cambiar tu contraseña próximamente.</span>
+                  <span>Por seguridad, deberás cambiar tu contraseña antes de continuar.</span>
                 </div>
               )}
 
