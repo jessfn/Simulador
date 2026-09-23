@@ -142,7 +142,7 @@ const BASE_ESTADO_REGISTRO = import.meta.env.VITE_API_URL || 'http://localhost:3
 // Rutas del propio flujo de completar registro: siempre accesibles aunque
 // falte ubicación o ciclo (si no, nadie podría completarlos — ticket 05,
 // "evitar bloqueo circular").
-const RUTAS_COMPLETAR_REGISTRO = ['/productor/ubicacion', '/productor/ciclo'];
+const RUTAS_COMPLETAR_REGISTRO = ['/productor/ubicacion', '/productor/ciclo', '/productor/ups/nueva'];
 
 interface EstadoRegistroProductor {
   requiere_ubicacion: boolean;

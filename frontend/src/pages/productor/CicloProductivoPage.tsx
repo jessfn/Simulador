@@ -369,6 +369,9 @@ export default function CicloProductivoPage() {
         {/* Contenido */}
         <div className="flex-1 overflow-y-auto w-full pb-safe z-10">
           <div className="w-full max-w-xl mx-auto px-4 sm:px-6 pt-4 mb-8">
+            <p className="text-[13px] text-slate-500 font-medium px-1 mb-3 leading-snug">
+              Elige la parcela donde vas a registrar el ciclo. Si tienes otra parcela que aún no aparece, agrégala abajo.
+            </p>
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-2">
               <div className="space-y-1.5 p-1.5">
                 {todasLasUPs.map((up, i) => (
@@ -400,6 +403,13 @@ export default function CicloProductivoPage() {
                 ))}
               </div>
             </div>
+
+            <button
+              onClick={() => navigate('/productor/ups/nueva')}
+              className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#1A5C38]/40 bg-white/60 py-4 text-[14px] font-bold text-[#1A5C38] hover:bg-white hover:border-[#1A5C38] active:scale-[0.98] transition-all"
+            >
+              <span className="text-xl leading-none">+</span> Agregar otra parcela
+            </button>
           </div>
         </div>
       </div>
