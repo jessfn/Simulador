@@ -1,11 +1,8 @@
 ﻿import { useState, useEffect } from 'react';
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend,
-} from 'recharts';
+import GraficaTendenciaPrecios from './GraficaTendenciaPrecios';
 import { 
   RefreshCw, Wheat, Store, Globe, DollarSign, 
-  Clock, AlertTriangle, Activity, Download, Upload, ShieldCheck, Check
+  Clock, AlertTriangle, Download, Upload, ShieldCheck, Check
 } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -421,40 +418,7 @@ export default function PreciosAdminPage() {
             </div>
           )}
 
-          {/* Gráfica 30d */}
-          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity size={14} className="text-emerald-500" />
-                <h3 className="text-[12px] font-bold text-gray-900 uppercase tracking-wide">Gráfica Tendencia Histórica (30 días)</h3>
-              </div>
-              <span className="text-[10px] text-gray-500">Base: MXN/ton</span>
-            </div>
-
-            {series.length === 0 ? (
-              <div className="flex items-center justify-center h-52">
-                <RefreshCw size={24} className="text-emerald-500 animate-spin" />
-              </div>
-            ) : (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={series} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff/10" vertical={false} />
-                    <XAxis dataKey="fecha" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} tickFormatter={v => `$${(Number(v)/1000).toFixed(1)}k`} tickLine={false} axisLine={false} width={45} />
-                    <Tooltip
-                      formatter={(v: any) => [`$${Number(v || 0).toLocaleString('es-MX')} MXN/t`]}
-                      contentStyle={{ borderRadius: 12, border: 'none', backgroundColor: '#0d131a', color: '#fff', fontSize: 12 }}
-                    />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 10 }} />
-                    <Line type="monotone" name="Precio Compra" dataKey="precio_compra" stroke="#1A5C38" strokeWidth={2} dot={false} connectNulls />
-                    <Line type="monotone" name="Margen Negociación" dataKey="margen_negociacion" stroke="#2563eb" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="4 4" />
-                    <Line type="monotone" name="Precio Venta" dataKey="precio_venta" stroke="#d97706" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="3 3" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
+          <GraficaTendenciaPrecios series={series} />
 
           {/* Bodegas que publicaron hoy */}
           <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 space-y-4">
