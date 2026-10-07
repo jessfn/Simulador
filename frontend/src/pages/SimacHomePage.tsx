@@ -105,6 +105,7 @@ export default function SimacHomePage() {
 
   return (
     <div className={`sh-root${saliendo ? ' saliendo' : ''}`}>
+      <div className="sh-estado" aria-hidden="true" />
       <header className="sh-top">
         <div className="in">
           <div className="sh-logos">

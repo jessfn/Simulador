@@ -32,16 +32,22 @@
       }
     </style>
     <script>
-      // Síncrono: evita flash de fondo crema al abrir la app sin sesión (WelcomePage).
-      // Si no hay token el fondo arranca en verde oscuro antes de que React monte.
+      // Síncrono: fija desde el primer pixel el color de fondo según la pantalla, para que no
+      // haya un cambio de color (que los celulares animan como desvanecido) al montar React.
+      //  - Inicio de SIMAC (sin sesión): guinda.   - Maíz: fondo verde oscuro.
+      //  - Otras pantallas sin sesión: verde oscuro (como antes).
       try {
-        if (!localStorage.getItem('simac_token')) {
-          document.documentElement.style.background = '#092213';
-          document.body && (document.body.style.background = '#092213');
-        }
+        var p = location.pathname.replace(/\/+$/, '') || '/';
+        var token = localStorage.getItem('simac_token');
+        var guinda = !token && (p === '/' || p === '/inicio');
+        var maiz = p === '/bienvenida';
+        var bg = guinda ? '#611232' : (!token || maiz) ? '#092213' : '';
+        if (bg) document.documentElement.style.background = bg;
+        window.__simacTema = (guinda || maiz) ? '#611232' : null;
       } catch(e) {}
     </script>
     <meta name="theme-color" content="#1A5C38" />
+    <script>if (window.__simacTema) document.querySelector('meta[name="theme-color"]').setAttribute('content', window.__simacTema);</script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

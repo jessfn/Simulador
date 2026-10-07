@@ -5,6 +5,7 @@
   --titulo:"Patria","Iowan Old Style","Palatino Linotype",Georgia,serif;
   --texto:"Noto Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   --pad:clamp(14px,3.6vw,36px);
+  --sat:env(safe-area-inset-top,0px);
   position:absolute;inset:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   display:flex;flex-direction:column;color:#fff;background:var(--verde-0);
   font-family:var(--texto);-webkit-font-smoothing:antialiased;
@@ -15,7 +16,7 @@
 
 /* Barras guinda */
 .sh-top,.sh-bottom{background:var(--guinda);position:relative;z-index:5;flex-shrink:0}
-.sh-top{padding-top:env(safe-area-inset-top);border-bottom:2px solid var(--dorado)}
+.sh-top{padding-top:var(--sat);border-bottom:2px solid var(--dorado)}
 .sh-bottom{padding-bottom:env(safe-area-inset-bottom);border-top:2px solid var(--dorado)}
 .sh-top .in{max-width:1200px;margin:0 auto;padding:11px var(--pad);display:flex;align-items:center;justify-content:center;gap:12px}
 .sh-logos{display:flex;align-items:center;justify-content:center;gap:clamp(12px,2.4vw,22px);min-width:0}
@@ -25,6 +26,9 @@
 .sh-logos .sep{width:1px;align-self:stretch;min-height:22px;background:rgba(255,255,255,.35)}
 .sh-bottom .in{max-width:1200px;margin:0 auto;padding:10px var(--pad);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 20px;font-size:clamp(11px,1.3vw,12.5px);color:rgba(255,255,255,.8)}
 .sh-bottom b{font-family:var(--titulo);font-size:clamp(14px,1.8vw,16px);color:#fff;margin-right:8px}
+
+/* Franja sólida bajo la barra de estado del teléfono (nunca se ve fondo ni desvanecido) */
+.sh-estado{position:fixed;top:0;left:0;right:0;height:var(--sat);background:var(--guinda);z-index:60;pointer-events:none}
 
 /* Escenario */
 .sh-main{position:relative;flex:1 0 auto;display:flex;flex-direction:column;isolation:isolate;background:#092213}
@@ -40,13 +44,12 @@
 .sh-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
 
 .sh-stage{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(22px,min(5vw,5vh),56px) var(--pad) clamp(18px,min(3vw,3vh),34px)}
-.sh-chip{display:inline-flex;align-items:center;gap:8px;font-size:clamp(9px,1.2vw,11.5px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dorado-2);padding:6px 12px;border-radius:14px;line-height:1.35;background:rgba(0,0,0,.28);border:1px solid rgba(188,149,92,.4);backdrop-filter:blur(6px)}
+.sh-chip{display:inline-flex;align-items:center;gap:8px;font-size:clamp(9px,1.2vw,11.5px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dorado-2);padding:6px 12px;border-radius:14px;line-height:1.35;background:rgba(6,24,15,.55);border:1px solid rgba(188,149,92,.4);}
 .sh-chip::before{content:"";flex-shrink:0;width:6px;height:6px;border-radius:50%;background:var(--dorado);box-shadow:0 0 10px var(--dorado)}
 .sh-titulo{position:relative;margin:clamp(8px,1.6vw,16px) 0 0;line-height:.95}
-.sh-titulo h1{margin:0;font-family:var(--titulo);font-weight:700;font-size:clamp(56px,min(17vw,20vh),178px);letter-spacing:.015em;line-height:1;
-  background:linear-gradient(180deg,#ffffff 0%,#dcffe9 42%,#86eab0 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 4px 18px rgba(0,0,0,.5))}
-.sh-lema{margin:clamp(6px,1.2vw,12px) 0 0;font-size:clamp(12.5px,1.8vw,17px);font-weight:600;letter-spacing:.02em;color:rgba(255,255,255,.92);max-width:640px;line-height:1.45;text-wrap:balance}
+.sh-titulo h1{margin:0;font-family:var(--titulo);font-weight:700;font-size:clamp(40px,min(11vw,14vh),108px);letter-spacing:.02em;line-height:1;
+  background:linear-gradient(180deg,#ffffff 0%,#dcffe9 45%,#86eab0 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.sh-lema{margin:clamp(4px,.8vw,8px) 0 0;font-size:clamp(11px,1.25vw,13.5px);font-weight:500;letter-spacing:.03em;color:rgba(255,255,255,.88);max-width:520px;line-height:1.45;text-wrap:balance}
 .sh-greca{display:flex;align-items:center;gap:10px;margin:clamp(14px,2.4vw,24px) 0 clamp(12px,2vw,20px);color:var(--dorado)}
 .sh-greca::before,.sh-greca::after{content:"";width:clamp(36px,9vw,90px);height:1px;background:linear-gradient(90deg,transparent,var(--dorado))}
 .sh-greca::after{transform:scaleX(-1)}

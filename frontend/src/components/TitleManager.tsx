@@ -117,32 +117,33 @@ export function tituloDePagina(pathname: string): string {
 }
 
 // Color de la barra de estado del celular y del fondo de la página por pantalla.
-// Evita que asome blanco arriba (o al jalar la pantalla) en el inicio de SIMAC y en Maíz.
+// SIMAC y Maíz comparten el mismo color de barra de estado (guinda): al pasar de una a otra
+// no cambia, así no hay desvanecido. Evita también que asome blanco arriba.
+const COLOR_BARRA_ESTADO = '#611232';
+const COLOR_BARRA_NORMAL = '#1A5C38';
 const TEMAS: Array<[RegExp, string]> = [
   [/^\/inicio$/, '#611232'],
   [/^\/bienvenida$/, '#092213'],
 ];
 
-interface Base { tema: string | null; htmlBg: string; bodyBg: string }
-let base: Base | null = null;
+function fondoPorDefecto(): string {
+  try { return localStorage.getItem('simac_token') ? '' : '#092213'; } catch { return ''; }
+}
 
 function aplicarColorDeMarco(pathname: string) {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   const html = document.documentElement;
   const body = document.body;
-  if (!base) {
-    base = { tema: meta?.getAttribute('content') ?? null, htmlBg: html.style.background, bodyBg: body.style.background };
-  }
   const ruta = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
   const tema = TEMAS.find(([patron]) => patron.test(ruta));
   if (tema) {
-    meta?.setAttribute('content', tema[1]);
+    meta?.setAttribute('content', COLOR_BARRA_ESTADO);
     html.style.background = tema[1];
     body.style.background = tema[1];
   } else {
-    if (base.tema) meta?.setAttribute('content', base.tema);
-    html.style.background = base.htmlBg;
-    body.style.background = base.bodyBg;
+    meta?.setAttribute('content', COLOR_BARRA_NORMAL);
+    html.style.background = fondoPorDefecto();
+    body.style.background = '';
   }
 }
 

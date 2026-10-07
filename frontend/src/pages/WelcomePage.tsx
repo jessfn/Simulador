@@ -228,7 +228,7 @@ export default function WelcomePage() {
       style={{ position: 'fixed', inset: 0, overscrollBehavior: 'none' }}
     >
       {/* Status bar color band — cubre safe-area-inset-top en iOS */}
-      <div className="fixed top-0 inset-x-0 z-[999] bg-[#092213]" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="fixed top-0 inset-x-0 z-[999] bg-[#611232]" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
 
       {/* ── LEFT PANEL — corn illustration (hidden on mobile) ── */}
       <div className="hidden lg:flex lg:w-[55%] relative flex-col overflow-hidden">
