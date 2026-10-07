@@ -7,6 +7,7 @@ import { LayoutTecnico } from './components/LayoutTecnico';
 import { useAuthStore } from './store/auth';
 
 import WelcomePage from './pages/WelcomePage';
+import SimacHomePage from './pages/SimacHomePage';
 import B01Login from './pages/B01Login';
 import B02Register from './pages/B02Register';
 
@@ -269,7 +270,7 @@ function RequireVista({ vista, soloAdmin, children }: { vista?: string; soloAdmi
 
 function SmartRedirect() {
   const { isAuthenticated, user } = useAuthStore();
-  if (!isAuthenticated) return <Navigate to="/bienvenida" replace />;
+  if (!isAuthenticated) return <Navigate to="/inicio" replace />;
   if (user?.rol === 'productor') return <Navigate to="/productor" replace />;
   if (user?.rol === 'capturista') return <Navigate to="/tecnico" replace />;
   if (isAdminPanelUser(user)) return <Navigate to="/admin" replace />;
@@ -277,6 +278,7 @@ function SmartRedirect() {
 }
 
 export const router = createBrowserRouter([
+  { path: '/inicio', element: <GuestOnly><SimacHomePage /></GuestOnly> },
   { path: '/bienvenida', element: <GuestOnly><WelcomePage /></GuestOnly> },
   { path: '/login', element: <GuestOnly><B01Login /></GuestOnly> },
   { path: '/registro', element: <GuestOnly><B02Register /></GuestOnly> },

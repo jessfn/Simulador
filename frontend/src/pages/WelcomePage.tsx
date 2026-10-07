@@ -293,13 +293,13 @@ export default function WelcomePage() {
             <div className="w-[72px] h-[72px] lg:w-20 lg:h-20 rounded-[22px] lg:rounded-[26px] bg-white/10 backdrop-blur-xl ring-1 ring-white/20 flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.4)] mb-4">
               <img
                 src="/icono.png"
-                alt="SIMAC"
+                alt="Maíz"
                 className="w-12 h-12 lg:w-14 lg:h-14 rounded-[14px]"
                 onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             </div>
             <h1 className="text-[34px] lg:text-[38px] font-black text-white tracking-[-1px] leading-none">
-              SIMAC
+              Maíz
             </h1>
             <p className="text-[13px] text-emerald-400/70 font-semibold mt-1.5 tracking-[0.12em] uppercase text-center">
               Plan Nacional Maíz 2026

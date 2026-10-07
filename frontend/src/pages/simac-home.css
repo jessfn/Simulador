@@ -1,0 +1,98 @@
+.sh-root{
+  --guinda:#611232; --guinda-2:#4a0d26;
+  
+  --dorado:#BC955C; --dorado-2:#e3c08a;
+  --titulo:"Patria","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --pad:clamp(14px,3.6vw,36px);
+  position:absolute;inset:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  display:flex;flex-direction:column;color:#fff;background:var(--verde-0);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;
+}
+.sh-root *{box-sizing:border-box}
+:where(.sh-root) button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+.sh-root :focus-visible{outline:3px solid var(--dorado-2);outline-offset:3px;border-radius:12px}
+
+/* Barras guinda */
+.sh-top,.sh-bottom{background:var(--guinda);position:relative;z-index:5;flex-shrink:0}
+.sh-top{padding-top:env(safe-area-inset-top);border-bottom:2px solid var(--dorado)}
+.sh-bottom{padding-bottom:env(safe-area-inset-bottom);border-top:2px solid var(--dorado)}
+.sh-top .in{max-width:1200px;margin:0 auto;padding:11px var(--pad);display:flex;align-items:center;justify-content:center;gap:12px}
+.sh-logos{display:flex;align-items:center;justify-content:center;gap:clamp(12px,2.4vw,22px);min-width:0}
+.sh-logos img{display:block;filter:brightness(0) invert(1);width:auto}
+.sh-logos .gob{height:clamp(28px,4.4vw,42px)}
+.sh-logos .agri{height:clamp(26px,4vw,38px)}
+.sh-logos .sep{width:1px;align-self:stretch;min-height:22px;background:rgba(255,255,255,.35)}
+.sh-bottom .in{max-width:1200px;margin:0 auto;padding:10px var(--pad);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 20px;font-size:clamp(11px,1.3vw,12.5px);color:rgba(255,255,255,.8)}
+.sh-bottom b{font-family:var(--titulo);font-size:clamp(14px,1.8vw,16px);color:#fff;margin-right:8px}
+
+/* Escenario */
+.sh-main{position:relative;flex:1 0 auto;display:flex;flex-direction:column;isolation:isolate;background:#092213}
+/* Fondo idéntico al del inicio de Maíz: foto de campo + capas verdes oscuras */
+.sh-fondo{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#092213}
+.sh-fondo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.42) saturate(.6)}
+.sh-fondo i{position:absolute;inset:0;display:block}
+.sh-fondo .c1{background:linear-gradient(to bottom,rgba(9,34,19,.65),rgba(11,43,24,.70),rgba(20,71,40,.75));mix-blend-mode:color}
+.sh-fondo .c2{background:linear-gradient(to bottom,rgba(9,34,19,.25),rgba(11,43,24,.30),rgba(20,71,40,.25))}
+.sh-fondo .c3{background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(34,197,94,.10),transparent)}
+.sh-fondo .c4{background:linear-gradient(to bottom,rgba(9,34,19,.70),transparent,rgba(9,34,19,.80))}
+.sh-hero{position:relative;z-index:1;flex:1 0 auto;display:flex;flex-direction:column}
+.sh-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+
+.sh-stage{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(22px,min(5vw,5vh),56px) var(--pad) clamp(18px,min(3vw,3vh),34px)}
+.sh-chip{display:inline-flex;align-items:center;gap:8px;font-size:clamp(9px,1.2vw,11.5px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dorado-2);padding:6px 12px;border-radius:14px;line-height:1.35;background:rgba(0,0,0,.28);border:1px solid rgba(188,149,92,.4);backdrop-filter:blur(6px)}
+.sh-chip::before{content:"";flex-shrink:0;width:6px;height:6px;border-radius:50%;background:var(--dorado);box-shadow:0 0 10px var(--dorado)}
+.sh-titulo{position:relative;margin:clamp(8px,1.6vw,16px) 0 0;line-height:.95}
+.sh-titulo h1{margin:0;font-family:var(--titulo);font-weight:700;font-size:clamp(54px,min(15vw,19vh),168px);letter-spacing:-.015em;
+  background:linear-gradient(180deg,#fff 10%,var(--dorado-2) 62%,var(--dorado) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 28px rgba(0,0,0,.45))}
+.sh-eco{position:absolute;inset:0;font-family:var(--titulo);font-weight:700;font-size:clamp(54px,min(15vw,19vh),168px);letter-spacing:-.015em;color:transparent;-webkit-text-stroke:1px rgba(188,149,92,.55);transform:translate(clamp(3px,.7vw,8px),clamp(3px,.7vw,8px));z-index:-1}
+.sh-lema{margin:clamp(6px,1.2vw,12px) 0 0;font-size:clamp(12.5px,1.8vw,17px);font-weight:600;letter-spacing:.02em;color:rgba(255,255,255,.92);max-width:640px;line-height:1.45;text-wrap:balance}
+.sh-greca{display:flex;align-items:center;gap:10px;margin:clamp(14px,2.4vw,24px) 0 clamp(12px,2vw,20px);color:var(--dorado)}
+.sh-greca::before,.sh-greca::after{content:"";width:clamp(36px,9vw,90px);height:1px;background:linear-gradient(90deg,transparent,var(--dorado))}
+.sh-greca::after{transform:scaleX(-1)}
+.sh-greca span{font-size:clamp(10px,1.2vw,11.5px);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--dorado-2)}
+
+/* Cultivos */
+.sh-cultivos{display:flex;flex-wrap:wrap;align-items:stretch;justify-content:center;gap:clamp(8px,1.4vw,14px);max-width:640px}
+.sh-cultivo{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  width:clamp(92px,15vw,118px);padding:14px 8px 12px;border-radius:18px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.sh-cultivo .ico{width:clamp(40px,6vw,48px);height:clamp(40px,6vw,48px);display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.08);flex-shrink:0}
+.sh-cultivo .ico svg{width:64%;height:64%;display:block}
+.sh-cultivo .nombre{font-family:var(--titulo);font-weight:700;font-size:clamp(15px,2vw,18px);line-height:1}
+.sh-cultivo .tag{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dorado-2);opacity:.85}
+.sh-cultivo.off{color:rgba(255,255,255,.7);cursor:default!important}
+.sh-cultivo.on{width:clamp(138px,22vw,172px);padding:16px 12px 14px;gap:8px;order:-1;flex-basis:100%;max-width:clamp(138px,22vw,172px);margin-inline:auto;
+  background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05));border:1.5px solid var(--dorado);
+  box-shadow:0 18px 44px rgba(0,0,0,.4);animation:sh-latido 2.8s ease-in-out infinite;transition:transform .22s,border-color .22s}
+.sh-cultivo.on .ico{width:clamp(64px,9.5vw,80px);height:clamp(72px,11vw,92px);border-radius:0;background:transparent}
+.sh-cultivo.on .ico img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 6px 14px rgba(0,0,0,.4))}
+.sh-cultivo.on .nombre{font-size:clamp(22px,3.2vw,28px);color:#fff}
+.sh-cultivo.on .tag{display:flex;align-items:center;gap:6px;color:#bff0d4;opacity:1}
+.sh-cultivo.on .tag::before{content:"";width:7px;height:7px;border-radius:50%;background:#4ade80;animation:sh-punto 1.8s infinite}
+.sh-cultivo.on:hover{transform:translateY(-5px) scale(1.03);border-color:var(--dorado-2)}
+.sh-cultivo.on .go{position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;background:var(--dorado);color:#2a0716;display:grid;place-items:center;box-shadow:0 6px 14px rgba(0,0,0,.4);transition:transform .2s}
+.sh-cultivo.on:hover .go{transform:translateX(2px) rotate(-8deg)}
+
+/* Cinta */
+.sh-cinta{position:relative;z-index:3;overflow:hidden;border-block:1px solid rgba(188,149,92,.35);background:rgba(0,0,0,.3);backdrop-filter:blur(6px);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.sh-pista{display:flex;width:max-content;animation:sh-marquee 38s linear infinite}
+.sh-pista span{display:inline-flex;align-items:center;gap:clamp(14px,3vw,28px);padding:9px clamp(7px,1.5vw,14px);font-size:clamp(10.5px,1.3vw,12.5px);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--dorado-2);white-space:nowrap}
+.sh-pista span::after{content:"◆";font-size:8px;color:var(--dorado)}
+
+.sh-rise{opacity:0;animation:sh-rise .8s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes sh-rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes sh-latido{0%,100%{box-shadow:0 0 0 0 rgba(188,149,92,.45),0 18px 44px rgba(0,0,0,.4)}50%{box-shadow:0 0 0 12px rgba(188,149,92,0),0 18px 44px rgba(0,0,0,.4)}}
+@keyframes sh-punto{0%{box-shadow:0 0 0 0 rgba(74,222,128,.7)}100%{box-shadow:0 0 0 9px rgba(74,222,128,0)}}
+@keyframes sh-marquee{to{transform:translateX(-50%)}}
+
+@media (max-width:640px){
+  .sh-cultivos{display:grid;grid-template-columns:repeat(2,1fr);width:100%;max-width:300px;gap:10px}
+  .sh-cultivo{width:auto;min-width:0;padding:12px 4px 10px}
+  .sh-cultivo.on{grid-column:1/-1;justify-self:center;width:156px;max-width:none;flex-basis:auto;order:-1;margin-bottom:4px}
+  .sh-chip{letter-spacing:.1em;font-size:9px}
+}
+@media (max-width:360px){.sh-logos .sep{display:none}}
+@media (min-width:1600px){.sh-cultivos{max-width:720px}}
+@media (prefers-reduced-motion:reduce){.sh-root *{animation:none!important;transition:none!important}.sh-rise{opacity:1}}
