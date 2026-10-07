@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './simac-home.css';
 
@@ -93,9 +93,18 @@ export default function SimacHomePage() {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useRedCanvas(canvasRef);
+  const [saliendo, setSaliendo] = useState(false);
+
+  const irAMaiz = () => {
+    if (saliendo) return;
+    const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (sinMovimiento) { navigate('/bienvenida'); return; }
+    setSaliendo(true);
+    window.setTimeout(() => navigate('/bienvenida'), 220);
+  };
 
   return (
-    <div className="sh-root">
+    <div className={`sh-root${saliendo ? ' saliendo' : ''}`}>
       <header className="sh-top">
         <div className="in">
           <div className="sh-logos">
@@ -125,7 +134,7 @@ export default function SimacHomePage() {
           <div className="sh-greca sh-rise" style={{ animationDelay: '.36s' }}><span>Elige un cultivo</span></div>
 
           <div className="sh-cultivos sh-rise" style={{ animationDelay: '.45s' }}>
-            <button className="sh-cultivo on" onClick={() => navigate('/bienvenida')} aria-label="Entrar a Maíz">
+            <button className="sh-cultivo on" onClick={irAMaiz} aria-label="Entrar a Maíz">
               <span className="go" aria-hidden="true">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </span>

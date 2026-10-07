@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wheat, Building2, ClipboardCheck, ChevronRight, X, LogIn, UserPlus } from 'lucide-react';
+import { Wheat, Building2, ClipboardCheck, ChevronRight, ChevronLeft, X, LogIn, UserPlus } from 'lucide-react';
 
 type Menu = null | 'productor' | 'bodega';
 
@@ -178,6 +178,22 @@ function CornCanvas() {
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
 }
 
+/* ── Botón para volver al inicio de SIMAC ── */
+function BotonVolverSimac({ onClick, className = '', style }: { onClick: () => void; className?: string; style?: React.CSSProperties }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Volver al inicio de SIMAC"
+      style={style}
+      className={`inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20 text-white text-[13px] font-semibold pl-2.5 pr-4 py-2 transition-all hover:bg-white/20 active:scale-95 ${className}`}
+    >
+      <ChevronLeft size={17} strokeWidth={2.4} />
+      SIMAC
+    </button>
+  );
+}
+
 /* ── Main page ── */
 export default function WelcomePage() {
   const navigate = useNavigate();
@@ -212,7 +228,7 @@ export default function WelcomePage() {
       style={{ position: 'fixed', inset: 0, overscrollBehavior: 'none' }}
     >
       {/* Status bar color band — cubre safe-area-inset-top en iOS */}
-      <div className="fixed top-0 inset-x-0 z-[999] bg-[#1A5C38]" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="fixed top-0 inset-x-0 z-[999] bg-[#092213]" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
 
       {/* ── LEFT PANEL — corn illustration (hidden on mobile) ── */}
       <div className="hidden lg:flex lg:w-[55%] relative flex-col overflow-hidden">
@@ -237,7 +253,9 @@ export default function WelcomePage() {
 
         {/* Overlay content */}
         <div className="relative z-20 flex flex-col h-full px-10 py-10">
-          {/* Top badge */}
+          {/* Fila superior: volver a SIMAC + insignia */}
+          <div className="flex items-center gap-3 flex-wrap">
+          <BotonVolverSimac onClick={() => navigate('/inicio')} />
           <div
             className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 w-fit"
             style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(-10px)', transition: 'opacity 0.5s ease, transform 0.5s ease' }}
@@ -245,13 +263,14 @@ export default function WelcomePage() {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] font-bold text-emerald-300/90 tracking-widest uppercase">Plan Nacional Maíz 2026</span>
           </div>
+          </div>
 
           {/* Bottom text */}
           <div className="mt-auto">
             <div
               style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(20px)', transition: 'opacity 0.7s ease 0.15s, transform 0.7s ease 0.15s' }}
             >
-              <h2 className="text-[38px] xl:text-[46px] font-black text-white leading-tight tracking-tight">
+              <h2 className="text-[38px] xl:text-[46px] font-bold text-white leading-tight tracking-tight" style={{ fontFamily: "Patria, Georgia, serif" }}>
                 El campo mexicano<br />
                 <span className="text-emerald-400">conectado</span> al mercado
               </h2>
@@ -282,8 +301,15 @@ export default function WelcomePage() {
           <div className="absolute inset-0 bg-gradient-to-b from-[#092213]/70 via-transparent to-[#092213]/80" />
         </div>
 
+        {/* Volver a SIMAC (móvil y tablet) */}
+        <BotonVolverSimac
+          onClick={() => navigate('/inicio')}
+          className="lg:hidden absolute z-20"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 14 }}
+        />
+
         {/* Right panel content */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16 lg:bg-[#040f08]/0">
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16 max-lg:pt-24 lg:bg-[#040f08]/0">
 
           {/* Logo */}
           <div
@@ -298,7 +324,7 @@ export default function WelcomePage() {
                 onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             </div>
-            <h1 className="text-[34px] lg:text-[38px] font-black text-white tracking-[-1px] leading-none">
+            <h1 className="text-[38px] lg:text-[44px] font-bold text-white tracking-[-0.5px] leading-none" style={{ fontFamily: "Patria, Georgia, serif" }}>
               Maíz
             </h1>
             <p className="text-[13px] text-emerald-400/70 font-semibold mt-1.5 tracking-[0.12em] uppercase text-center">

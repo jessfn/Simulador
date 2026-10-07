@@ -3,10 +3,12 @@
   
   --dorado:#BC955C; --dorado-2:#e3c08a;
   --titulo:"Patria","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --marca:"Montserrat","Noto Sans",system-ui,sans-serif;
+  --texto:"Noto Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   --pad:clamp(14px,3.6vw,36px);
   position:absolute;inset:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   display:flex;flex-direction:column;color:#fff;background:var(--verde-0);
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;
+  font-family:var(--texto);-webkit-font-smoothing:antialiased;
 }
 .sh-root *{box-sizing:border-box}
 :where(.sh-root) button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
@@ -42,10 +44,10 @@
 .sh-chip{display:inline-flex;align-items:center;gap:8px;font-size:clamp(9px,1.2vw,11.5px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dorado-2);padding:6px 12px;border-radius:14px;line-height:1.35;background:rgba(0,0,0,.28);border:1px solid rgba(188,149,92,.4);backdrop-filter:blur(6px)}
 .sh-chip::before{content:"";flex-shrink:0;width:6px;height:6px;border-radius:50%;background:var(--dorado);box-shadow:0 0 10px var(--dorado)}
 .sh-titulo{position:relative;margin:clamp(8px,1.6vw,16px) 0 0;line-height:.95}
-.sh-titulo h1{margin:0;font-family:var(--titulo);font-weight:700;font-size:clamp(54px,min(15vw,19vh),168px);letter-spacing:-.015em;
-  background:linear-gradient(180deg,#fff 10%,var(--dorado-2) 62%,var(--dorado) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 6px 28px rgba(0,0,0,.45))}
-.sh-eco{position:absolute;inset:0;font-family:var(--titulo);font-weight:700;font-size:clamp(54px,min(15vw,19vh),168px);letter-spacing:-.015em;color:transparent;-webkit-text-stroke:1px rgba(188,149,92,.55);transform:translate(clamp(3px,.7vw,8px),clamp(3px,.7vw,8px));z-index:-1}
+.sh-titulo h1{margin:0;font-family:var(--marca);font-weight:800;font-size:clamp(46px,min(14vw,17vh),150px);letter-spacing:.02em;line-height:1;
+  background:linear-gradient(180deg,#f2fff8 0%,#9bffc6 30%,#2fe083 66%,#12a85b 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 22px rgba(52,224,131,.38)) drop-shadow(0 8px 24px rgba(0,0,0,.5))}
+.sh-eco{position:absolute;inset:0;font-family:var(--marca);font-weight:800;font-size:clamp(46px,min(14vw,17vh),150px);letter-spacing:.02em;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(120,255,185,.5);transform:translate(clamp(3px,.6vw,7px),clamp(3px,.6vw,7px));z-index:-1}
 .sh-lema{margin:clamp(6px,1.2vw,12px) 0 0;font-size:clamp(12.5px,1.8vw,17px);font-weight:600;letter-spacing:.02em;color:rgba(255,255,255,.92);max-width:640px;line-height:1.45;text-wrap:balance}
 .sh-greca{display:flex;align-items:center;gap:10px;margin:clamp(14px,2.4vw,24px) 0 clamp(12px,2vw,20px);color:var(--dorado)}
 .sh-greca::before,.sh-greca::after{content:"";width:clamp(36px,9vw,90px);height:1px;background:linear-gradient(90deg,transparent,var(--dorado))}
@@ -96,3 +98,7 @@
 @media (max-width:360px){.sh-logos .sep{display:none}}
 @media (min-width:1600px){.sh-cultivos{max-width:720px}}
 @media (prefers-reduced-motion:reduce){.sh-root *{animation:none!important;transition:none!important}.sh-rise{opacity:1}}
+
+.sh-stage{transition:opacity .22s ease,transform .22s ease}
+.sh-root.saliendo .sh-stage{opacity:0;transform:scale(.97) translateY(-6px)}
+.sh-root.saliendo .sh-cinta{opacity:0;transition:opacity .22s ease}
