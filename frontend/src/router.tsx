@@ -8,6 +8,7 @@ import { useAuthStore } from './store/auth';
 
 import WelcomePage from './pages/WelcomePage';
 import SimacHomePage from './pages/SimacHomePage';
+import TitleManager from './components/TitleManager';
 import B01Login from './pages/B01Login';
 import B02Register from './pages/B02Register';
 
@@ -277,7 +278,13 @@ function SmartRedirect() {
   return <Navigate to="/dashboard" replace />;
 }
 
-export const router = createBrowserRouter([
+function RootShell() {
+  return (<><TitleManager /><Outlet /></>);
+}
+
+export const router = createBrowserRouter([{
+  element: <RootShell />,
+  children: [
   { path: '/inicio', element: <GuestOnly><SimacHomePage /></GuestOnly> },
   { path: '/bienvenida', element: <GuestOnly><WelcomePage /></GuestOnly> },
   { path: '/login', element: <GuestOnly><B01Login /></GuestOnly> },
@@ -479,4 +486,5 @@ export const router = createBrowserRouter([
 
   { path: '/', element: <SmartRedirect /> },
   { path: '*', element: <SmartRedirect /> },
-]);
+  ],
+}]);
