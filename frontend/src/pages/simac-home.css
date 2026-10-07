@@ -38,18 +38,15 @@
 .sh-fondo i{position:absolute;inset:0;display:block}
 .sh-fondo .c1{background:linear-gradient(to bottom,rgba(9,34,19,.65),rgba(11,43,24,.70),rgba(20,71,40,.75));mix-blend-mode:color}
 .sh-fondo .c2{background:linear-gradient(to bottom,rgba(9,34,19,.25),rgba(11,43,24,.30),rgba(20,71,40,.25))}
-.sh-fondo .c3{background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(34,197,94,.10),transparent)}
-.sh-fondo .c4{background:linear-gradient(to bottom,rgba(9,34,19,.70),transparent,rgba(9,34,19,.80))}
+.sh-fondo .c4{background:linear-gradient(to top,rgba(9,34,19,.80),rgba(9,34,19,.18) 55%,rgba(9,34,19,.18))}
 .sh-hero{position:relative;z-index:1;flex:1 0 auto;display:flex;flex-direction:column}
 .sh-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
 
 .sh-stage{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(22px,min(5vw,5vh),56px) var(--pad) clamp(18px,min(3vw,3vh),34px)}
-.sh-chip{display:inline-flex;align-items:center;gap:8px;font-size:clamp(9px,1.2vw,11.5px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dorado-2);padding:6px 12px;border-radius:14px;line-height:1.35;background:rgba(6,24,15,.55);border:1px solid rgba(188,149,92,.4);}
-.sh-chip::before{content:"";flex-shrink:0;width:6px;height:6px;border-radius:50%;background:var(--dorado);box-shadow:0 0 10px var(--dorado)}
 .sh-titulo{position:relative;margin:clamp(8px,1.6vw,16px) 0 0;line-height:.95}
 .sh-titulo h1{margin:0;font-family:var(--titulo);font-weight:700;font-size:clamp(40px,min(11vw,14vh),108px);letter-spacing:.02em;line-height:1;
   background:linear-gradient(180deg,#ffffff 0%,#dcffe9 45%,#86eab0 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-.sh-lema{margin:clamp(4px,.8vw,8px) 0 0;font-size:clamp(11px,1.25vw,13.5px);font-weight:500;letter-spacing:.03em;color:rgba(255,255,255,.88);max-width:520px;line-height:1.45;text-wrap:balance}
+.sh-lema{margin:clamp(3px,.6vw,6px) 0 0;font-size:clamp(9.5px,.95vw,11.5px);font-weight:500;letter-spacing:.04em;color:rgba(255,255,255,.85);max-width:460px;line-height:1.4;text-wrap:balance}
 .sh-greca{display:flex;align-items:center;gap:10px;margin:clamp(14px,2.4vw,24px) 0 clamp(12px,2vw,20px);color:var(--dorado)}
 .sh-greca::before,.sh-greca::after{content:"";width:clamp(36px,9vw,90px);height:1px;background:linear-gradient(90deg,transparent,var(--dorado))}
 .sh-greca::after{transform:scaleX(-1)}
@@ -57,24 +54,24 @@
 
 /* Cultivos */
 .sh-cultivos{display:flex;flex-wrap:wrap;align-items:stretch;justify-content:center;gap:clamp(8px,1.4vw,14px);max-width:640px}
-.sh-cultivo{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
-  width:clamp(92px,15vw,118px);padding:14px 8px 12px;border-radius:18px;
+.sh-cultivo{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  width:clamp(80px,10.5vw,96px);padding:10px 6px 9px;border-radius:14px;
   background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.sh-cultivo .ico{width:clamp(40px,6vw,48px);height:clamp(40px,6vw,48px);display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.08);flex-shrink:0}
+.sh-cultivo .ico{width:clamp(32px,4.4vw,38px);height:clamp(32px,4.4vw,38px);display:grid;place-items:center;border-radius:11px;background:rgba(255,255,255,.08);flex-shrink:0}
 .sh-cultivo .ico svg{width:64%;height:64%;display:block}
-.sh-cultivo .nombre{font-family:var(--titulo);font-weight:700;font-size:clamp(15px,2vw,18px);line-height:1}
-.sh-cultivo .tag{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dorado-2);opacity:.85}
+.sh-cultivo .nombre{font-family:var(--titulo);font-weight:700;font-size:clamp(13px,1.6vw,15px);line-height:1}
+.sh-cultivo .tag{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dorado-2);opacity:.85}
 .sh-cultivo.off{color:rgba(255,255,255,.7);cursor:default!important}
-.sh-cultivo.on{width:clamp(138px,22vw,172px);padding:16px 12px 14px;gap:8px;order:-1;flex-basis:100%;max-width:clamp(138px,22vw,172px);margin-inline:auto;
+.sh-cultivo.on{width:clamp(112px,14vw,132px);padding:12px 8px 10px;gap:6px;order:-1;flex-basis:100%;max-width:clamp(112px,14vw,132px);margin-inline:auto;
   background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05));border:1.5px solid var(--dorado);
   box-shadow:0 18px 44px rgba(0,0,0,.4);animation:sh-latido 2.8s ease-in-out infinite;transition:transform .22s,border-color .22s}
-.sh-cultivo.on .ico{width:clamp(64px,9.5vw,80px);height:clamp(72px,11vw,92px);border-radius:0;background:transparent}
+.sh-cultivo.on .ico{width:clamp(48px,6.5vw,58px);height:clamp(54px,7.4vw,66px);border-radius:0;background:transparent}
 .sh-cultivo.on .ico img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 6px 14px rgba(0,0,0,.4))}
-.sh-cultivo.on .nombre{font-size:clamp(22px,3.2vw,28px);color:#fff}
-.sh-cultivo.on .tag{display:flex;align-items:center;gap:6px;color:#bff0d4;opacity:1}
+.sh-cultivo.on .nombre{font-size:clamp(17px,2.2vw,21px);color:#fff}
+.sh-cultivo.on .tag{font-size:8px;display:flex;align-items:center;gap:6px;color:#bff0d4;opacity:1}
 .sh-cultivo.on .tag::before{content:"";width:7px;height:7px;border-radius:50%;background:#4ade80;animation:sh-punto 1.8s infinite}
 .sh-cultivo.on:hover{transform:translateY(-5px) scale(1.03);border-color:var(--dorado-2)}
-.sh-cultivo.on .go{position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;background:var(--dorado);color:#2a0716;display:grid;place-items:center;box-shadow:0 6px 14px rgba(0,0,0,.4);transition:transform .2s}
+.sh-cultivo.on .go{position:absolute;right:6px;top:6px;width:20px;height:20px;border-radius:50%;background:var(--dorado);color:#2a0716;display:grid;place-items:center;box-shadow:0 6px 14px rgba(0,0,0,.4);transition:transform .2s}
 .sh-cultivo.on:hover .go{transform:translateX(2px) rotate(-8deg)}
 
 /* Cinta */
@@ -91,13 +88,12 @@
 @keyframes sh-marquee{to{transform:translateX(-50%)}}
 
 @media (max-width:640px){
-  .sh-cultivos{display:grid;grid-template-columns:repeat(2,1fr);width:100%;max-width:300px;gap:10px}
-  .sh-cultivo{width:auto;min-width:0;padding:12px 4px 10px}
-  .sh-cultivo.on{grid-column:1/-1;justify-self:center;width:156px;max-width:none;flex-basis:auto;order:-1;margin-bottom:4px}
-  .sh-chip{letter-spacing:.1em;font-size:9px}
+  .sh-cultivos{display:grid;grid-template-columns:repeat(2,1fr);width:100%;max-width:230px;gap:8px}
+  .sh-cultivo{width:auto;min-width:0;padding:9px 4px 8px}
+  .sh-cultivo.on{grid-column:1/-1;justify-self:center;width:120px;max-width:none;flex-basis:auto;order:-1;margin-bottom:4px}
 }
 @media (max-width:360px){.sh-logos .sep{display:none}}
-@media (min-width:1600px){.sh-cultivos{max-width:720px}}
+@media (min-width:1600px){.sh-cultivos{max-width:560px}}
 @media (prefers-reduced-motion:reduce){.sh-root *{animation:none!important;transition:none!important}.sh-rise{opacity:1}}
 
 .sh-stage{transition:opacity .22s ease,transform .22s ease}

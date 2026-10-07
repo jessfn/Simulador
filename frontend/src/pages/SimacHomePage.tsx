@@ -119,14 +119,13 @@ export default function SimacHomePage() {
       <main className="sh-main">
         <div className="sh-fondo" aria-hidden="true">
           <img src="/background-rye.jpg" alt="" />
-          <i className="c1" /><i className="c2" /><i className="c3" /><i className="c4" />
+          <i className="c1" /><i className="c2" /><i className="c4" />
         </div>
 
         <section className="sh-hero">
         <canvas ref={canvasRef} className="sh-canvas" aria-hidden="true" />
 
         <div className="sh-stage">
-          <div className="sh-chip sh-rise" style={{ animationDelay: '.05s' }}>Secretaría de Agricultura y Desarrollo Rural</div>
           <div className="sh-titulo sh-rise" style={{ animationDelay: '.15s' }}>
             <h1>SIMAC</h1>
           </div>

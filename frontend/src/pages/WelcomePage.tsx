@@ -186,7 +186,7 @@ function BotonVolverSimac({ onClick, className = '', style }: { onClick: () => v
       onClick={onClick}
       aria-label="Volver al inicio de SIMAC"
       style={style}
-      className={`inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20 text-white text-[13px] font-semibold pl-2.5 pr-4 py-2 transition-all hover:bg-white/20 active:scale-95 ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 text-white text-[13px] font-semibold pl-2.5 pr-4 py-2 transition-all hover:bg-white/25 active:scale-95 ${className}`}
     >
       <ChevronLeft size={17} strokeWidth={2.4} />
       SIMAC
@@ -294,22 +294,24 @@ export default function WelcomePage() {
           />
           {/* Deep green gradient overlay (on top to filter the image green) */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#092213]/65 via-[#0b2b18]/70 to-[#144728]/75 mix-blend-color" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#092213]/25 via-[#0b2b18]/30 to-[#144728]/25" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(34,197,94,0.10),transparent)]" />
+          <div className="absolute inset-0 bg-[#0b2b18]/30" />
           {/* Mobile canvas too */}
           <CornCanvas />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#092213]/70 via-transparent to-[#092213]/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#092213]/80 via-[#092213]/15 to-[#092213]/15" />
         </div>
 
-        {/* Volver a SIMAC (móvil y tablet) */}
-        <BotonVolverSimac
-          onClick={() => navigate('/inicio')}
-          className="lg:hidden absolute z-20"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 14 }}
-        />
+        {/* Barra superior sólida (móvil y tablet): mismo guinda de SIMAC, sin degradados */}
+        <div
+          className="lg:hidden absolute top-0 inset-x-0 z-20 bg-[#611232] border-b-2 border-[#BC955C]"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          <div className="h-[52px] flex items-center px-3.5">
+            <BotonVolverSimac onClick={() => navigate('/inicio')} />
+          </div>
+        </div>
 
         {/* Right panel content */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16 max-lg:pt-24 lg:bg-[#040f08]/0">
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16 max-lg:pt-[calc(env(safe-area-inset-top,0px)+76px)] lg:bg-[#040f08]/0">
 
           {/* Logo */}
           <div
