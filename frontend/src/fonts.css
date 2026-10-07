@@ -1,8 +1,7 @@
 /* Tipografías autoalojadas: viajan dentro de la app y el service worker las precachea,
    así cargan igual con señal débil o sin conexión.
    - Patria: tipografía institucional del Gobierno de México (títulos).
-   - Noto Sans: tipografía institucional para texto.
-   - Montserrat: marca SIMAC. */
+   - Noto Sans: tipografía institucional para texto. */
 @font-face{font-family:'Patria';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/Patria_Regular.woff2') format('woff2')}
 @font-face{font-family:'Patria';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/Patria_Bold.woff2') format('woff2')}
 
@@ -11,6 +10,3 @@
 @font-face{font-family:'Noto Sans';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/NotoSans-600.woff2') format('woff2')}
 @font-face{font-family:'Noto Sans';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/NotoSans-700.woff2') format('woff2')}
 
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/Montserrat-700.woff2') format('woff2')}
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:800;font-display:swap;src:url('/fonts/Montserrat-800.woff2') format('woff2')}
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:900;font-display:swap;src:url('/fonts/Montserrat-900.woff2') format('woff2')}

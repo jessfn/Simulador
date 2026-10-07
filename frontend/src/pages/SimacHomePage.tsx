@@ -127,7 +127,6 @@ export default function SimacHomePage() {
         <div className="sh-stage">
           <div className="sh-chip sh-rise" style={{ animationDelay: '.05s' }}>Secretaría de Agricultura y Desarrollo Rural</div>
           <div className="sh-titulo sh-rise" style={{ animationDelay: '.15s' }}>
-            <span className="sh-eco" aria-hidden="true">SIMAC</span>
             <h1>SIMAC</h1>
           </div>
           <p className="sh-lema sh-rise" style={{ animationDelay: '.28s' }}>Sistema de Información de Mercados Agrícolas y Consulta</p>
