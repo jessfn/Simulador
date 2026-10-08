@@ -56,9 +56,11 @@
   box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 10px 28px rgba(0,0,0,.28);
   -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
   transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
-.sh-card .fila{display:inline-flex;align-items:center;justify-content:center;gap:11px}
-.sh-card .icono{display:block;flex:none;width:30px;height:30px;object-fit:contain}
-.sh-card .nombre{font-family:var(--titulo);font-weight:700;font-size:21px;line-height:1}
+.sh-card .fila{display:inline-flex;align-items:center;justify-content:center;gap:0;font-size:21px;line-height:1}
+.sh-card .icono{display:block;flex:none;width:1em;height:1em;object-fit:contain;color:rgba(255,255,255,.8)}
+.sh-card--on .icono{width:auto;height:1.05em;filter:brightness(0) invert(1);opacity:.82}
+.sh-card .nombre{display:inline-flex;align-items:center;font-family:var(--titulo);font-weight:700;font-size:1em;line-height:1}
+.sh-card .nombre::before{content:"";flex:none;width:1px;height:.95em;margin:0 .55em;background:rgba(255,255,255,.4)}
 .sh-card .tag{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.58)}
 .sh-card .tag svg{width:11px;height:11px;flex:none}
 .sh-card .go{display:none}
@@ -66,8 +68,8 @@
 .sh-card--on{min-height:92px;border-color:rgba(188,149,92,.8);
   background:linear-gradient(135deg,rgba(52,211,153,.24),rgba(255,255,255,.05) 62%);
   box-shadow:0 0 0 1px rgba(188,149,92,.22),0 16px 40px rgba(0,0,0,.36),0 0 36px rgba(52,211,153,.14)}
-.sh-card--on .icono{width:38px;height:44px}
-.sh-card--on .nombre{font-size:27px;color:#fff}
+.sh-card--on .fila{font-size:27px}
+.sh-card--on .nombre{color:#fff}
 .sh-card--on .tag{color:#a5f3c8}
 .sh-card--on .tag::before{content:"";width:7px;height:7px;border-radius:50%;background:#4ade80;animation:sh-punto 1.8s infinite}
 .sh-card--on .go{display:grid;place-items:center;position:absolute;right:14px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:var(--dorado);color:#2a0716;box-shadow:0 6px 14px rgba(0,0,0,.35);transition:transform .22s ease}
@@ -80,21 +82,17 @@
 @media (min-width:720px){
   .sh-cultivos{grid-template-columns:1.5fr 1fr 1fr;gap:14px;width:min(100%,720px)}
   .sh-card{min-height:118px;padding:16px 46px}
-  .sh-card .nombre{font-size:22px}
-  .sh-card .icono{width:32px;height:32px}
+  .sh-card .fila{font-size:22px}
   .sh-card--on{min-height:118px}
-  .sh-card--on .nombre{font-size:30px}
-  .sh-card--on .icono{width:42px;height:48px}
+  .sh-card--on .fila{font-size:30px}
   .sh-card--on .go{right:12px;width:30px;height:30px}
 }
 @media (min-width:1280px){
   .sh-cultivos{width:min(100%,800px);gap:16px}
   .sh-card{min-height:132px}
   .sh-card--on{min-height:132px}
-  .sh-card .nombre{font-size:24px}
-  .sh-card--on .nombre{font-size:32px}
-  .sh-card .icono{width:36px;height:36px}
-  .sh-card--on .icono{width:46px;height:52px}
+  .sh-card .fila{font-size:24px}
+  .sh-card--on .fila{font-size:32px}
 }
 
 /* Cinta */

@@ -176,7 +176,7 @@ export default function SimacHomePage() {
             {PROXIMOS.map(c => (
               <div key={c.nombre} className="sh-card sh-card--off" aria-label={`${c.nombre}, próximamente`}>
                 <span className="fila">
-                  <svg className="icono" viewBox="0 0 48 48" fill="none" stroke="#e3c08a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">{c.icono}</svg>
+                  <svg className="icono" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">{c.icono}</svg>
                   <span className="nombre">{c.nombre}</span>
                 </span>
                 <span className="tag">

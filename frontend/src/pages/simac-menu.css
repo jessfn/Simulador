@@ -33,9 +33,10 @@
 .sm-cuerpo{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:18px 18px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:18px}
 
 .sm-cultivo{display:flex;flex-direction:column;gap:14px}
-.sm-cultivo-cab{display:flex;align-items:center;gap:10px}
-.sm-cultivo-cab img{height:34px;width:auto}
-.sm-cultivo-cab h3{margin:0;font-family:var(--titulo);font-size:28px;line-height:1}
+.sm-cultivo-cab{display:flex;align-items:center;gap:.4em;font-size:28px}
+.sm-cultivo-cab img{height:1.05em;width:auto;font-size:28px;filter:brightness(0) invert(1);opacity:.82}
+.sm-cultivo-cab h3{display:inline-flex;align-items:center;margin:0;font-family:var(--titulo);font-size:28px;line-height:1}
+.sm-cultivo-cab h3::before{content:"";width:1px;height:.95em;margin:0 .45em 0 0;background:rgba(255,255,255,.4)}
 .sm-fecha{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a5f3c8;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);padding:5px 10px;border-radius:999px}
 
 .sm-precio{padding:16px 16px 14px;border-radius:18px;background:linear-gradient(135deg,rgba(52,211,153,.2),rgba(255,255,255,.04));border:1px solid rgba(188,149,92,.45)}
