@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useVolver } from '../hooks/useVolver';
+import CampoVivo from '../components/CampoVivo';
 import { Wheat, Building2, ClipboardCheck, ChevronRight, ChevronLeft, X, LogIn, UserPlus } from 'lucide-react';
 
 type Menu = null | 'productor' | 'bodega';
@@ -31,153 +32,6 @@ const OPCIONES: Record<'productor' | 'bodega', { titulo: string; subtitulo: stri
     ],
   },
 };
-
-/* ── Canvas ribbons animation (ribbons-2) ── */
-class RibbonPoint {
-  x: number;
-  y: number;
-  dx: number;
-  dy: number;
-  color: string;
-  neighbor!: RibbonPoint;
-  bounds: { x: number; y: number };
-
-  constructor(bounds: { x: number; y: number }, color: string) {
-    this.bounds = bounds;
-    this.x = Math.random() * bounds.x;
-    this.y = Math.random() * bounds.y;
-    const a = Math.random() * Math.PI * 2;
-    this.dx = Math.cos(a) * 0.85; // Smooth movement speed
-    this.dy = Math.sin(a) * 0.85;
-    this.color = color;
-  }
-
-  update(ctx: CanvasRenderingContext2D) {
-    this.x += this.dx;
-    this.y += this.dy;
-
-    // Bounce off edges
-    if (this.x < 0) {
-      this.x = 0;
-      this.dx *= -1;
-    } else if (this.x >= this.bounds.x) {
-      this.x = this.bounds.x;
-      this.dx *= -1;
-    }
-
-    if (this.y < 0) {
-      this.y = 0;
-      this.dy *= -1;
-    } else if (this.y >= this.bounds.y) {
-      this.y = this.bounds.y;
-      this.dy *= -1;
-    }
-
-    ctx.strokeStyle = this.color;
-    ctx.beginPath();
-    ctx.moveTo(this.x, this.y);
-    ctx.lineTo(this.neighbor.x, this.neighbor.y);
-    ctx.stroke();
-  }
-}
-
-function CornCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-    if (!ctx) return;
-
-    let animId: number;
-    let W = canvas.offsetWidth;
-    let H = canvas.offsetHeight;
-    canvas.width = W;
-    canvas.height = H;
-
-    const bounds = { x: W, y: H };
-    const points: RibbonPoint[] = [];
-    let ticks = 0;
-    const maxTicks = 1200;
-
-    const colorPalette = [
-      'rgba(74, 222, 128, 0.004)',  // Verde claro suave (green-400)
-      'rgba(34, 197, 94, 0.004)'    // Verde medio suave (green-500)
-    ];
-
-    const initPoints = () => {
-      ticks = 0;
-      points.length = 0;
-      const numPoints = 6; // Fewer points for a cleaner, minimal design
-      for (let i = 0; i < numPoints; i++) {
-        const color = colorPalette[i % colorPalette.length];
-        points.push(new RibbonPoint(bounds, color));
-      }
-
-      for (let i = 0; i < points.length; i++) {
-        let j = i;
-        while (j === i) {
-          j = Math.floor(Math.random() * points.length);
-        }
-        points[i].neighbor = points[j];
-      }
-    };
-
-    initPoints();
-
-    function draw() {
-      if (ticks >= maxTicks) {
-        return; // Freeze the animation (no longer requests frames)
-      }
-
-      // Use source-over instead of lighter to prevent additive white hotspots
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.lineWidth = 1.0;
-
-      // Update positions and draw lines 4 times per frame for a slower, calmer flow
-      for (let n = 0; n < 4; n++) {
-        if (ticks >= maxTicks) break;
-        points.forEach(p => p.update(ctx));
-        ticks++;
-      }
-
-      animId = requestAnimationFrame(draw);
-    }
-
-    draw();
-
-    const handleWindowClick = () => {
-      ctx.clearRect(0, 0, W, H);
-      initPoints();
-      // Restart loop if it was stopped
-      cancelAnimationFrame(animId);
-      draw();
-    };
-
-    window.addEventListener('click', handleWindowClick);
-
-    const ro = new ResizeObserver(() => {
-      W = canvas.offsetWidth;
-      H = canvas.offsetHeight;
-      canvas.width = W;
-      canvas.height = H;
-      bounds.x = W;
-      bounds.y = H;
-      ctx.clearRect(0, 0, W, H);
-      initPoints();
-    });
-    ro.observe(canvas);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      ro.disconnect();
-      window.removeEventListener('click', handleWindowClick);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
-}
 
 /* ── Botón para volver a la pantalla anterior ── */
 function BotonVolverSimac({ onClick, className = '', style }: { onClick: () => void; className?: string; style?: React.CSSProperties }) {
@@ -249,7 +103,7 @@ export default function WelcomePage() {
         <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-[#092213] to-transparent z-10 pointer-events-none" />
 
         {/* Canvas animation */}
-        <CornCanvas />
+        <CampoVivo />
 
         {/* Overlay content */}
         <div className="relative z-20 flex flex-col h-full px-10 py-10">
@@ -286,7 +140,7 @@ export default function WelcomePage() {
           <div className="absolute inset-0 bg-gradient-to-b from-[#092213]/65 via-[#0b2b18]/70 to-[#144728]/75 mix-blend-color" />
           <div className="absolute inset-0 bg-[#0b2b18]/30" />
           {/* Mobile canvas too */}
-          <CornCanvas />
+          <CampoVivo />
           <div className="absolute inset-0 bg-gradient-to-t from-[#092213]/80 via-[#092213]/15 to-[#092213]/15" />
         </div>
 
