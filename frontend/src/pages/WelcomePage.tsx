@@ -308,7 +308,7 @@ export default function WelcomePage() {
             <div
               role="img"
               aria-label="Maíz"
-              className="h-[58px] lg:h-[68px] aspect-[420/480] mb-3.5"
+              className="h-[44px] lg:h-[52px] aspect-[420/480] mb-3"
               style={{
                 background: 'linear-gradient(90deg,#a7dcb3 0%,#a7dcb3 30%,#f4dc96 38%,#efce7a 62%,#a7dcb3 70%,#a7dcb3 100%)',
                 WebkitMask: 'url(/images/maiz-icono.png) center / contain no-repeat',
@@ -321,7 +321,7 @@ export default function WelcomePage() {
               className="h-px w-9 mb-3.5"
               style={{ background: 'linear-gradient(90deg,transparent 0%,rgba(150,156,162,.95) 28%,#fff 50%,rgba(150,156,162,.95) 72%,transparent 100%)' }}
             />
-            <h1 className="text-[38px] lg:text-[44px] font-bold text-white tracking-[-0.5px] leading-none" style={{ fontFamily: "Patria, Georgia, serif" }}>
+            <h1 className="text-[30px] lg:text-[34px] font-bold text-white tracking-[-0.5px] leading-none" style={{ fontFamily: "Patria, Georgia, serif" }}>
               Maíz
             </h1>
           </div>
