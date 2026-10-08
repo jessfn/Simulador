@@ -177,8 +177,11 @@ export default function MenuPublico({ onEntrarMaiz }: { onEntrarMaiz: () => void
             <section className="sm-cultivo">
               <div className="sm-cultivo-cab">
                 <div className="sm-titulo">
-                  <img src="/images/maiz-icono.png" alt="" />
-                  <h3>Maíz</h3>
+                  <span className="sm-ico" aria-hidden="true" />
+                  <div className="sm-titulo-txt">
+                    <h3>Maíz</h3>
+                    <p>Precio de referencia en México</p>
+                  </div>
                 </div>
                 {datos && <span className="sm-fecha">Hoy · {fechaCorta(datos.fecha)}</span>}
               </div>

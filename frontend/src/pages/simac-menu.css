@@ -33,12 +33,13 @@
 .sm-cuerpo{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:18px 18px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:18px}
 
 .sm-cultivo{display:flex;flex-direction:column;gap:14px}
-.sm-cultivo-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.sm-titulo{display:flex;flex-direction:column;align-items:flex-start;font-size:26px;line-height:1}
-.sm-titulo img{display:block;height:.82em;width:auto;filter:brightness(0) invert(1);opacity:.82}
-.sm-titulo h3{margin:0;font-family:var(--titulo);font-size:1em;line-height:1}
-.sm-titulo h3::before{content:"";display:block;width:30px;height:1px;margin:8px 0 9px;background:linear-gradient(90deg,rgba(150,156,162,.95),#fff 55%,transparent)}
-.sm-fecha{margin-left:auto;margin-top:2px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a5f3c8;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);padding:5px 10px;border-radius:999px}
+.sm-cultivo-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:14px;margin-bottom:4px;border-bottom:1px solid transparent;border-image:linear-gradient(90deg,rgba(188,149,92,.55),rgba(255,255,255,.14) 60%,transparent) 1}
+.sm-titulo{display:flex;align-items:center;gap:12px;min-width:0}
+.sm-ico{flex:none;width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.14);position:relative}
+.sm-ico::after{content:"";position:absolute;inset:9px 11px;background:linear-gradient(90deg,#a7dcb3 0 30%,#f4dc96 38%,#efce7a 62%,#a7dcb3 70% 100%);-webkit-mask:url(/images/maiz-icono.png) center/contain no-repeat;mask:url(/images/maiz-icono.png) center/contain no-repeat}
+.sm-titulo-txt h3{margin:0;font-family:var(--titulo);font-size:28px;line-height:1;color:#fff}
+.sm-titulo-txt p{margin:5px 0 0;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.6);line-height:1.25}
+.sm-fecha{margin-left:auto;flex:none;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a5f3c8;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);padding:5px 10px;border-radius:999px}
 
 .sm-precio{padding:16px 16px 14px;border-radius:18px;background:linear-gradient(135deg,rgba(52,211,153,.2),rgba(255,255,255,.04));border:1px solid rgba(188,149,92,.45)}
 .sm-etq{margin:0 0 6px;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#e3c08a}
