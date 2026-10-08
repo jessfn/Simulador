@@ -61,7 +61,7 @@ export default function AppHeader({ subtitle, initials, notifCount = 0, onBrand,
             }}
           />
           <div className="flex flex-col leading-none min-w-0 text-left">
-            <span className="text-[24px] font-bold tracking-[-0.01em] text-slate-900 leading-none" style={{ fontFamily: "Patria, Georgia, serif" }}>Maíz</span>
+            <span className="text-[24px] font-bold tracking-[-0.01em] leading-none" style={{ fontFamily: "Patria, Georgia, serif", color: "#0a2414" }}>Maíz</span>
             {subtitle && (
               <span className="text-[10.5px] text-slate-400 font-medium tracking-tight leading-tight mt-[3px] truncate max-w-[165px] sm:max-w-[330px] lg:max-w-[440px]">
                 {subtitle}
