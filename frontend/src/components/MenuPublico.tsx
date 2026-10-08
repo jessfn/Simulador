@@ -176,8 +176,10 @@ export default function MenuPublico({ onEntrarMaiz }: { onEntrarMaiz: () => void
           <div className="sm-cuerpo">
             <section className="sm-cultivo">
               <div className="sm-cultivo-cab">
-                <img src="/images/maiz-icono.png" alt="" />
-                <h3>Maíz</h3>
+                <div className="sm-titulo">
+                  <img src="/images/maiz-icono.png" alt="" />
+                  <h3>Maíz</h3>
+                </div>
                 {datos && <span className="sm-fecha">Hoy · {fechaCorta(datos.fecha)}</span>}
               </div>
 
