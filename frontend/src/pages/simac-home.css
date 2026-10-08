@@ -58,7 +58,7 @@
   transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
 .sh-card .fila{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font-size:20px;line-height:1}
 .sh-card .icono{display:block;flex:none;width:1em;height:1em;object-fit:contain;color:rgba(255,255,255,.8)}
-.sh-card--on .icono{width:auto;height:1.05em;filter:brightness(0) invert(1);opacity:.82}
+.sh-card--on .icono{width:auto;height:.82em;filter:brightness(0) invert(1);opacity:.82}
 .sh-card .nombre{display:flex;flex-direction:column;align-items:center;font-family:var(--titulo);font-weight:700;font-size:1em;line-height:1}
 .sh-card .nombre::before{content:"";flex:none;width:30px;height:1px;margin:8px 0 9px;background:linear-gradient(90deg,transparent 0%,rgba(150,156,162,.95) 28%,#fff 50%,rgba(150,156,162,.95) 72%,transparent 100%)}
 .sh-card .tag{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.58)}
