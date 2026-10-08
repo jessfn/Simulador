@@ -305,20 +305,25 @@ export default function WelcomePage() {
             className="flex flex-col items-center mb-8 lg:mb-10"
             style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(-16px) scale(0.95)', transition: 'opacity 0.5s ease, transform 0.5s ease' }}
           >
-            <div className="w-[72px] h-[72px] lg:w-20 lg:h-20 rounded-[22px] lg:rounded-[26px] bg-white/10 backdrop-blur-xl ring-1 ring-white/20 flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.4)] mb-4">
-              <img
-                src="/images/maiz-icono.png"
-                alt="Maíz"
-                className="h-10 lg:h-12 w-auto opacity-90"
-                style={{ filter: 'brightness(0) invert(1)' }}
-              />
-            </div>
+            <div
+              role="img"
+              aria-label="Maíz"
+              className="h-[58px] lg:h-[68px] aspect-[420/480] mb-3.5"
+              style={{
+                background: 'linear-gradient(90deg,#a7dcb3 0%,#a7dcb3 30%,#f4dc96 38%,#efce7a 62%,#a7dcb3 70%,#a7dcb3 100%)',
+                WebkitMask: 'url(/images/maiz-icono.png) center / contain no-repeat',
+                mask: 'url(/images/maiz-icono.png) center / contain no-repeat',
+                filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.35))',
+              }}
+            />
+            <div
+              aria-hidden="true"
+              className="h-px w-9 mb-3.5"
+              style={{ background: 'linear-gradient(90deg,transparent 0%,rgba(150,156,162,.95) 28%,#fff 50%,rgba(150,156,162,.95) 72%,transparent 100%)' }}
+            />
             <h1 className="text-[38px] lg:text-[44px] font-bold text-white tracking-[-0.5px] leading-none" style={{ fontFamily: "Patria, Georgia, serif" }}>
               Maíz
             </h1>
-            <p className="text-[10.5px] font-semibold mt-2 tracking-[0.14em] uppercase text-center bg-gradient-to-r from-gray-400 via-white to-gray-400 bg-clip-text text-transparent">
-              Plan Nacional Maíz 2026
-            </p>
           </div>
 
           {/* Subtitle */}
