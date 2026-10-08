@@ -475,7 +475,7 @@ export default function ChatsAdminPage() {
                     <div key={m.id} style={bubbleShadow} className={`group relative flex flex-col animate-msg-in ${alinearDerecha ? 'items-end' : 'items-start'}`}>
                       {esBot && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 mb-0.5 mr-1">
-                          <Sparkles size={11} /> Asistente SIMAC
+                          <Sparkles size={11} /> Asistente Maíz
                         </span>
                       )}
                       <div style={bubbleRadius(alinearDerecha)} className={`relative max-w-[55%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${

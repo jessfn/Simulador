@@ -208,7 +208,7 @@ function ModalVerProductor({
               <X size={14} className="text-gray-500" />
             </button>
             <button
-              onClick={() => { onClose(); navigate(`/admin/productores/${prod.id}`); }}
+              onClick={() => { onClose(); navigate(`/maiz/admin/productores/${prod.id}`); }}
               className="w-8 h-8 rounded-full bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors"
               title="Ver perfil completo"
             >
@@ -346,7 +346,7 @@ function ModalVerProductor({
           {/* Ver perfil */}
           <div className="pt-1">
             <button
-              onClick={() => { onClose(); navigate(`/admin/productores/${prod.id}`); }}
+              onClick={() => { onClose(); navigate(`/maiz/admin/productores/${prod.id}`); }}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 active:scale-[.97] text-gray-700 text-[13px] font-bold transition-all"
             >
               <ExternalLink size={15} /> Ver perfil completo
@@ -416,7 +416,7 @@ export default function ProductoresAdminPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `SIMAC_Productores_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `Maiz_Productores_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

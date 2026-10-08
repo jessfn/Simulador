@@ -85,7 +85,7 @@ export default function B14HistorialTransacciones() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {txs.map(tx => (
             <div key={tx.id}
-              onClick={() => navigate(`/transacciones/${tx.id}`)}
+              onClick={() => navigate(`/maiz/bodega/transacciones/${tx.id}`)}
               className="bg-white rounded-[1.5rem] border border-black/[0.04] shadow-[0_2px_8px_rgba(0,0,0,0.02)] p-5 cursor-pointer hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:border-black/[0.08] transition-all duration-500 group/card">
               <div className="flex justify-between items-start gap-3 mb-2">
                 <p className="font-bold text-[15px] text-gray-900 group-hover/card:text-[#1A5C38] transition-colors leading-snug flex-1">
@@ -140,7 +140,7 @@ export default function B14HistorialTransacciones() {
 
       {/* FAB */}
       <button
-        onClick={() => navigate('/transacciones/nueva')}
+        onClick={() => navigate('/maiz/bodega/transacciones/nueva')}
         className="fixed bottom-24 right-5 sm:right-8 lg:right-12 xl:right-20 w-14 h-14 bg-[#1A5C38] text-white rounded-[1.25rem] shadow-[0_4px_12px_rgba(26,92,56,0.3)] hover:shadow-[0_8px_24px_rgba(26,92,56,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 z-10"
       >
         <Plus size={24} />

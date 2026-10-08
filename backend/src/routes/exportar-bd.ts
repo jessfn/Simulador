@@ -14,7 +14,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
 
   try {
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'SIMAC';
+    wb.creator = 'Maíz';
     wb.created = new Date();
 
     function addSheet(name: string, rows: any[], cols: { key: string; header: string; width?: number }[]) {
@@ -834,7 +834,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── Stream ───────────────────────────────────────────────────────────
     const fecha = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="SIMAC_BD_${fecha}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Maiz_BD_${fecha}.xlsx"`);
     await wb.xlsx.write(res);
     res.end();
 

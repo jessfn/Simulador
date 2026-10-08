@@ -105,7 +105,7 @@ export default function B26DetalleTransaccion() {
 
   return (
     <div className="w-full pb-10">
-      <PageHeader title="Detalle de transacción" subtitle={`#${txn.id}`} back="/transacciones" />
+      <PageHeader title="Detalle de transacción" subtitle={`#${txn.id}`} back="/maiz/bodega/transacciones" />
 
       <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Estado de confirmación */}

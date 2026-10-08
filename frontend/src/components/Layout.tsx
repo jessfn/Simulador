@@ -8,11 +8,11 @@ import PushPrompt from './PushPrompt';
 import ChatBubble from './ChatBubble';
 
 const NAV = [
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Tablero' },
-  { path: '/mis-bodegas', icon: Warehouse, label: 'Bodegas' },
-  { path: '/oferta', icon: Users, label: 'Oferta' },
-  { path: '/transacciones', icon: Receipt, label: 'Transacciones' },
-  { path: '/mas', icon: MoreHorizontal, label: 'Más' },
+  { path: '/maiz/bodega/dashboard', icon: LayoutDashboard, label: 'Tablero' },
+  { path: '/maiz/bodega/mis-bodegas', icon: Warehouse, label: 'Bodegas' },
+  { path: '/maiz/bodega/oferta', icon: Users, label: 'Oferta' },
+  { path: '/maiz/bodega/transacciones', icon: Receipt, label: 'Transacciones' },
+  { path: '/maiz/bodega/mas', icon: MoreHorizontal, label: 'Más' },
 ];
 
 const SYSTEM_NAME = 'Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México';
@@ -37,7 +37,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   function handleLogout() {
     logout();
-    navigate('/login');
+    navigate('/maiz/bodega/login');
     setDrawerOpen(false);
   }
 
@@ -53,8 +53,8 @@ export function Layout({ children }: { children: ReactNode }) {
         subtitle={SYSTEM_NAME}
         initials={initials}
         notifCount={noLeidas}
-        onBrand={() => navigate('/dashboard')}
-        onBell={() => navigate('/notificaciones')}
+        onBrand={() => navigate('/maiz/bodega/dashboard')}
+        onBell={() => navigate('/maiz/bodega/notificaciones')}
         onMenu={() => setDrawerOpen(true)}
         mostrarAyuda
       />
@@ -72,7 +72,7 @@ export function Layout({ children }: { children: ReactNode }) {
            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-stretch">
         {NAV.map(({ path, icon: Icon, label }) => {
-          const active = pathname === path || (path !== '/dashboard' && pathname.startsWith(path + '/'));
+          const active = pathname === path || (path !== '/maiz/bodega/dashboard' && pathname.startsWith(path + '/'));
           return (
             <Link
               key={path}
@@ -141,9 +141,9 @@ export function Layout({ children }: { children: ReactNode }) {
         {/* Opciones de menú — solo rutas reales */}
         <div className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {[
-            { icon: User,     label: 'Mi perfil',      desc: 'Ver y editar cuenta',                            route: '/perfil' },
-            { icon: Bell,     label: 'Notificaciones', desc: noLeidas > 0 ? `${noLeidas} sin leer` : 'Al día', route: '/notificaciones' },
-            { icon: Settings, label: 'Configuración',  desc: 'Ajustes de la app',                              route: '/configuracion' },
+            { icon: User,     label: 'Mi perfil',      desc: 'Ver y editar cuenta',                            route: '/maiz/bodega/perfil' },
+            { icon: Bell,     label: 'Notificaciones', desc: noLeidas > 0 ? `${noLeidas} sin leer` : 'Al día', route: '/maiz/bodega/notificaciones' },
+            { icon: Settings, label: 'Configuración',  desc: 'Ajustes de la app',                              route: '/maiz/bodega/configuracion' },
           ].map(({ icon: Icon, label, desc, route }) => (
             <button key={route} onClick={() => { setDrawerOpen(false); navigate(route); }}
               className="w-full flex items-center gap-3 px-3 py-3.5 rounded-2xl text-left active:bg-[#eef8f2] transition-colors group">

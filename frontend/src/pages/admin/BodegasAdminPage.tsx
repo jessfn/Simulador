@@ -566,7 +566,7 @@ export default function BodegasAdminPage() {
 
   // Exponer navigate para el popup HTML
   useEffect(() => {
-    (window as any).__bodegaNav = (id: number) => navigate(`/admin/bodegas/${id}`);
+    (window as any).__bodegaNav = (id: number) => navigate(`/maiz/admin/bodegas/${id}`);
     return () => { delete (window as any).__bodegaNav; };
   }, [navigate]);
 
@@ -982,7 +982,7 @@ export default function BodegasAdminPage() {
                         <div className={`w-2 h-2 rounded-full ${SEM_CFG[b.semaforo_compra]?.dot || 'bg-gray-300'}`} />
                         <span className="text-[10px] text-gray-500">{b.capacidad_total.toLocaleString()} t</span>
                       </div>
-                      <button onClick={e => { e.stopPropagation(); navigate(`/admin/bodegas/${b.id}`); }}
+                      <button onClick={e => { e.stopPropagation(); navigate(`/maiz/admin/bodegas/${b.id}`); }}
                         className="text-[9.5px] font-bold text-[#1A5C38] bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 px-1.5 py-0.5 rounded-lg flex items-center gap-0.5 transition">
                         Ver <Eye size={8} />
                       </button>
@@ -1730,7 +1730,7 @@ export default function BodegasAdminPage() {
 
             {/* Footer */}
             <div className="px-6 pb-6 pt-4 border-t border-gray-100 flex-shrink-0">
-              <button onClick={() => { setDetalleTarget(null); navigate(`/admin/bodegas/${detalleTarget.id}`); }}
+              <button onClick={() => { setDetalleTarget(null); navigate(`/maiz/admin/bodegas/${detalleTarget.id}`); }}
                 className="w-full py-3 rounded-[14px] text-[14px] font-semibold text-white transition active:scale-[.98]"
                 style={{ background: 'linear-gradient(135deg,#1A5C38,#15482d)', boxShadow:'0 4px 14px rgba(26,92,56,.3)' }}>
                 Abrir ficha completa →

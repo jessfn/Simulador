@@ -54,22 +54,22 @@ export default function B29OnboardingBodeguero() {
     {
       key: 'bodega', titulo: 'Confirma tu bodega asociada',
       desc: 'Asocia la bodega que operas para activar todas las funciones.',
-      icon: <Warehouse size={18} />, ruta: '/bodegas/seleccionar', hecho: tieneBodega,
+      icon: <Warehouse size={18} />, ruta: '/maiz/bodega/seleccionar', hecho: tieneBodega,
     },
     {
       key: 'precio', titulo: 'Publica tu primer precio diario',
       desc: 'Indica el precio de compra que ofreces hoy a los productores.',
-      icon: <Tag size={18} />, ruta: '/precio-diario', hecho: tienePrecio,
+      icon: <Tag size={18} />, ruta: '/maiz/bodega/precio-diario', hecho: tienePrecio,
     },
     {
       key: 'semaforo', titulo: 'Activa tu semáforo de compra',
       desc: 'Indica si estás comprando, con capacidad limitada o sin actividad.',
-      icon: <Activity size={18} />, ruta: '/mis-bodegas', hecho: tieneSemaforo,
+      icon: <Activity size={18} />, ruta: '/maiz/bodega/mis-bodegas', hecho: tieneSemaforo,
     },
     {
       key: 'requerimiento', titulo: 'Publica tu primer requerimiento',
       desc: 'Lanza una señal de compra para que los productores cercanos te encuentren.',
-      icon: <Signal size={18} />, ruta: '/requerimientos', hecho: tieneRequerimiento,
+      icon: <Signal size={18} />, ruta: '/maiz/bodega/requerimientos', hecho: tieneRequerimiento,
     },
   ];
 
@@ -83,7 +83,7 @@ export default function B29OnboardingBodeguero() {
       <div className="sticky top-0 z-20 w-full bg-gradient-to-br from-[#1A5C38] via-[#1e6b42] to-[#22733f] rounded-b-3xl shadow-[0_8px_30px_rgba(26,92,56,0.25)] relative overflow-hidden group/banner">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none transition-opacity duration-700 opacity-50 group-hover/banner:opacity-100" />
         <div className="w-full mx-auto px-4 sm:px-6 lg:px-10 xl:px-16 pt-4 pb-6 relative z-10 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover/banner:translate-x-1">
-          <button onClick={() => navigate('/dashboard')}
+          <button onClick={() => navigate('/maiz/bodega/dashboard')}
             className="flex items-center gap-1 text-green-200/80 text-[13px] font-bold mb-2 hover:text-white transition-colors">
             <ChevronLeft size={16} className="-ml-1" /> Ir al tablero
           </button>
@@ -135,9 +135,9 @@ export default function B29OnboardingBodeguero() {
                   <PartyPopper size={32} className="text-emerald-500" />
                 </div>
                 <p className="text-[20px] font-black text-green-900 tracking-tight">¡Configuración completa!</p>
-                <p className="text-green-700 font-medium text-[14px] mt-1.5">Ya estás listo para operar en SIMAC con todas las funciones.</p>
+                <p className="text-green-700 font-medium text-[14px] mt-1.5">Ya estás listo para operar en Maíz con todas las funciones.</p>
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/maiz/bodega/dashboard')}
                   className="mt-6 px-8 py-3.5 bg-[#1A5C38] text-white rounded-[1.25rem] text-[15px] font-bold active:scale-[0.98] transition-all shadow-[0_4px_12px_rgba(26,92,56,0.2)] hover:shadow-[0_8px_24px_rgba(26,92,56,0.3)] inline-flex items-center gap-2"
                 >
                   Ir al tablero <ChevronRight size={16} />

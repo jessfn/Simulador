@@ -148,7 +148,7 @@ export default function PropuestaVentaPage() {
           }
         } catch { /* la disponibilidad ya se publicó; la negociación es best-effort */ }
       }
-      navigate('/productor', { state: { mensaje } });
+      navigate('/maiz/productor', { state: { mensaje } });
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
@@ -192,7 +192,7 @@ export default function PropuestaVentaPage() {
             <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">
               Para publicar una propuesta de venta necesitas tener un ciclo productivo activo registrado en tu parcela.
             </p>
-            <button onClick={() => navigate('/productor/ciclo')}
+            <button onClick={() => navigate('/maiz/productor/ciclo')}
               className="bg-[#1A5C38] text-white px-6 py-3 rounded-2xl font-semibold">
               Registrar mi ciclo →
             </button>

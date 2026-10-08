@@ -119,7 +119,7 @@ export default function PerfilTecnicoPage() {
 
   function handleLogout() {
     logout();
-    navigate('/tecnico/login');
+    navigate('/maiz/tecnico/login');
   }
 
   if (loading) return (
@@ -194,7 +194,7 @@ export default function PerfilTecnicoPage() {
                 {registros && registros.length > 0 && <span className="ml-1.5 text-[11px] text-slate-400 font-normal">({registros.length})</span>}
               </p>
             </div>
-            <button onClick={() => navigate('/tecnico/registrar')}
+            <button onClick={() => navigate('/maiz/tecnico/registrar')}
               className="flex items-center gap-1 text-[#1A5C38] text-[12px] font-bold active:opacity-60 transition-opacity">
               <UserPlus size={13} /> Registrar
             </button>
@@ -206,7 +206,7 @@ export default function PerfilTecnicoPage() {
               <span className="text-[13px] text-slate-400">Cargando tus registros…</span>
             </div>
           ) : registros.length === 0 ? (
-            <button onClick={() => navigate('/tecnico/registrar')}
+            <button onClick={() => navigate('/maiz/tecnico/registrar')}
               className="w-full flex flex-col items-center py-6 gap-2 text-center px-5 active:opacity-80 transition-opacity">
               <div className="w-11 h-11 rounded-2xl bg-[#eef8f2] flex items-center justify-center">
                 <UserPlus size={18} className="text-[#1A5C38]/40" />
@@ -219,7 +219,7 @@ export default function PerfilTecnicoPage() {
               {registros.map(r => (
                 <button
                   key={r.producer_id}
-                  onClick={() => navigate(`/tecnico/productor/${r.producer_id}`)}
+                  onClick={() => navigate(`/maiz/tecnico/productor/${r.producer_id}`)}
                   className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-slate-50 transition-colors"
                 >
                   <div className="w-10 h-10 rounded-2xl bg-[#eef8f2] flex items-center justify-center flex-shrink-0">

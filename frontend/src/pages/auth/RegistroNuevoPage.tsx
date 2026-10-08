@@ -273,7 +273,7 @@ export default function RegistroNuevoPage() {
                            : data.datos_renapo.sexo === 'MUJER'  ? 'M' : '',
           }));
           setDatosDeRenapo(true);
-          navigate(`/registro-nuevo?modo=manual&curp=${curp.toUpperCase().trim()}`);
+          navigate(`/maiz/productor/registro?modo=manual&curp=${curp.toUpperCase().trim()}`);
           return;
         }
         setError(data.error || 'No se pudo verificar la CURP.');
@@ -490,9 +490,9 @@ export default function RegistroNuevoPage() {
     else if (paso === 2) {
       // Siempre volver a paso 1 (CURP). En modo manual limpiar también la URL para evitar blank page.
       setPaso(1);
-      if (esModoManual) navigate('/registro-nuevo', { replace: true });
+      if (esModoManual) navigate('/maiz/productor/registro', { replace: true });
     }
-    else navigate('/login-productor');
+    else navigate('/maiz/productor/login');
   };
 
   // --- STYLES ---
@@ -938,7 +938,7 @@ export default function RegistroNuevoPage() {
               <UserCheck size={18} className="text-green-300" />
             </div>
             <div>
-              <p className="text-white font-bold text-sm leading-none">SIMAC</p>
+              <p className="text-white font-bold text-sm leading-none">Maíz</p>
               <p className="text-white/35 text-[11px] mt-0.5">Sistema de Maíz</p>
             </div>
           </div>
@@ -1046,11 +1046,11 @@ export default function RegistroNuevoPage() {
                           <div>
                             <p className="text-amber-200 font-bold text-sm leading-tight">Ya tienes una cuenta</p>
                             {errorNombres && <p className="text-amber-300/70 text-xs mt-0.5">Registrado como: <span className="font-semibold text-amber-200">{errorNombres}</span></p>}
-                            <p className="text-amber-300/60 text-xs mt-1">Esta CURP ya está registrada en SIMAC. Inicia sesión con tu CURP y NIP.</p>
+                            <p className="text-amber-300/60 text-xs mt-1">Esta CURP ya está registrada en Maíz. Inicia sesión con tu CURP y NIP.</p>
                           </div>
                         </div>
                         <button
-                          onClick={() => navigate('/login-productor')}
+                          onClick={() => navigate('/maiz/productor/login')}
                           className="w-full bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-[#1a1200] py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
                         >
                           <UserCheck size={15} /> Iniciar Sesión
@@ -1072,9 +1072,9 @@ export default function RegistroNuevoPage() {
                             <AlertTriangle size={15} className="text-sky-300" />
                           </div>
                           <div>
-                            <p className="text-sky-200 font-bold text-sm leading-tight">CURP en el padrón SIMAC</p>
+                            <p className="text-sky-200 font-bold text-sm leading-tight">CURP en el padrón Maíz</p>
                             {errorNombres && <p className="text-sky-300/70 text-xs mt-0.5">Nombre registrado: <span className="font-semibold text-sky-200">{errorNombres}</span></p>}
-                            <p className="text-sky-300/60 text-xs mt-1">Tu CURP ya está en SIMAC pero tu cuenta no ha sido activada. Contacta a tu técnico territorial.</p>
+                            <p className="text-sky-300/60 text-xs mt-1">Tu CURP ya está en Maíz pero tu cuenta no ha sido activada. Contacta a tu técnico territorial.</p>
                           </div>
                         </div>
                         <button
@@ -1094,7 +1094,7 @@ export default function RegistroNuevoPage() {
                   </div>
 
                   <p className="text-center mt-5">
-                    <button onClick={() => navigate('/login-productor')} className="text-sm text-green-300/70 hover:text-green-200 transition-colors font-medium">
+                    <button onClick={() => navigate('/maiz/productor/login')} className="text-sm text-green-300/70 hover:text-green-200 transition-colors font-medium">
                       ¿Ya tienes cuenta? Iniciar sesión
                     </button>
                   </p>
@@ -1692,7 +1692,7 @@ export default function RegistroNuevoPage() {
                   </div>
                   <h2 className="text-3xl font-bold text-white mb-2">¡Registro Exitoso!</h2>
                   <p className="text-white/50 mb-8 text-base">Tu cuenta de productor ha sido creada.</p>
-                  <button onClick={() => navigate('/login-productor')}
+                  <button onClick={() => navigate('/maiz/productor/login')}
                     className="w-full bg-white hover:bg-white/90 active:scale-[0.98] text-[#0b271a] py-3.5 rounded-xl font-bold text-base transition-all shadow-lg">
                     Iniciar Sesión
                   </button>

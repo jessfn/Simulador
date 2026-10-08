@@ -119,7 +119,7 @@ export default function CompletarUbicacionPage() {
         return;
       }
       localStorage.removeItem('dismiss_ubicacion');
-      navigate('/productor/perfil');
+      navigate('/maiz/productor/perfil');
     } catch {
       setErrorGuardar('Error de conexión. Intenta de nuevo.');
     } finally {

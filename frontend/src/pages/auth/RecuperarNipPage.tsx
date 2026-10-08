@@ -28,7 +28,7 @@ export default function RecuperarNipPage() {
     setError('');
     if (step === 'telefono') { setStep('curp'); setUltimos4(''); }
     else if (step === 'nuevo_nip') { setStep('telefono'); setNuevoNip(''); setConfirmarNip(''); }
-    else navigate('/login-productor');
+    else navigate('/maiz/productor/login');
   };
 
   // Paso 1: verificar CURP
@@ -313,7 +313,7 @@ export default function RecuperarNipPage() {
                 <h1 className="text-2xl font-bold text-white mb-2">¡NIP actualizado!</h1>
                 <p className="text-white/60 text-sm mb-6">Ya puedes iniciar sesión con tu nuevo NIP.</p>
                 <button
-                  onClick={() => navigate('/login-productor', { state: { curp } })}
+                  onClick={() => navigate('/maiz/productor/login', { state: { curp } })}
                   className="w-full bg-white hover:bg-white/90 active:bg-white/80 text-[#1A5C38] rounded-xl py-3 text-sm font-bold active:scale-[0.98] transition-all"
                 >
                   Ir al inicio de sesión

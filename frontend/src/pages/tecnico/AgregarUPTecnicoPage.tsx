@@ -220,23 +220,23 @@ export default function AgregarUPTecnicoPage() {
         <div className="w-full max-w-sm mt-8 space-y-2.5">
           {resultado.encuestaAplicable && (
             <button
-              onClick={() => navigate(`/tecnico/productor/${resultado.producer_id}/encuesta`, { state: { nombreProductor: resultado.nombreProductor } })}
+              onClick={() => navigate(`/maiz/tecnico/productor/${resultado.producer_id}/encuesta`, { state: { nombreProductor: resultado.nombreProductor } })}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-2xl font-bold text-[14.5px] active:scale-[0.98] transition-all">
               Responder encuesta de insumos
             </button>
           )}
           {resultado.up_id && (
             <button
-              onClick={() => navigate(`/tecnico/productor/${resultado.producer_id}/ciclo`, { state: { up_id: resultado.up_id } })}
+              onClick={() => navigate(`/maiz/tecnico/productor/${resultado.producer_id}/ciclo`, { state: { up_id: resultado.up_id } })}
               className="w-full bg-[#1A5C38] hover:bg-[#124227] text-white py-3.5 rounded-2xl font-bold text-[14.5px] active:scale-[0.98] transition-all">
               Registrar ciclo de esta UP
             </button>
           )}
-          <button onClick={() => navigate('/tecnico/registrar')}
+          <button onClick={() => navigate('/maiz/tecnico/registrar')}
             className="w-full border border-slate-200 text-slate-700 py-3.5 rounded-2xl font-bold text-[14.5px] active:scale-[0.98] transition-all bg-white">
             Registrar otro productor
           </button>
-          <button onClick={() => navigate('/tecnico')}
+          <button onClick={() => navigate('/maiz/tecnico')}
             className="w-full text-slate-400 py-2.5 font-semibold text-[13px]">
             Ir al inicio
           </button>

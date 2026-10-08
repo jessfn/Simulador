@@ -366,14 +366,14 @@ router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void>
       if (row.usuario_id) {
         // Cuenta completa activa
         res.status(409).json({
-          error: `Esta CURP ya tiene cuenta en SIMAC. Inicia sesión con tu CURP y NIP.`,
+          error: `Esta CURP ya tiene cuenta en Maíz. Inicia sesión con tu CURP y NIP.`,
           codigo: 'CURP_DUPLICADA',
           nombres: row.nombres,
         });
       } else {
         // Está en el padrón interno pero sin cuenta — debe activarla
         res.status(409).json({
-          error: 'Tu CURP ya está registrada en SIMAC pero aún no tienes cuenta activa. Contacta a tu técnico territorial.',
+          error: 'Tu CURP ya está registrada en Maíz pero aún no tienes cuenta activa. Contacta a tu técnico territorial.',
           codigo: 'PUEDE_ACTIVAR',
           nombres: row.nombres,
         });
@@ -382,7 +382,7 @@ router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void>
     }
     if (usuResult.rows.length > 0) {
       res.status(409).json({
-        error: 'Esta CURP ya tiene cuenta en SIMAC. Inicia sesión con tu CURP y NIP.',
+        error: 'Esta CURP ya tiene cuenta en Maíz. Inicia sesión con tu CURP y NIP.',
         codigo: 'CURP_DUPLICADA',
       });
       return;

@@ -213,7 +213,7 @@ export default function MiPerfilPage() {
     } catch { flashPass('err', 'Error de conexión'); } finally { setSavingPass(false); }
   }
 
-  function handleLogout() { logout(); navigate('/admin/login'); }
+  function handleLogout() { logout(); navigate('/maiz/admin/login'); }
 
   /* ── RENDER ─────────────────────────────────────────────────────── */
   if (loadingP) {

@@ -42,7 +42,7 @@ export default function B28EditarBodega() {
         observaciones: observaciones.trim(),
       });
       setOk(true);
-      setTimeout(() => navigate(`/bodegas/${id}`), 900);
+      setTimeout(() => navigate(`/maiz/bodega/mis-bodegas/${id}`), 900);
     } catch (e: any) {
       setError(e?.message || 'No se pudo guardar');
     } finally {

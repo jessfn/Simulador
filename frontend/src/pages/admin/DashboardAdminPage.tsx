@@ -144,7 +144,7 @@ export default function DashboardAdminPage() {
               </div>
             </div>
             {kpis.productores_pendientes > 0 && (
-              <Link to="/admin/productores" className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-amber-600 bg-amber-500/8 hover:bg-amber-500/12 border border-amber-500/15 rounded-lg px-2.5 py-1.5 transition-all">
+              <Link to="/maiz/admin/productores" className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-amber-600 bg-amber-500/8 hover:bg-amber-500/12 border border-amber-500/15 rounded-lg px-2.5 py-1.5 transition-all">
                 <span>{kpis.productores_pendientes} pendientes de validar</span>
                 <ChevronRight size={11} />
               </Link>
@@ -164,7 +164,7 @@ export default function DashboardAdminPage() {
               </div>
             </div>
             {kpis.bodegas_pendientes > 0 && (
-              <Link to="/admin/bodegas" className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-amber-600 bg-amber-500/8 hover:bg-amber-500/12 border border-amber-500/15 rounded-lg px-2.5 py-1.5 transition-all">
+              <Link to="/maiz/admin/bodegas" className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-amber-600 bg-amber-500/8 hover:bg-amber-500/12 border border-amber-500/15 rounded-lg px-2.5 py-1.5 transition-all">
                 <span>{kpis.bodegas_pendientes} pendientes de aprobar</span>
                 <ChevronRight size={11} />
               </Link>
@@ -206,7 +206,7 @@ export default function DashboardAdminPage() {
               </div>
             </div>
             {(kpis.alertas_criticas + kpis.alertas_medias) > 0 && (
-              <Link to="/admin/alertas" className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-red-600 bg-red-500/8 hover:bg-red-500/12 border border-red-500/15 rounded-lg px-2.5 py-1.5 transition-all">
+              <Link to="/maiz/admin/alertas" className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-red-600 bg-red-500/8 hover:bg-red-500/12 border border-red-500/15 rounded-lg px-2.5 py-1.5 transition-all">
                 <span>Gestionar alertas</span>
                 <ChevronRight size={11} />
               </Link>
@@ -267,7 +267,7 @@ export default function DashboardAdminPage() {
             <Activity size={14} className="text-emerald-600" />
             <h2 className="text-[13px] sm:text-[14px] font-bold text-gray-900">Actividad Reciente</h2>
           </div>
-          <Link to="/admin/productores" className="text-[11px] text-emerald-500 hover:text-emerald-600 font-semibold flex items-center gap-0.5 transition-colors">
+          <Link to="/maiz/admin/productores" className="text-[11px] text-emerald-500 hover:text-emerald-600 font-semibold flex items-center gap-0.5 transition-colors">
             Ver todo <ChevronRight size={12} />
           </Link>
         </div>

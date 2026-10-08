@@ -65,7 +65,7 @@ export default function DashboardTecnicoPage() {
         </div>
 
         {/* Botón registrar */}
-        <button onClick={() => navigate('/tecnico/registrar')}
+        <button onClick={() => navigate('/maiz/tecnico/registrar')}
           className="w-full bg-[#1A5C38] hover:bg-[#124227] text-white rounded-2xl py-4 font-bold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
           <UserPlus size={18} /> Registrar nuevo productor
         </button>
@@ -90,7 +90,7 @@ export default function DashboardTecnicoPage() {
           ) : (
             <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
               {registros.map(r => (
-                <button key={r.producer_id} onClick={() => navigate(`/tecnico/productor/${r.producer_id}`)}
+                <button key={r.producer_id} onClick={() => navigate(`/maiz/tecnico/productor/${r.producer_id}`)}
                   className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[#eef8f2] transition-colors">
                   <div className="w-10 h-10 rounded-xl bg-[#1A5C38]/10 flex items-center justify-center flex-shrink-0">
                     <span className="text-[13px] font-bold text-[#1A5C38]">

@@ -150,7 +150,7 @@ export default function B03SelectBodegas() {
     }
     setSaving(false);
     if (failed.length > 0) { setError(failed.join('\n')); return; }
-    navigate('/mis-bodegas');
+    navigate('/maiz/bodega/mis-bodegas');
   }
 
   return (
@@ -167,7 +167,7 @@ export default function B03SelectBodegas() {
 
           {/* Fila 1: Volver — independiente, pequeño, arriba a la izq */}
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/maiz/bodega/login')}
             className="flex items-center gap-0.5 text-green-200/80 text-[13px] font-medium mb-2 active:opacity-60 hover:text-green-100 transition-opacity"
           >
             <ChevronLeft size={16} strokeWidth={2.5} className="-ml-1" />
@@ -430,7 +430,7 @@ export default function B03SelectBodegas() {
         </button>
 
         {/* Continuar sin asociar */}
-        <button onClick={() => navigate('/dashboard')} className="flex-shrink-0 w-full text-[13px] text-gray-400 font-medium py-1 active:opacity-70 transition-opacity">
+        <button onClick={() => navigate('/maiz/bodega/dashboard')} className="flex-shrink-0 w-full text-[13px] text-gray-400 font-medium py-1 active:opacity-70 transition-opacity">
           Continuar sin asociar bodega por ahora
         </button>
       </div>

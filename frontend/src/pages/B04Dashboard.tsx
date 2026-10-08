@@ -69,10 +69,10 @@ export default function B04Dashboard() {
   const kpiColor = ocupPct < 70 ? 'green' : ocupPct < 90 ? 'yellow' : 'red';
 
   const acciones = [
-    { icon: Tag,        label: 'Publicar precio del día',   path: '/precio-diario',       desc: 'Precio que ofreces hoy',        iconColor: 'text-[#1A5C38]',  bg: 'bg-[#1A5C38]/[0.08]' },
-    { icon: Eye,        label: 'Ver oferta de productores', path: '/oferta',               desc: 'Disponibilidad por municipio',  iconColor: 'text-blue-600',   bg: 'bg-blue-50' },
-    { icon: PenLine,    label: 'Registrar transacción',     path: '/transacciones/nueva',  desc: 'Compra o venta de maíz',        iconColor: 'text-orange-500', bg: 'bg-orange-50' },
-    { icon: Activity,   label: 'Actualizar inventario',     path: '/inventario',           desc: 'Volumen almacenado hoy',        iconColor: 'text-purple-600', bg: 'bg-purple-50' },
+    { icon: Tag,        label: 'Publicar precio del día',   path: '/maiz/bodega/precio-diario',       desc: 'Precio que ofreces hoy',        iconColor: 'text-[#1A5C38]',  bg: 'bg-[#1A5C38]/[0.08]' },
+    { icon: Eye,        label: 'Ver oferta de productores', path: '/maiz/bodega/oferta',               desc: 'Disponibilidad por municipio',  iconColor: 'text-blue-600',   bg: 'bg-blue-50' },
+    { icon: PenLine,    label: 'Registrar transacción',     path: '/maiz/bodega/transacciones/nueva',  desc: 'Compra o venta de maíz',        iconColor: 'text-orange-500', bg: 'bg-orange-50' },
+    { icon: Activity,   label: 'Actualizar inventario',     path: '/maiz/bodega/inventario',           desc: 'Volumen almacenado hoy',        iconColor: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
   return (
@@ -146,7 +146,7 @@ export default function B04Dashboard() {
             {(stats.mis_bodegas ?? 0) === 0 && bodegasPendientes === 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
                 <p className="font-semibold text-amber-800 mb-1">
-                  ¡Bienvenido a SIMAC!
+                  ¡Bienvenido a Maíz!
                 </p>
                 <p className="text-[13px] text-amber-700 mb-3 leading-relaxed">
                   Para comenzar necesitas asociar las bodegas que operas.
@@ -155,13 +155,13 @@ export default function B04Dashboard() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => navigate('/bodegas/seleccionar')}
+                    onClick={() => navigate('/maiz/bodega/seleccionar')}
                     className="bg-amber-600 text-white text-[14px] font-semibold px-5 py-2.5 rounded-xl active:opacity-80 transition-opacity"
                   >
                     Asociar mis bodegas →
                   </button>
                   <button
-                    onClick={() => navigate('/onboarding')}
+                    onClick={() => navigate('/maiz/bodega/onboarding')}
                     className="bg-white text-amber-700 border border-amber-300 text-[14px] font-semibold px-5 py-2.5 rounded-xl active:opacity-80 transition-opacity"
                   >
                     Ver primeros pasos
@@ -183,7 +183,7 @@ export default function B04Dashboard() {
                   subtitle="Pendientes de atención"
                   icon={<FileText size={18} />}
                   color="blue"
-                  onClick={() => navigate('/ventanillas')}
+                  onClick={() => navigate('/maiz/bodega/ventanillas')}
                 />
               ) : (
                 <KPICard
@@ -192,7 +192,7 @@ export default function B04Dashboard() {
                   subtitle="Bodegas asociadas"
                   icon={<Warehouse size={18} />}
                   color="blue"
-                  onClick={() => navigate('/mis-bodegas')}
+                  onClick={() => navigate('/maiz/bodega/mis-bodegas')}
                 />
               )}
 
@@ -202,7 +202,7 @@ export default function B04Dashboard() {
                 subtitle={`A tus bodegas · ~${formatNum(stats.toneladas_cercanas ?? 0)} ton disponibles`}
                 icon={<Package size={18} />}
                 color="green"
-                onClick={() => navigate('/oferta')}
+                onClick={() => navigate('/maiz/bodega/oferta')}
               />
               <KPICard
                 title="Ocupación del almacén"
@@ -217,7 +217,7 @@ export default function B04Dashboard() {
                 }
                 icon={<Activity size={18} />}
                 color={kpiColor}
-                onClick={() => navigate('/inventario')}
+                onClick={() => navigate('/maiz/bodega/inventario')}
               />
             </div>
 

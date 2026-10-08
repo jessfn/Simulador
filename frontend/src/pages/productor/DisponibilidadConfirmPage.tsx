@@ -70,7 +70,7 @@ export default function DisponibilidadConfirmPage() {
           Las bodegas cercanas a tu zona podran ver que tienes maiz disponible.
           Te notificamos si alguna esta interesada.
         </p>
-        <button onClick={() => navigate('/productor')}
+        <button onClick={() => navigate('/maiz/productor')}
           className="bg-[#1A5C38] hover:bg-[#15482d] text-white px-8 py-3 rounded-2xl font-semibold transition-all duration-200 active:scale-[0.98]">
           Volver al inicio
         </button>

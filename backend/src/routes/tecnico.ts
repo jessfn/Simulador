@@ -130,7 +130,7 @@ router.post('/consultar-curp', authMiddleware, requiereCapturista, async (req: A
       if (row.usuario_id) {
         // Cuenta completa activa — sigue bloqueando igual que el flujo productor
         res.status(409).json({
-          error: 'Esta CURP ya tiene cuenta en SIMAC.',
+          error: 'Esta CURP ya tiene cuenta en Maíz.',
           codigo: 'CURP_DUPLICADA',
           nombres: row.nombres,
         });
@@ -149,7 +149,7 @@ router.post('/consultar-curp', authMiddleware, requiereCapturista, async (req: A
     }
     if (usuResult.rows.length > 0) {
       res.status(409).json({
-        error: 'Esta CURP ya tiene cuenta en SIMAC.',
+        error: 'Esta CURP ya tiene cuenta en Maíz.',
         codigo: 'CURP_DUPLICADA',
       });
       return;

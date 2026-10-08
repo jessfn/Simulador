@@ -95,14 +95,14 @@ const TIPO_CONFIG: Record<string, {
   label: string;
   route?: string;
 }> = {
-  nuevo_requerimiento:      { icon: Signal,        color: 'text-cyan-600',    bg: 'bg-cyan-50',    bgDark: 'bg-cyan-100',    label: 'Requerimiento',   route: '/requerimientos' },
-  interes_senal:            { icon: Signal,        color: 'text-cyan-600',    bg: 'bg-cyan-50',    bgDark: 'bg-cyan-100',    label: 'Señal',           route: '/requerimientos' },
-  confirmacion_transaccion: { icon: Receipt,       color: 'text-orange-500',  bg: 'bg-orange-50',  bgDark: 'bg-orange-100',  label: 'Transacción',     route: '/transacciones' },
-  interes_bodega_oferta:    { icon: Megaphone,     color: 'text-blue-600',    bg: 'bg-blue-50',    bgDark: 'bg-blue-100',    label: 'Oferta',          route: '/oferta' },
-  nueva_disponibilidad:     { icon: Wheat,         color: 'text-green-600',   bg: 'bg-green-50',   bgDark: 'bg-green-100',   label: 'Disponibilidad',  route: '/oferta' },
-  solicitud_apoyo:          { icon: Store,         color: 'text-purple-600',  bg: 'bg-purple-50',  bgDark: 'bg-purple-100',  label: 'Ventanilla',      route: '/ventanillas' },
+  nuevo_requerimiento:      { icon: Signal,        color: 'text-cyan-600',    bg: 'bg-cyan-50',    bgDark: 'bg-cyan-100',    label: 'Requerimiento',   route: '/maiz/bodega/requerimientos' },
+  interes_senal:            { icon: Signal,        color: 'text-cyan-600',    bg: 'bg-cyan-50',    bgDark: 'bg-cyan-100',    label: 'Señal',           route: '/maiz/bodega/requerimientos' },
+  confirmacion_transaccion: { icon: Receipt,       color: 'text-orange-500',  bg: 'bg-orange-50',  bgDark: 'bg-orange-100',  label: 'Transacción',     route: '/maiz/bodega/transacciones' },
+  interes_bodega_oferta:    { icon: Megaphone,     color: 'text-blue-600',    bg: 'bg-blue-50',    bgDark: 'bg-blue-100',    label: 'Oferta',          route: '/maiz/bodega/oferta' },
+  nueva_disponibilidad:     { icon: Wheat,         color: 'text-green-600',   bg: 'bg-green-50',   bgDark: 'bg-green-100',   label: 'Disponibilidad',  route: '/maiz/bodega/oferta' },
+  solicitud_apoyo:          { icon: Store,         color: 'text-purple-600',  bg: 'bg-purple-50',  bgDark: 'bg-purple-100',  label: 'Ventanilla',      route: '/maiz/bodega/ventanillas' },
   cambio_estado_solicitud:  { icon: ClipboardList, color: 'text-green-600',   bg: 'bg-green-50',   bgDark: 'bg-green-100',   label: 'Solicitud' },
-  alerta_tarifario:         { icon: Tag,           color: 'text-amber-600',   bg: 'bg-amber-50',   bgDark: 'bg-amber-100',   label: 'Tarifario',       route: '/tarifario' },
+  alerta_tarifario:         { icon: Tag,           color: 'text-amber-600',   bg: 'bg-amber-50',   bgDark: 'bg-amber-100',   label: 'Tarifario',       route: '/maiz/bodega/tarifario' },
 };
 
 function timeAgo(dateStr: string): string {

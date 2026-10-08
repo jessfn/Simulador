@@ -32,7 +32,7 @@ export default function ConfirmarTransaccionPage() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ confirmacion: esCorrecta ? 'confirmada' : 'discrepancia' }),
     });
-    navigate('/productor', { state: { mensaje: esCorrecta ? 'Transacción confirmada' : 'Discrepancia reportada' } });
+    navigate('/maiz/productor', { state: { mensaje: esCorrecta ? 'Transacción confirmada' : 'Discrepancia reportada' } });
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;

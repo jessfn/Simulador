@@ -25,15 +25,15 @@ export interface PushPayload {
 
 // URL a la que abre la app al tocar la notificación, por tipo de evento
 const URL_POR_TIPO: Record<string, string> = {
-  senal_compra:             '/productor/alertas',
-  interes_senal:            '/notificaciones',
-  confirmacion_transaccion: '/productor/alertas',
-  interes_bodega_oferta:    '/notificaciones',
-  nueva_disponibilidad:     '/oferta',
-  alerta_sanitaria:         '/productor/alertas',
-  alerta_tarifario:         '/notificaciones',
-  solicitud_apoyo:          '/ventanillas',
-  nuevo_requerimiento:      '/requerimientos',
+  senal_compra:             '/maiz/productor/alertas',
+  interes_senal:            '/maiz/bodega/notificaciones',
+  confirmacion_transaccion: '/maiz/productor/alertas',
+  interes_bodega_oferta:    '/maiz/bodega/notificaciones',
+  nueva_disponibilidad:     '/maiz/bodega/oferta',
+  alerta_sanitaria:         '/maiz/productor/alertas',
+  alerta_tarifario:         '/maiz/bodega/notificaciones',
+  solicitud_apoyo:          '/maiz/bodega/ventanillas',
+  nuevo_requerimiento:      '/maiz/bodega/requerimientos',
 };
 
 export const enviarPushNativa = async (
@@ -42,7 +42,7 @@ export const enviarPushNativa = async (
 ): Promise<void> => {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
 
-  const url = payload.url ?? URL_POR_TIPO[payload.tipo] ?? '/notificaciones';
+  const url = payload.url ?? URL_POR_TIPO[payload.tipo] ?? '/maiz/bodega/notificaciones';
 
   await webpush.sendNotification(
     {

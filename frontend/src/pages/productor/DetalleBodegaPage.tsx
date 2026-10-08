@@ -238,7 +238,7 @@ export default function DetalleBodegaPage() {
           </a>
         )}
 
-        <button onClick={() => navigate('/productor/mapa')}
+        <button onClick={() => navigate('/maiz/productor/mapa')}
           className="w-full ring-1 ring-zinc-300 text-zinc-600 py-3 rounded-2xl text-sm font-medium hover:bg-[#eef8f2] transition-colors">
           Volver al mapa
         </button>

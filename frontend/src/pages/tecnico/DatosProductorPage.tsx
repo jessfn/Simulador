@@ -52,7 +52,7 @@ export default function DatosProductorPage() {
       return;
     }
     setError('');
-    navigate(`/tecnico/registrar/${curpParam}/up`, {
+    navigate(`/maiz/tecnico/registrar/${curpParam}/up`, {
       state: {
         ...state,
         curp: curpParam,

@@ -489,13 +489,13 @@ export default function B24PerfilBodega() {
                   <Warehouse size={15} className="text-[#1A5C38]" />
                   <p className="text-[13px] font-bold text-slate-700">Mis bodegas <span className="text-slate-400 font-normal text-[11px]">({bodegas.length})</span></p>
                 </div>
-                <button onClick={() => navigate('/mis-bodegas')} className="text-[12px] text-[#1A5C38] font-bold flex items-center gap-0.5 active:opacity-60 transition-opacity">
+                <button onClick={() => navigate('/maiz/bodega/mis-bodegas')} className="text-[12px] text-[#1A5C38] font-bold flex items-center gap-0.5 active:opacity-60 transition-opacity">
                   Ver todas <ChevronRight size={14} />
                 </button>
               </div>
               <div className="px-4 pb-4 space-y-2">
                 {bodegas.slice(0, 3).map((b, i) => (
-                  <button key={b.bodega_id} onClick={() => navigate(`/bodegas/${b.bodega_id}`)}
+                  <button key={b.bodega_id} onClick={() => navigate(`/maiz/bodega/mis-bodegas/${b.bodega_id}`)}
                     className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-[#f9fafb] hover:bg-[#eef8f2] active:scale-[0.98] transition-all text-left"
                     style={{ animation: `bdFadeUp .35s ${i * 60 + 100}ms ease both` }}>
                     <div className="w-10 h-10 rounded-xl bg-white ring-1 ring-black/[0.06] flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -515,7 +515,7 @@ export default function B24PerfilBodega() {
           )}
 
           {/* ── Configuración ── */}
-          <button style={delay(3)} onClick={() => navigate('/configuracion')}
+          <button style={delay(3)} onClick={() => navigate('/maiz/bodega/configuracion')}
             className="w-full bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] px-5 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all group">
             <div className="w-10 h-10 rounded-xl bg-[#eef8f2] flex items-center justify-center flex-shrink-0 group-active:bg-[#d9f0e5] transition-colors">
               <Settings size={17} className="text-[#1A5C38]" />
@@ -536,14 +536,14 @@ export default function B24PerfilBodega() {
             <div className="flex-1">
               <p className="text-[14px] font-bold text-slate-800">Acuse de registro</p>
               <p className="text-[12px] text-slate-400 mt-0.5">
-                {descargandoAcuse ? 'Generando PDF…' : 'Descargar comprobante de tu registro en SIMAC'}
+                {descargandoAcuse ? 'Generando PDF…' : 'Descargar comprobante de tu registro en Maíz'}
               </p>
             </div>
             <ChevronRight size={16} className="text-slate-300 group-active:text-[#1A5C38] transition-colors" />
           </button>
 
           {/* ── Cerrar sesión ── */}
-          <button style={delay(4)} onClick={() => { logout(); navigate('/login'); }}
+          <button style={delay(4)} onClick={() => { logout(); navigate('/maiz/bodega/login'); }}
             className="w-full flex items-center justify-center gap-2 bg-red-50 border border-red-100 text-red-500 rounded-2xl py-4 text-[15px] font-bold active:scale-[0.98] transition-all shadow-[0_4px_12px_rgba(220,38,38,0.08)]">
             <LogOut size={18} /> Cerrar sesión
           </button>

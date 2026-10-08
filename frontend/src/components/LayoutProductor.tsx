@@ -7,11 +7,11 @@ import PushPrompt from './PushPrompt';
 import ChatBubble from './ChatBubble';
 
 const NAV = [
-  { path: '/productor', icon: Home, label: 'Inicio' },
-  { path: '/productor/mapa', icon: Map, label: 'Mapa' },
-  { path: '/productor/precios', icon: TrendingUp, label: 'Precios' },
-  { path: '/productor/incentivos', icon: Award, label: 'Apoyos' },
-  { path: '/productor/perfil', icon: User, label: 'Perfil' },
+  { path: '/maiz/productor', icon: Home, label: 'Inicio' },
+  { path: '/maiz/productor/mapa', icon: Map, label: 'Mapa' },
+  { path: '/maiz/productor/precios', icon: TrendingUp, label: 'Precios' },
+  { path: '/maiz/productor/incentivos', icon: Award, label: 'Apoyos' },
+  { path: '/maiz/productor/perfil', icon: User, label: 'Perfil' },
 ];
 
 const SYSTEM_NAME = 'Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México';
@@ -50,7 +50,7 @@ export function LayoutProductor({ children }: { children: ReactNode }) {
   function handleLogout() {
     logout();
     setDrawerOpen(false);
-    window.location.href = '/login-productor';
+    window.location.href = '/maiz/productor/login';
   }
 
   const nombres = user?.nombres || user?.nombre_completo || '';
@@ -66,8 +66,8 @@ export function LayoutProductor({ children }: { children: ReactNode }) {
         subtitle={SYSTEM_NAME}
         initials={initials}
         notifCount={notifNoLeidas}
-        onBrand={() => navigate('/productor')}
-        onBell={() => navigate('/productor/alertas')}
+        onBrand={() => navigate('/maiz/productor')}
+        onBell={() => navigate('/maiz/productor/alertas')}
         onMenu={() => setDrawerOpen(true)}
         mostrarAyuda
       />
@@ -76,7 +76,7 @@ export function LayoutProductor({ children }: { children: ReactNode }) {
       {/* En desktop el contenido se centra en una columna (como en "seleccionar
           bodegas"); las vistas de mapa a pantalla completa van a todo lo ancho. */}
       <main className="flex-1 overflow-y-auto w-full relative scroll-smooth bg-[#eef8f2]" style={{ overscrollBehaviorY: 'contain' }}>
-        {(pathname === '/productor/mapa' || pathname.startsWith('/productor/mapa/') || pathname.startsWith('/productor/ubicacion') || pathname.startsWith('/productor/ciclo'))
+        {(pathname === '/maiz/productor/mapa' || pathname.startsWith('/maiz/productor/mapa/') || pathname.startsWith('/maiz/productor/ubicacion') || pathname.startsWith('/maiz/productor/ciclo'))
           ? children
           : <div className="w-full max-w-2xl mx-auto">{children}</div>}
       </main>
@@ -86,9 +86,9 @@ export function LayoutProductor({ children }: { children: ReactNode }) {
            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-stretch">
         {NAV.map(({ path, icon: Icon, label }) => {
-          const active = pathname === path || (path !== '/productor' && pathname.startsWith(path + '/'))
-            || (path === '/productor' && pathname === '/productor');
-          const isPerfil = path === '/productor/perfil';
+          const active = pathname === path || (path !== '/maiz/productor' && pathname.startsWith(path + '/'))
+            || (path === '/maiz/productor' && pathname === '/maiz/productor');
+          const isPerfil = path === '/maiz/productor/perfil';
           return (
             <Link
               key={path}
@@ -161,9 +161,9 @@ export function LayoutProductor({ children }: { children: ReactNode }) {
         {/* Opciones de menú — solo rutas reales */}
         <div className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {[
-            { icon: User,          label: 'Mi perfil',        desc: 'Ver y editar cuenta',         route: '/productor/perfil' },
-            { icon: CalendarCheck, label: 'Ciclo productivo', desc: 'Registro y seguimiento',       route: '/productor/ciclo' },
-            { icon: Bell,          label: 'Alertas',          desc: notifNoLeidas > 0 ? `${notifNoLeidas} sin leer` : 'Al día', route: '/productor/alertas' },
+            { icon: User,          label: 'Mi perfil',        desc: 'Ver y editar cuenta',         route: '/maiz/productor/perfil' },
+            { icon: CalendarCheck, label: 'Ciclo productivo', desc: 'Registro y seguimiento',       route: '/maiz/productor/ciclo' },
+            { icon: Bell,          label: 'Alertas',          desc: notifNoLeidas > 0 ? `${notifNoLeidas} sin leer` : 'Al día', route: '/maiz/productor/alertas' },
           ].map(({ icon: Icon, label, desc, route }) => (
             <button key={route} onClick={() => { setDrawerOpen(false); navigate(route); }}
               className="w-full flex items-center gap-3 px-3 py-3.5 rounded-2xl text-left active:bg-[#eef8f2] transition-colors group">

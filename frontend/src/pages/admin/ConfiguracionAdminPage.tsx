@@ -71,7 +71,7 @@ function ModalExportarBD({ onClose }: { onClose: () => void }) {
       const a = document.createElement('a');
       a.href = url;
       const fecha = new Date().toISOString().slice(0, 10);
-      a.download = `SIMAC_BD_${fecha}.xlsx`;
+      a.download = `Maiz_BD_${fecha}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: any) {

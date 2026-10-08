@@ -89,7 +89,7 @@ export default function B11OfertaTabla() {
               <p className="text-green-100/80 text-[13px] mt-0.5 font-medium">Datos agregados por municipio</p>
             </div>
             <button
-              onClick={() => navigate('/oferta/mis-intereses')}
+              onClick={() => navigate('/maiz/bodega/oferta/mis-intereses')}
               className="flex-shrink-0 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl px-3 py-2 text-[12px] font-bold transition-all duration-300 active:scale-[0.98]"
             >
               <Heart size={13} className={intereses.size > 0 ? 'fill-white' : ''} />
@@ -204,7 +204,7 @@ export default function B11OfertaTabla() {
                     const cargando = enviando === clave;
                     return (
                       <button
-                        onClick={() => yaInteresa ? navigate('/oferta/mis-intereses') : marcarInteres(d.municipio, d.estado)}
+                        onClick={() => yaInteresa ? navigate('/maiz/bodega/oferta/mis-intereses') : marcarInteres(d.municipio, d.estado)}
                         disabled={cargando}
                         className={`w-full flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-bold active:scale-[0.98] transition-all duration-300 disabled:opacity-50 ${
                           yaInteresa ? 'bg-[#1A5C38] hover:bg-[#154a2d] text-white shadow-md' : 'bg-rose-50 hover:bg-rose-100 text-rose-600'
@@ -216,7 +216,7 @@ export default function B11OfertaTabla() {
                     );
                   })()}
                   <button
-                    onClick={() => navigate(`/requerimientos?municipio=${encodeURIComponent(d.municipio)}`)}
+                    onClick={() => navigate(`/maiz/bodega/requerimientos?municipio=${encodeURIComponent(d.municipio)}`)}
                     className="w-full flex items-center justify-center gap-2 bg-[#1A5C38]/[0.08] hover:bg-[#1A5C38]/[0.12] text-[#1A5C38] rounded-xl py-2.5 text-[13px] font-bold active:scale-[0.98] transition-all duration-300"
                   >
                     <Signal size={14} /> Requerimiento

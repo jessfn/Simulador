@@ -31,7 +31,7 @@ export default function B16ProponerConcepto() {
         <p className="text-[22px] font-bold text-gray-900">Propuesta enviada</p>
         <p className="text-[15px] text-gray-500 font-medium mt-2 mb-8">Te notificaremos cuando el admin la apruebe.</p>
         <button
-          onClick={() => navigate('/tarifario')}
+          onClick={() => navigate('/maiz/bodega/tarifario')}
           className="w-full bg-[#1A5C38] text-white rounded-[1.25rem] py-4 text-[17px] font-bold active:scale-[0.98] transition-all shadow-[0_4px_12px_rgba(26,92,56,0.2)] hover:shadow-[0_8px_24px_rgba(26,92,56,0.3)]"
         >
           Volver al tarifario
@@ -42,7 +42,7 @@ export default function B16ProponerConcepto() {
 
   return (
     <div className="w-full overflow-x-hidden">
-      <PageHeader title="Proponer Nuevo Servicio" back="/tarifario" />
+      <PageHeader title="Proponer Nuevo Servicio" back="/maiz/bodega/tarifario" />
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
@@ -75,7 +75,7 @@ export default function B16ProponerConcepto() {
 
         <div className="bg-[#eef8f2] rounded-[1.25rem] p-5">
           <p className="text-[13px] text-gray-500 font-medium leading-snug">
-            Tu propuesta será revisada por el equipo de SIMAC. Una vez aprobada, podrás establecer precios para este servicio en tus bodegas.
+            Tu propuesta será revisada por el equipo de Maíz. Una vez aprobada, podrás establecer precios para este servicio en tus bodegas.
           </p>
         </div>
 

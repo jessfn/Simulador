@@ -146,11 +146,11 @@ export default function CicloTecnicoPage() {
         <h1 className="text-[20px] font-black text-slate-900 text-center">Ciclo registrado</h1>
         <p className="text-[13.5px] text-slate-500 text-center mt-1.5">El ciclo productivo se guardó correctamente.</p>
         <div className="w-full max-w-sm mt-8 space-y-2.5">
-          <button onClick={() => navigate(`/tecnico/productor/${producerId}`)}
+          <button onClick={() => navigate(`/maiz/tecnico/productor/${producerId}`)}
             className="w-full bg-[#1A5C38] hover:bg-[#124227] text-white py-3.5 rounded-2xl font-bold text-[14.5px] active:scale-[0.98] transition-all">
             Volver al productor
           </button>
-          <button onClick={() => navigate('/tecnico')}
+          <button onClick={() => navigate('/maiz/tecnico')}
             className="w-full text-slate-400 py-2.5 font-semibold text-[13px]">
             Ir al inicio
           </button>

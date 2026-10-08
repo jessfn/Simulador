@@ -132,10 +132,10 @@ export default function DashboardProductorPage() {
               </h2>
               
               <p className="text-[14px] text-slate-500 font-medium mb-8 leading-relaxed">
-                Para usar SIMAC necesitas registrar la información de tu ciclo productivo. Es muy rápido.
+                Para usar Maíz necesitas registrar la información de tu ciclo productivo. Es muy rápido.
               </p>
               
-              <button onClick={() => navigate('/productor/ciclo')}
+              <button onClick={() => navigate('/maiz/productor/ciclo')}
                 className="w-full bg-[#1A5C38] hover:bg-[#124227] text-white py-3.5 rounded-full font-bold text-[15px] shadow-[0_6px_15px_rgba(26,92,56,0.2)] active:scale-[0.98] transition-all duration-200">
                 Registrar ciclo
               </button>
@@ -165,7 +165,7 @@ export default function DashboardProductorPage() {
           <p className="text-white text-sm font-medium flex-1 leading-tight flex items-center gap-1.5">
             <AlertTriangle size={14} className="shrink-0" /> {alertaActiva.mensaje}
           </p>
-          <button onClick={() => navigate('/productor/alertas')}
+          <button onClick={() => navigate('/maiz/productor/alertas')}
             className="ml-3 text-white text-xs border border-white/60 rounded-lg px-3 py-1.5 shrink-0 font-medium hover:bg-white/10 transition-colors">
             Ver detalle
           </button>
@@ -217,7 +217,7 @@ export default function DashboardProductorPage() {
                 a toda la información del mercado.
               </p>
               <button
-                onClick={() => navigate('/productor/ubicacion')}
+                onClick={() => navigate('/maiz/productor/ubicacion')}
                 className="mt-3 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors"
               >
                 Actualizar mi parcela →
@@ -257,7 +257,7 @@ export default function DashboardProductorPage() {
             </p>
             
             <button 
-              onClick={() => navigate('/productor/precios')}
+              onClick={() => navigate('/maiz/productor/precios')}
               className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 bg-[#1A5C38]/10 text-[#1A5C38] text-[13px] font-bold rounded-xl active:scale-95 transition-all duration-300 hover:bg-[#1A5C38] hover:text-white group/btn"
             >
               Ver desglose de precios 
@@ -273,7 +273,7 @@ export default function DashboardProductorPage() {
               const sem = SEMAFORO[b.estado_compra] || SEMAFORO.sin_actividad;
               return (
                 <button key={b.id}
-                  onClick={() => navigate(`/productor/mapa/bodega/${b.id}`)}
+                  onClick={() => navigate(`/maiz/productor/mapa/bodega/${b.id}`)}
                   className="w-full bg-white rounded-2xl p-4 shadow-sm ring-1 ring-zinc-100
                              flex items-center justify-between active:scale-[0.98] transition-all duration-200 text-left hover:ring-zinc-200">
                   <div className="flex items-center gap-3">
@@ -303,7 +303,7 @@ export default function DashboardProductorPage() {
               <p className="text-sm text-zinc-400 text-center py-4">No hay bodegas registradas en tu region aun</p>
             )}
           </div>
-          <button onClick={() => navigate('/productor/mapa')}
+          <button onClick={() => navigate('/maiz/productor/mapa')}
             className="w-full mt-3 py-3 text-[#1A5C38] text-sm font-semibold
                        ring-2 ring-[#1A5C38] rounded-2xl hover:bg-emerald-50 active:scale-[0.98] transition-all duration-200">
             Ver mapa completo
@@ -312,7 +312,7 @@ export default function DashboardProductorPage() {
 
         <div className="mt-5">
           <button
-            onClick={() => !isPendiente && navigate('/productor/propuesta-venta')}
+            onClick={() => !isPendiente && navigate('/maiz/productor/propuesta-venta')}
             disabled={isPendiente}
             className={`w-full py-5 rounded-2xl text-white text-lg font-semibold
               flex items-center justify-center gap-3 transition-all duration-200
@@ -323,7 +323,7 @@ export default function DashboardProductorPage() {
             Propuesta de venta
           </button>
           <button
-            onClick={() => navigate('/productor/mis-propuestas')}
+            onClick={() => navigate('/maiz/productor/mis-propuestas')}
             className="w-full mt-3 py-3.5 rounded-2xl text-[#1A5C38] text-sm font-semibold
               ring-2 ring-[#1A5C38] flex items-center justify-center gap-2 hover:bg-emerald-50 active:scale-[0.98] transition-all duration-200"
           >
@@ -332,7 +332,7 @@ export default function DashboardProductorPage() {
           </button>
           {!isPendiente && (
             <button
-              onClick={() => navigate('/productor/ups/nueva')}
+              onClick={() => navigate('/maiz/productor/ups/nueva')}
               className="w-full border-2 border-dashed border-[#1A5C38] text-[#1A5C38] py-3 rounded-2xl text-sm font-medium
                 hover:bg-green-50 flex items-center justify-center gap-2 mt-3"
             >
@@ -363,7 +363,7 @@ export default function DashboardProductorPage() {
               Marca tu parcela en el mapa para ver solo las bodegas mas cercanas a ti.
             </p>
             <div className="flex gap-2 mt-3">
-              <button onClick={() => navigate('/productor/ubicacion')}
+              <button onClick={() => navigate('/maiz/productor/ubicacion')}
                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-sm py-2.5 rounded-xl font-semibold transition-colors">
                 Marcar mi parcela
               </button>
@@ -384,7 +384,7 @@ export default function DashboardProductorPage() {
               Registra tu ciclo {new Date().getFullYear()} para acceder a programas de apoyo y trazabilidad.
             </p>
             <div className="flex gap-2 mt-3">
-              <button onClick={() => navigate('/productor/ciclo')}
+              <button onClick={() => navigate('/maiz/productor/ciclo')}
                 className="flex-1 bg-[#1A5C38] hover:bg-[#15482d] text-white text-sm py-2.5 rounded-xl font-semibold transition-colors">
                 Registrar ciclo
               </button>

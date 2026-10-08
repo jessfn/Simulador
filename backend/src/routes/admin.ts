@@ -1141,7 +1141,7 @@ router.post('/reset-password/:usuario_id', authMiddleware, soloAdmin, async (req
     );
 
     const appUrl = process.env.APP_URL || 'https://maiz.agricultura.gob.mx';
-    const resetUrl = `${appUrl}/reset-password/${token}`;
+    const resetUrl = `${appUrl}/maiz/reset-password/${token}`;
 
     res.json({ ok: true, reset_url: resetUrl, nombre: rows[0].nombre_completo, email: rows[0].email });
   } catch (error) {

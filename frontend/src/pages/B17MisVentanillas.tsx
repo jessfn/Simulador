@@ -31,7 +31,7 @@ export default function B17MisVentanillas() {
 
   return (
     <div className="w-full">
-      <PageBanner title="Mis Ventanillas" subtitle="Apoyos para productores" back="/mas" />
+      <PageBanner title="Mis Ventanillas" subtitle="Apoyos para productores" back="/maiz/bodega/mas" />
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {loading && (
@@ -44,7 +44,7 @@ export default function B17MisVentanillas() {
           {ventanillas.map(v => (
             <button
               key={v.id}
-              onClick={() => navigate(`/ventanillas/${v.id}/solicitudes`)}
+              onClick={() => navigate(`/maiz/bodega/ventanillas/${v.id}/solicitudes`)}
               className="w-full bg-white rounded-[1.5rem] border border-black/[0.04] shadow-[0_2px_8px_rgba(0,0,0,0.02)] p-5 text-left active:scale-[0.98] transition-all duration-500 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:border-black/[0.08] group/card"
             >
               <div className="flex items-center gap-4">
@@ -86,7 +86,7 @@ export default function B17MisVentanillas() {
 
       {/* FAB */}
       <button
-        onClick={() => navigate('/ventanillas/nueva')}
+        onClick={() => navigate('/maiz/bodega/ventanillas/nueva')}
         className="fixed bottom-24 right-5 sm:right-8 lg:right-12 xl:right-20 w-14 h-14 bg-[#1A5C38] text-white rounded-[1.25rem] shadow-[0_4px_12px_rgba(26,92,56,0.3)] hover:shadow-[0_8px_24px_rgba(26,92,56,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 z-10"
       >
         <Plus size={24} />

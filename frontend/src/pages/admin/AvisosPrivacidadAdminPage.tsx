@@ -129,7 +129,7 @@ function generarPDF(a: Aviso) {
 <body>
   <div class="hdr">
     <div class="hdr-left">
-      <div class="logo"><span>SIMAC</span></div>
+      <div class="logo"><span>Maíz</span></div>
       <div class="hdr-title">
         <h1>Constancia de Aceptación — Aviso de Privacidad</h1>
         <p>Plan Nacional Maíz 2026 · SADER · Sistema de Información de Mercados Agrícolas</p>
@@ -202,7 +202,7 @@ function generarPDF(a: Aviso) {
   </div>
 
   <div class="footer">
-    <p>SIMAC — Plan Nacional Maíz 2026 · Secretaría de Agricultura y Desarrollo Rural · Documento generado automáticamente</p>
+    <p>Maíz — Plan Nacional Maíz 2026 · Secretaría de Agricultura y Desarrollo Rural · Documento generado automáticamente</p>
     <p>Folio #${String(a.id).padStart(6, '0')} · ${a.tipo.charAt(0).toUpperCase() + a.tipo.slice(1)} · ${new Date().toISOString()}</p>
   </div>
 

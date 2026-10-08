@@ -51,7 +51,7 @@ export default function RecuperarPasswordPage() {
       {/* Header */}
       <div className="relative flex-shrink-0 flex items-center px-4 h-12 sm:h-14">
         <button
-          onClick={() => navigate('/login')}
+          onClick={() => navigate('/maiz/bodega/login')}
           className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors"
         >
           <ChevronLeft size={22} className="text-white/70" />
@@ -173,7 +173,7 @@ export default function RecuperarPasswordPage() {
                 )}
 
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/maiz/bodega/login')}
                   className="w-full bg-white hover:bg-white/90 active:bg-white/80 text-[#1A5C38] rounded-xl py-3 text-sm font-bold active:scale-[0.98] transition-all"
                 >
                   Volver al inicio de sesión

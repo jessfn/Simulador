@@ -441,7 +441,7 @@ export default function MiPerfilPage() {
                 {parcelas.length > 0 && <span className="ml-1.5 text-[11px] text-slate-400 font-normal">({parcelas.length})</span>}
               </p>
             </div>
-            <button onClick={() => navigate('/productor/ups/nueva')}
+            <button onClick={() => navigate('/maiz/productor/ups/nueva')}
               className="flex items-center gap-1 text-[#1A5C38] text-[12px] font-bold active:opacity-60 transition-opacity">
               <Plus size={13} /> Agregar
             </button>
@@ -454,7 +454,7 @@ export default function MiPerfilPage() {
           )}
 
           {parcelas.length === 0 ? (
-            <button onClick={() => navigate('/productor/ups/nueva')}
+            <button onClick={() => navigate('/maiz/productor/ups/nueva')}
               className="w-full flex flex-col items-center py-6 gap-2 text-center px-5 active:opacity-80 transition-opacity">
               <div className="w-11 h-11 rounded-2xl bg-[#eef8f2] flex items-center justify-center">
                 <Sprout size={18} className="text-[#1A5C38]/40" />
@@ -490,7 +490,7 @@ export default function MiPerfilPage() {
                           {p.area_ha_calc != null && ` · ${Number(p.area_ha_calc).toLocaleString('es-MX', { maximumFractionDigits: 1 })} ha`}
                         </p>
                       </div>
-                      <button onClick={() => navigate(`/productor/ubicacion?up_id=${p.up_id}`)}
+                      <button onClick={() => navigate(`/maiz/productor/ubicacion?up_id=${p.up_id}`)}
                         className="w-8 h-8 rounded-xl bg-[#eef8f2] flex items-center justify-center active:scale-95 transition-transform flex-shrink-0">
                         <MapPin size={14} className="text-[#1A5C38]" />
                       </button>
@@ -518,7 +518,7 @@ export default function MiPerfilPage() {
                 )}
               </p>
             </div>
-            <button onClick={() => navigate('/productor/ciclo')}
+            <button onClick={() => navigate('/maiz/productor/ciclo')}
               className="flex items-center gap-1 text-[#1A5C38] text-[12px] font-bold active:opacity-60 transition-opacity">
               <Plus size={13} /> Agregar
             </button>
@@ -530,7 +530,7 @@ export default function MiPerfilPage() {
               <span className="text-[13px] text-slate-400">Cargando ciclos…</span>
             </div>
           ) : ciclos.length === 0 ? (
-            <button onClick={() => navigate('/productor/ciclo')}
+            <button onClick={() => navigate('/maiz/productor/ciclo')}
               className="w-full flex flex-col items-center py-6 gap-2 text-center px-5 active:opacity-80 transition-opacity">
               <div className="w-11 h-11 rounded-2xl bg-[#eef8f2] flex items-center justify-center">
                 <CalendarCheck size={18} className="text-[#1A5C38]/40" />
@@ -562,7 +562,7 @@ export default function MiPerfilPage() {
                     : s === 'semilla' ? 'Semilla'
                     : capitalize(s);
                   return (
-                    <button key={c.cycle_id} onClick={() => navigate('/productor/ciclo')}
+                    <button key={c.cycle_id} onClick={() => navigate('/maiz/productor/ciclo')}
                       style={{ animation: `pfFadeUp .35s ${i * 60}ms ease both`, border: '1.5px solid #d1e8da', boxShadow: '0 2px 8px rgba(26,92,56,0.08)' }}
                       className="flex-shrink-0 w-56 bg-white rounded-2xl p-4 text-left active:scale-[0.97] transition-all group/card">
                       <div className="flex items-center justify-between mb-2">
@@ -675,7 +675,7 @@ export default function MiPerfilPage() {
         <div style={delay(5)} className="space-y-2">
 
           {/* Mis solicitudes */}
-          <button onClick={() => navigate('/productor/mis-solicitudes')}
+          <button onClick={() => navigate('/maiz/productor/mis-solicitudes')}
             className="w-full bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] px-5 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all group">
             <div className="w-10 h-10 rounded-2xl bg-[#eef8f2] flex items-center justify-center flex-shrink-0 group-active:bg-[#d9f0e5] transition-colors">
               <ClipboardList size={17} className="text-[#1A5C38]" />
@@ -688,7 +688,7 @@ export default function MiPerfilPage() {
           </button>
 
           {/* Alertas */}
-          <button onClick={() => navigate('/productor/alertas')}
+          <button onClick={() => navigate('/maiz/productor/alertas')}
             className="w-full bg-white rounded-2xl shadow-sm ring-1 ring-black/[0.04] px-5 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all group">
             <div className="w-10 h-10 rounded-2xl bg-[#eef8f2] flex items-center justify-center flex-shrink-0 group-active:bg-[#d9f0e5] transition-colors relative">
               <Bell size={17} className="text-[#1A5C38]" />
@@ -716,7 +716,7 @@ export default function MiPerfilPage() {
             <div className="flex-1">
               <p className="text-[14px] font-bold text-slate-800">Acuse de registro</p>
               <p className="text-[12px] text-slate-400 mt-0.5">
-                {descargandoAcuse ? 'Generando PDF…' : 'Descargar comprobante de tu registro en SIMAC'}
+                {descargandoAcuse ? 'Generando PDF…' : 'Descargar comprobante de tu registro en Maíz'}
               </p>
             </div>
             <ChevronRight size={16} className="text-slate-300 group-active:text-[#1A5C38] transition-colors flex-shrink-0" />
@@ -724,7 +724,7 @@ export default function MiPerfilPage() {
         </div>
 
         {/* ── Cerrar sesión ── */}
-        <button style={delay(6)} onClick={() => { logout(); window.location.href = '/login-productor'; }}
+        <button style={delay(6)} onClick={() => { logout(); window.location.href = '/maiz/productor/login'; }}
           className="w-full flex items-center justify-center gap-2 py-4 text-red-500 font-semibold text-[14px] active:opacity-70 transition-opacity">
           <LogOut size={16} /> Cerrar sesión
         </button>

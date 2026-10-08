@@ -25,22 +25,22 @@ interface SidebarItem {
 }
 
 const MENU: SidebarItem[] = [
-  { label: 'Resumen',           subtitle: 'Métricas, estadísticas y vista general del sistema',               path: '/admin',                   icon: LayoutDashboard, exact: true, vista: 'resumen' },
-  { label: 'Productores',       subtitle: 'Administración y gestión integral de agricultores registrados',    path: '/admin/productores',       icon: Users,           vista: 'productores' },
-  { label: 'Parcelas',          subtitle: 'Mapa de todas las unidades de producción y parcelas registradas',  path: '/admin/parcelas',          icon: Layers,          vista: 'parcelas' },
-  { label: 'Bodegas',           subtitle: 'Supervisión y control detallado de centros de acopio',             path: '/admin/bodegas',           icon: Warehouse,       vista: 'bodegas' },
-  { label: 'Técnicos',          subtitle: 'Gestión de técnicos ECA y registros capturados en campo',         path: '/admin/tecnicos',          icon: UserCog,         vista: 'tecnicos' },
-  { label: 'Encuesta Insumos',  subtitle: 'Intención de compra de insumos para negociación de la Secretaría', path: '/admin/insumos',           icon: Sprout,          vista: 'insumos' },
-  { label: 'Chats de Ayuda',    subtitle: 'Soporte en vivo a productores y bodegas',                          path: '/admin/chats',             icon: MessageCircle,   vista: 'chats_ayuda' },
-  { label: 'Alertas',           subtitle: 'Centro de notificaciones y avisos en tiempo real',                 path: '/admin/alertas',           icon: AlertTriangle,   vista: 'alertas' },
-  { label: 'Precios',           subtitle: 'Monitoreo de cotizaciones y variaciones del mercado',              path: '/admin/precios',           icon: TrendingUp,      vista: 'precios' },
-  { label: 'Producción',        subtitle: 'Registro, seguimiento y estimación de cosechas activas',           path: '/admin/produccion',        icon: Sprout,          vista: 'produccion' },
-  { label: 'Mercado',           subtitle: 'Análisis estadístico y proyecciones comerciales a futuro',         path: '/admin/mercado',           icon: BarChart3,       vista: 'mercado' },
-  { label: 'SENASICA',          subtitle: 'Carga de alertas fitosanitarias y notificación a productores',     path: '/admin/senasica',          icon: Leaf,            vista: 'senasica' },
-  { label: 'Configuración',     subtitle: 'Preferencias, roles de usuario y ajustes del sistema',             path: '/admin/configuracion',     icon: Settings,        soloAdmin: true },
-  { label: 'Avisos Privacidad', subtitle: 'Constancias de aceptación con verificación biométrica y GPS',      path: '/admin/avisos-privacidad', icon: ShieldCheck,     vista: 'avisos-privacidad' },
-  { label: 'Permisos',          subtitle: 'Usuarios del panel, roles y control de acceso por vista',          path: '/admin/permisos',          icon: KeyRound,        soloAdmin: true },
-  { label: 'Mi Perfil',         subtitle: 'Edita tu información, email y contraseña de acceso',               path: '/admin/perfil',            icon: CircleUserRound },
+  { label: 'Resumen',           subtitle: 'Métricas, estadísticas y vista general del sistema',               path: '/maiz/admin',                   icon: LayoutDashboard, exact: true, vista: 'resumen' },
+  { label: 'Productores',       subtitle: 'Administración y gestión integral de agricultores registrados',    path: '/maiz/admin/productores',       icon: Users,           vista: 'productores' },
+  { label: 'Parcelas',          subtitle: 'Mapa de todas las unidades de producción y parcelas registradas',  path: '/maiz/admin/parcelas',          icon: Layers,          vista: 'parcelas' },
+  { label: 'Bodegas',           subtitle: 'Supervisión y control detallado de centros de acopio',             path: '/maiz/admin/bodegas',           icon: Warehouse,       vista: 'bodegas' },
+  { label: 'Técnicos',          subtitle: 'Gestión de técnicos ECA y registros capturados en campo',         path: '/maiz/admin/tecnicos',          icon: UserCog,         vista: 'tecnicos' },
+  { label: 'Encuesta Insumos',  subtitle: 'Intención de compra de insumos para negociación de la Secretaría', path: '/maiz/admin/insumos',           icon: Sprout,          vista: 'insumos' },
+  { label: 'Chats de Ayuda',    subtitle: 'Soporte en vivo a productores y bodegas',                          path: '/maiz/admin/chats',             icon: MessageCircle,   vista: 'chats_ayuda' },
+  { label: 'Alertas',           subtitle: 'Centro de notificaciones y avisos en tiempo real',                 path: '/maiz/admin/alertas',           icon: AlertTriangle,   vista: 'alertas' },
+  { label: 'Precios',           subtitle: 'Monitoreo de cotizaciones y variaciones del mercado',              path: '/maiz/admin/precios',           icon: TrendingUp,      vista: 'precios' },
+  { label: 'Producción',        subtitle: 'Registro, seguimiento y estimación de cosechas activas',           path: '/maiz/admin/produccion',        icon: Sprout,          vista: 'produccion' },
+  { label: 'Mercado',           subtitle: 'Análisis estadístico y proyecciones comerciales a futuro',         path: '/maiz/admin/mercado',           icon: BarChart3,       vista: 'mercado' },
+  { label: 'SENASICA',          subtitle: 'Carga de alertas fitosanitarias y notificación a productores',     path: '/maiz/admin/senasica',          icon: Leaf,            vista: 'senasica' },
+  { label: 'Configuración',     subtitle: 'Preferencias, roles de usuario y ajustes del sistema',             path: '/maiz/admin/configuracion',     icon: Settings,        soloAdmin: true },
+  { label: 'Avisos Privacidad', subtitle: 'Constancias de aceptación con verificación biométrica y GPS',      path: '/maiz/admin/avisos-privacidad', icon: ShieldCheck,     vista: 'avisos-privacidad' },
+  { label: 'Permisos',          subtitle: 'Usuarios del panel, roles y control de acceso por vista',          path: '/maiz/admin/permisos',          icon: KeyRound,        soloAdmin: true },
+  { label: 'Mi Perfil',         subtitle: 'Edita tu información, email y contraseña de acceso',               path: '/maiz/admin/perfil',            icon: CircleUserRound },
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -96,7 +96,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   function handleLogout() {
     logout();
-    navigate('/admin/login');
+    navigate('/maiz/admin/login');
   }
 
   const pageInfo = () => {
@@ -145,7 +145,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <div className={`${small ? 'w-[90px]' : 'w-[125px]'} flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-1.5`}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
           <JustifiedText 
-            text="SIMAC" 
+            text="Maíz" 
             className={`${small ? 'text-[15px]' : 'text-[18px]'} font-black text-white leading-none uppercase mb-[4px] drop-shadow-sm transition-transform duration-500`} 
           />
         </div>
@@ -201,12 +201,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all duration-500" />}
               <item.icon size={16} strokeWidth={2.2} className={`flex-shrink-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? 'text-white scale-110' : 'text-emerald-100/60 group-hover:text-white group-hover:scale-110'}`} />
               <span className="truncate transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-1">{item.label}</span>
-              {item.path === '/admin/chats' && chatsNoLeidos > 0 && (
+              {item.path === '/maiz/admin/chats' && chatsNoLeidos > 0 && (
                 <span className="ml-auto flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9.5px] font-black flex items-center justify-center">
                   {chatsNoLeidos > 9 ? '9+' : chatsNoLeidos}
                 </span>
               )}
-              {!mobile && item.path !== '/admin/chats' && <ChevronRight size={13} className="ml-auto opacity-0 -translate-x-2 group-hover:opacity-40 group-hover:translate-x-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]" />}
+              {!mobile && item.path !== '/maiz/admin/chats' && <ChevronRight size={13} className="ml-auto opacity-0 -translate-x-2 group-hover:opacity-40 group-hover:translate-x-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]" />}
             </>
           )}
         </NavLink>
@@ -337,7 +337,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               </div>
             </div>
 
-            <button onClick={() => navigate('/admin/perfil')}
+            <button onClick={() => navigate('/maiz/admin/perfil')}
               className="relative group/avatar cursor-pointer ml-1 active:scale-90 transition-transform">
               <div className="absolute inset-0 bg-emerald-400 rounded-full blur-[8px] opacity-40 group-hover/avatar:opacity-75 group-hover/avatar:blur-[12px] transition-all duration-300" />
               <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-black text-[12px] flex-shrink-0 ring-2 ring-[#03150a] group-hover/avatar:scale-105 transition-transform duration-300 ease-out shadow-lg">

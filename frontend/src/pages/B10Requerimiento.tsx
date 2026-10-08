@@ -115,7 +115,7 @@ export default function B10Requerimiento() {
 
   return (
     <div className="w-full">
-      <PageBanner title="Requerimientos de Maíz" subtitle="Notifica a productores en tu área" back="/oferta" />
+      <PageBanner title="Requerimientos de Maíz" subtitle="Notifica a productores en tu área" back="/maiz/bodega/oferta" />
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -305,7 +305,7 @@ export default function B10Requerimiento() {
                     </p>
                   )}
                   <button
-                    onClick={() => (s.interesados_count ?? 0) > 0 && navigate(`/senales/${s.id}/interesados`)}
+                    onClick={() => (s.interesados_count ?? 0) > 0 && navigate(`/maiz/bodega/senales/${s.id}/interesados`)}
                     disabled={(s.interesados_count ?? 0) === 0}
                     className={`text-[11px] font-medium ${
                       (s.interesados_count ?? 0) > 0

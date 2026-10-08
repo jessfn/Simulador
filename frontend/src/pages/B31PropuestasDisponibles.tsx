@@ -158,7 +158,7 @@ export default function B31PropuestasDisponibles() {
 
   return (
     <div className="w-full">
-      <PageBanner title="Propuestas disponibles" subtitle="Maíz que productores publicaron para negociar" back="/oferta" />
+      <PageBanner title="Propuestas disponibles" subtitle="Maíz que productores publicaron para negociar" back="/maiz/bodega/oferta" />
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="max-w-4xl mx-auto space-y-4">

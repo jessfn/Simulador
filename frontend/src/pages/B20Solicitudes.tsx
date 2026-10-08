@@ -32,7 +32,7 @@ export default function B20Solicitudes() {
 
   return (
     <div className="w-full pb-10">
-      <PageHeader title="Solicitudes" subtitle="Productores interesados" back="/ventanillas" />
+      <PageHeader title="Solicitudes" subtitle="Productores interesados" back="/maiz/bodega/ventanillas" />
 
       <div className="w-full max-w-3xl mx-auto">
 
@@ -56,7 +56,7 @@ export default function B20Solicitudes() {
         {solicitudes.map(s => (
           <button
             key={s.id}
-            onClick={() => navigate(`/ventanillas/${id}/solicitudes/${s.id}`)}
+            onClick={() => navigate(`/maiz/bodega/ventanillas/${id}/solicitudes/${s.id}`)}
             className="w-full bg-white rounded-[1.5rem] shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-black/[0.04] p-5 text-left active:scale-[0.98] transition-all duration-500 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 flex items-center gap-4 group/card"
           >
             <div className="flex-1 min-w-0 transition-transform duration-500 group-hover/card:translate-x-1">

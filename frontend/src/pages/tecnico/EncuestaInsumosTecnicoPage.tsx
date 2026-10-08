@@ -208,7 +208,7 @@ export default function EncuestaInsumosTecnicoPage() {
         </div>
         <h1 className="text-[20px] font-black text-slate-900 text-center">Encuesta guardada</h1>
         <p className="text-[13.5px] text-slate-500 text-center mt-1.5 max-w-xs">La respuesta de {nombreProductor} quedó registrada.</p>
-        <button onClick={() => navigate(`/tecnico/productor/${producerId}`)}
+        <button onClick={() => navigate(`/maiz/tecnico/productor/${producerId}`)}
           className="mt-8 w-full max-w-sm bg-[#1A5C38] hover:bg-[#124227] text-white py-3.5 rounded-2xl font-bold text-[14.5px] active:scale-[0.98] transition-all">
           Volver al productor
         </button>

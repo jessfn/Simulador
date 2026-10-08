@@ -30,7 +30,7 @@ const TIPO_CFG: Record<string, Cfg> = {
   senal_compra:             { Icon: ShoppingCart,  label: 'Señal de compra',   color: 'text-emerald-600', bg: 'bg-emerald-50', bgDark: 'bg-emerald-100' },
   interes_senal:            { Icon: Heart,         label: 'Interés',           color: 'text-rose-600',    bg: 'bg-rose-50',    bgDark: 'bg-rose-100' },
   interes_bodega_oferta:    { Icon: Heart,         label: 'Interés de bodega', color: 'text-rose-600',    bg: 'bg-rose-50',    bgDark: 'bg-rose-100' },
-  confirmacion_transaccion: { Icon: Receipt,       label: 'Transacción',       color: 'text-blue-600',    bg: 'bg-blue-50',    bgDark: 'bg-blue-100',  route: '/productor' },
+  confirmacion_transaccion: { Icon: Receipt,       label: 'Transacción',       color: 'text-blue-600',    bg: 'bg-blue-50',    bgDark: 'bg-blue-100',  route: '/maiz/productor' },
   transaccion:              { Icon: Receipt,       label: 'Transacción',       color: 'text-blue-600',    bg: 'bg-blue-50',    bgDark: 'bg-blue-100' },
 };
 const DEFAULT_CFG: Cfg = {
@@ -106,7 +106,7 @@ export default function AlertasPage() {
     } else if (x.bodega_municipio) {
       window.open(`https://www.google.com/maps/search/${encodeURIComponent(`${x.bodega_municipio}, ${x.bodega_estado || ''}`)}`, '_blank');
     } else {
-      navigate('/productor/mapa');
+      navigate('/maiz/productor/mapa');
     }
   };
 
@@ -139,7 +139,7 @@ export default function AlertasPage() {
   const toggleNotif = (n: Notif) => {
     if (n.tipo === 'confirmacion_transaccion' && n.referencia_id) {
       if (!n.leida) marcarLeida(n.id);
-      navigate(`/productor/transaccion/${n.referencia_id}/confirmar`);
+      navigate(`/maiz/productor/transaccion/${n.referencia_id}/confirmar`);
       return;
     }
     if (!n.leida) marcarLeida(n.id);
@@ -459,7 +459,7 @@ export default function AlertasPage() {
               {esTx && (
                 <div className="px-4 pb-4 -mt-1">
                   <button
-                    onClick={() => { if (!n.leida) marcarLeida(n.id); navigate(`/productor/transaccion/${n.referencia_id}/confirmar`); }}
+                    onClick={() => { if (!n.leida) marcarLeida(n.id); navigate(`/maiz/productor/transaccion/${n.referencia_id}/confirmar`); }}
                     className="w-full flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-bold bg-blue-600 text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:bg-blue-700 active:scale-[0.97] transition-all duration-200"
                   >
                     <ClipboardCheck size={15} strokeWidth={2.3} /> Revisar y confirmar

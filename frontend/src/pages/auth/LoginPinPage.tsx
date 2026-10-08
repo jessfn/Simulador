@@ -59,7 +59,7 @@ export default function LoginPinPage() {
       // autoridad del servidor en cualquier ruta de /productor y redirige
       // si falta algo — sin depender de un chequeo ad-hoc en el login que
       // un error de red podía saltarse silenciosamente (Ticket 05).
-      navigate('/productor');
+      navigate('/maiz/productor');
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
       setPin('');
@@ -108,7 +108,7 @@ export default function LoginPinPage() {
               Acceso para<br />Productores
             </h2>
             <p className="text-white/50 text-lg leading-relaxed mb-8">
-              Ingresa tu CURP y tu NIP de 4 dígitos para acceder a tu cuenta en el Sistema SIMAC.
+              Ingresa tu CURP y tu NIP de 4 dígitos para acceder a tu cuenta en Maíz.
             </p>
             <div className="space-y-4">
               {[
@@ -185,7 +185,7 @@ export default function LoginPinPage() {
               <div className="mt-4 text-center">
                 <button
                   type="button"
-                  onClick={() => navigate('/recuperar-nip', { state: { curp } })}
+                  onClick={() => navigate('/maiz/productor/recuperar-nip', { state: { curp } })}
                   className="text-[13px] text-green-300 font-semibold hover:text-green-200 transition-colors"
                 >
                   ¿Olvidaste tu NIP? <span className="underline underline-offset-2">Recupéralo aquí</span>
@@ -196,7 +196,7 @@ export default function LoginPinPage() {
               <div className="mt-5 sm:mt-6">
                 <p className="text-white/40 text-xs text-center mb-2.5">¿No tienes cuenta todavía?</p>
                 <div className="space-y-2.5">
-                  <button onClick={() => navigate('/registro-nuevo')}
+                  <button onClick={() => navigate('/maiz/productor/registro')}
                     className="w-full flex items-center gap-3 bg-white/8 ring-1 ring-white/12 hover:bg-white/12 rounded-xl p-3 text-left active:scale-[0.98] transition-all">
                     <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                       <UserPlus size={17} className="text-green-300" />
@@ -209,7 +209,7 @@ export default function LoginPinPage() {
                   </button>
                 </div>
                 <div className="border-t border-white/10 mt-4 pt-4 text-center">
-                  <button onClick={() => navigate('/bienvenida', { state: { menu: 'bodega' } })}
+                  <button onClick={() => navigate('/maiz', { state: { menu: 'bodega' } })}
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-300 hover:text-green-200 transition-colors">
                     <Building2 size={15} /> ¿Eres bodega o industria? Ver opciones
                   </button>
@@ -246,7 +246,7 @@ export default function LoginPinPage() {
               <div className="mt-5 text-center">
                 <button
                   type="button"
-                  onClick={() => navigate('/recuperar-nip', { state: { curp } })}
+                  onClick={() => navigate('/maiz/productor/recuperar-nip', { state: { curp } })}
                   className="text-[13px] text-green-300 font-semibold hover:text-green-200 transition-colors"
                 >
                   ¿Olvidaste tu NIP? <span className="underline underline-offset-2">Recupéralo aquí</span>

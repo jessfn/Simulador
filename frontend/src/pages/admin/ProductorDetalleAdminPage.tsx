@@ -195,7 +195,7 @@ export default function ProductorDetalleAdminPage() {
   }
 
   // Defensa en profundidad: acceso directo por URL sin permiso de ver_detalle
-  if (!puedeVerDetalle) return <Navigate to="/admin/productores" replace />;
+  if (!puedeVerDetalle) return <Navigate to="/maiz/admin/productores" replace />;
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -261,7 +261,7 @@ export default function ProductorDetalleAdminPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => navigate('/admin/productores')}
+            onClick={() => navigate('/maiz/admin/productores')}
             className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-gray-500 hover:text-gray-900 transition-all"
           >
             <ArrowLeft size={16} />

@@ -123,7 +123,7 @@ export default function RegistroAdminPage() {
           <p className="text-[13.5px] text-white/40 leading-relaxed mb-8">
             Tu cuenta administrativa ha sido registrada. Ya puedes iniciar sesión en el panel de control.
           </p>
-          <button onClick={() => navigate('/admin/login')}
+          <button onClick={() => navigate('/maiz/admin/login')}
             className="w-full group relative overflow-hidden rounded-2xl py-4 text-[14.5px] font-bold text-white transition-all duration-300 active:scale-[0.98] shadow-[0_8px_30px_rgba(52,211,153,0.3)]"
             style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 60%, #34d399 100%)' }}>
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/12 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
@@ -150,7 +150,7 @@ export default function RegistroAdminPage() {
             <ShieldAlert size={19} className="text-white" strokeWidth={2.3} />
           </div>
           <div>
-            <span className="text-[17px] font-black text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>SIMAC</span>
+            <span className="text-[17px] font-black text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Maíz</span>
             <span className="ml-1.5 text-[9px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Admin</span>
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function RegistroAdminPage() {
               <div className="absolute inset-0 rounded-[20px] border-2 border-emerald-400/30 animate-ping" style={{ animationDuration: '2.5s' }} />
             </div>
             <h1 className="text-[24px] font-black text-white leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              SIMAC <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-300">Admin</span>
+              Maíz <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-300">Admin</span>
             </h1>
             <p className="text-[10.5px] text-emerald-300/55 mt-1.5 font-medium tracking-widest uppercase">Crear cuenta · Plan Nacional Maíz</p>
           </div>
@@ -337,10 +337,10 @@ export default function RegistroAdminPage() {
 
                 {/* Links */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1 text-[12px]">
-                  <Link to="/admin/login" className="text-emerald-500/60 hover:text-emerald-300 transition-colors">
+                  <Link to="/maiz/admin/login" className="text-emerald-500/60 hover:text-emerald-300 transition-colors">
                     Ya tengo cuenta — Iniciar sesión
                   </Link>
-                  <Link to="/login" className="text-white/20 hover:text-white/40 transition-colors">
+                  <Link to="/maiz/bodega/login" className="text-white/20 hover:text-white/40 transition-colors">
                     Portal público
                   </Link>
                 </div>
@@ -348,7 +348,7 @@ export default function RegistroAdminPage() {
             </div>
 
             <p className="mt-5 text-center text-[10px] text-white/15 leading-relaxed">
-              SIMAC · Uso exclusivo del personal autorizado del Plan Nacional Maíz 2026
+              Maíz · Uso exclusivo del personal autorizado del Plan Nacional Maíz 2026
             </p>
           </div>
         </div>

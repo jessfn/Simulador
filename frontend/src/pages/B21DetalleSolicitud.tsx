@@ -35,7 +35,7 @@ export default function B21DetalleSolicitud() {
     setSaving(true);
     try {
       await api.ventanillas.cambiarEstado(Number(id), Number(sid), { estado: nuevoEstado, notas });
-      navigate(`/ventanillas/${id}/solicitudes`);
+      navigate(`/maiz/bodega/ventanillas/${id}/solicitudes`);
     } catch (err: any) {
       toast(err.message, 'error');
     } finally { setSaving(false); }
@@ -47,7 +47,7 @@ export default function B21DetalleSolicitud() {
 
   return (
     <div className="w-full pb-10">
-      <PageHeader title="Detalle de Solicitud" back={`/ventanillas/${id}/solicitudes`} />
+      <PageHeader title="Detalle de Solicitud" back={`/maiz/bodega/ventanillas/${id}/solicitudes`} />
 
       <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Datos del productor */}

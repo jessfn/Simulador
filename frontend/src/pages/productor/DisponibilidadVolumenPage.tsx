@@ -46,7 +46,7 @@ export default function DisponibilidadVolumenPage() {
     sessionStorage.setItem('disp_volumen', String(volumen));
     sessionStorage.setItem('disp_fecha_desde', fechaDesde);
     sessionStorage.setItem('disp_fecha_hasta', fechaHasta);
-    navigate('/productor/disponibilidad/confirmar');
+    navigate('/maiz/productor/disponibilidad/confirmar');
   };
 
   return (

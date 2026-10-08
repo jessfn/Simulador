@@ -52,11 +52,11 @@ export default function AppHeader({ subtitle, initials, notifCount = 0, onBrand,
             className="relative w-9 h-9 rounded-[12px] overflow-hidden bg-white ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.06),0_6px_16px_rgba(26,92,56,0.16)] transition-transform duration-500 group-hover:scale-[1.06] group-active:scale-95"
             style={{ transitionTimingFunction: SPRING }}
           >
-            <img src="/icono.png" alt="SIMAC" className="w-full h-full object-cover" />
+            <img src="/icono.png" alt="Maíz" className="w-full h-full object-cover" />
             <span className="absolute inset-0 rounded-[12px] ring-1 ring-inset ring-white/40" />
           </div>
           <div className="flex flex-col leading-none min-w-0 text-left">
-            <span className="text-[15.5px] font-bold tracking-[-0.02em] text-slate-900 leading-none">SIMAC</span>
+            <span className="text-[15.5px] font-bold tracking-[-0.02em] text-slate-900 leading-none">Maíz</span>
             {subtitle && (
               <span className="text-[10.5px] text-slate-400 font-medium tracking-tight leading-tight mt-[3px] truncate max-w-[165px] sm:max-w-[330px] lg:max-w-[440px]">
                 {subtitle}

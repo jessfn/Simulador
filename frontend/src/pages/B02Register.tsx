@@ -87,9 +87,9 @@ export default function B02Register() {
       if (res.token) {
         const u = res.usuario || res.user;
         setAuth(res.token, { ...u, userId: u?.id ?? u?.userId });
-        navigate('/bodegas/seleccionar');
+        navigate('/maiz/bodega/seleccionar');
       } else {
-        navigate('/login');
+        navigate('/maiz/bodega/login');
       }
     } catch (err: any) {
       setError(err.message || 'Error al registrar');
@@ -136,7 +136,7 @@ export default function B02Register() {
             <Wheat size={17} className="text-green-300" />
           </div>
           <div>
-            <p className="text-white font-bold text-sm leading-none">SIMAC</p>
+            <p className="text-white font-bold text-sm leading-none">Maíz</p>
             <p className="text-white/35 text-[11px] mt-0.5">Plan Maíz 2026</p>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function B02Register() {
         {/* Header fijo */}
         <div className="flex-shrink-0 flex items-center gap-3 px-4 sm:px-6 lg:px-10 py-3.5 border-b border-white/[0.06]">
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/maiz/bodega/login')}
             className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors flex items-center gap-1.5 text-white/50 hover:text-white/80"
           >
             <ChevronLeft size={19} />
@@ -187,7 +187,7 @@ export default function B02Register() {
           <div className="flex-1" />
           {/* OCULTO C11 — acceso a registro de productor
           <button
-            onClick={() => navigate('/bienvenida', { state: { menu: 'productor' } })}
+            onClick={() => navigate('/maiz', { state: { menu: 'productor' } })}
             className="flex items-center gap-1.5 text-[12px] font-semibold text-green-300/60 hover:text-green-300 transition-colors"
           >
             <Wheat size={13} /> <span className="hidden sm:inline">¿Eres productor?</span>
@@ -389,12 +389,12 @@ export default function B02Register() {
 
                 {/* Links */}
                 <div className="flex items-center justify-between pt-1">
-                  <button type="button" onClick={() => navigate('/login')}
+                  <button type="button" onClick={() => navigate('/maiz/bodega/login')}
                     className="text-sm text-white/40 hover:text-white/70 transition-colors font-medium">
                     ¿Ya tienes cuenta?
                   </button>
                   {/* OCULTO C11 — segunda instancia acceso a registro de productor
-                  <button type="button" onClick={() => navigate('/bienvenida', { state: { menu: 'productor' } })}
+                  <button type="button" onClick={() => navigate('/maiz', { state: { menu: 'productor' } })}
                     className="flex items-center gap-1.5 text-sm font-semibold text-green-300/70 hover:text-green-200 transition-colors">
                     <Wheat size={13} /> Soy productor
                   </button>

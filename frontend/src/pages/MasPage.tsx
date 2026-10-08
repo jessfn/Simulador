@@ -9,13 +9,13 @@ import { api } from '../services/api';
 // sigue existiendo para admin/gobierno, solo se quitó el acceso desde aquí.
 // Ver plan de rediseño (Fase 0, punto 2).
 const ACCIONES = [
-  { icon: UserCircle2, label: 'Mi perfil',                    desc: 'Ver y editar tu cuenta',          path: '/perfil',         iconBg: 'bg-[#1A5C38]/[0.08]', iconColor: 'text-[#1A5C38]', primary: true },
-  { icon: Tag,         label: 'Publicar precio del día',       desc: 'Precio diario al productor',      path: '/precio-diario',  iconBg: 'bg-emerald-50',        iconColor: 'text-emerald-600' },
-  { icon: Receipt,     label: 'Historial de transacciones',    desc: 'Compras registradas',             path: '/transacciones',  iconBg: 'bg-blue-50',           iconColor: 'text-blue-600' },
-  { icon: Store,       label: 'Tarifario de servicios',        desc: 'Precios de servicios',            path: '/tarifario',      iconBg: 'bg-purple-50',         iconColor: 'text-purple-600' },
-  { icon: Warehouse,   label: 'Mis ventanillas',               desc: null,                              path: '/ventanillas',    iconBg: 'bg-orange-50',         iconColor: 'text-orange-500' },
-  { icon: FileText,    label: 'Requerimientos de maíz',        desc: 'Notifica a productores',          path: '/senales/nueva',  iconBg: 'bg-cyan-50',           iconColor: 'text-cyan-600' },
-  { icon: Handshake,   label: 'Propuestas disponibles',        desc: 'Oferta por maíz publicado',       path: '/propuestas-disponibles', iconBg: 'bg-lime-50',   iconColor: 'text-lime-600' },
+  { icon: UserCircle2, label: 'Mi perfil',                    desc: 'Ver y editar tu cuenta',          path: '/maiz/bodega/perfil',         iconBg: 'bg-[#1A5C38]/[0.08]', iconColor: 'text-[#1A5C38]', primary: true },
+  { icon: Tag,         label: 'Publicar precio del día',       desc: 'Precio diario al productor',      path: '/maiz/bodega/precio-diario',  iconBg: 'bg-emerald-50',        iconColor: 'text-emerald-600' },
+  { icon: Receipt,     label: 'Historial de transacciones',    desc: 'Compras registradas',             path: '/maiz/bodega/transacciones',  iconBg: 'bg-blue-50',           iconColor: 'text-blue-600' },
+  { icon: Store,       label: 'Tarifario de servicios',        desc: 'Precios de servicios',            path: '/maiz/bodega/tarifario',      iconBg: 'bg-purple-50',         iconColor: 'text-purple-600' },
+  { icon: Warehouse,   label: 'Mis ventanillas',               desc: null,                              path: '/maiz/bodega/ventanillas',    iconBg: 'bg-orange-50',         iconColor: 'text-orange-500' },
+  { icon: FileText,    label: 'Requerimientos de maíz',        desc: 'Notifica a productores',          path: '/maiz/bodega/senales/nueva',  iconBg: 'bg-cyan-50',           iconColor: 'text-cyan-600' },
+  { icon: Handshake,   label: 'Propuestas disponibles',        desc: 'Oferta por maíz publicado',       path: '/maiz/bodega/propuestas-disponibles', iconBg: 'bg-lime-50',   iconColor: 'text-lime-600' },
 ];
 
 export default function MasPage() {
@@ -64,9 +64,9 @@ export default function MasPage() {
 
       {/* Info app */}
       <div className="bg-white rounded-[1.5rem] border border-black/[0.04] shadow-[0_2px_8px_rgba(0,0,0,0.02)] px-5 py-5 flex items-center gap-4 transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 group/card">
-        <img src="/icono.png" alt="SIMAC" className="w-12 h-12 flex-shrink-0 rounded-[1.25rem] ring-1 ring-[#4ade80] transition-transform duration-300 group-hover/card:scale-110 shadow-sm" />
+        <img src="/icono.png" alt="Maíz" className="w-12 h-12 flex-shrink-0 rounded-[1.25rem] ring-1 ring-[#4ade80] transition-transform duration-300 group-hover/card:scale-110 shadow-sm" />
         <div className="transition-transform duration-300 group-hover/card:translate-x-1">
-          <p className="text-[16px] font-black text-[#1A5C38] tracking-tight">SIMAC</p>
+          <p className="text-[16px] font-black text-[#1A5C38] tracking-tight">Maíz</p>
           <p className="text-[13px] text-gray-500 font-medium mt-0.5">Sistema de Ordenamiento · Maíz México</p>
         </div>
       </div>

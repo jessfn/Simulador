@@ -34,13 +34,13 @@
     <script>
       // Síncrono: fija desde el primer pixel el color de fondo según la pantalla, para que no
       // haya un cambio de color (que los celulares animan como desvanecido) al montar React.
-      //  - Inicio de SIMAC (sin sesión) y Maíz: verde oscuro del fondo.
+      //  - Portada de SIMAC (/) y entrada de Maíz (/maiz): verde oscuro del fondo.
       //  - Otras pantallas sin sesión: verde oscuro (como antes).
       try {
         var p = location.pathname.replace(/\/+$/, '') || '/';
         var token = localStorage.getItem('simac_token');
         var guinda = !token && (p === '/' || p === '/inicio');
-        var maiz = p === '/bienvenida';
+        var maiz = p === '/maiz' || p === '/bienvenida';
         var bg = (guinda || maiz || !token) ? '#092213' : '';
         if (bg) document.documentElement.style.background = bg;
         window.__simacTema = (guinda || maiz) ? '#092213' : null;

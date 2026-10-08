@@ -27,9 +27,9 @@ export default function LoginTecnicoPage() {
       setAuth(res.token, { ...res.usuario, userId: res.usuario?.id, rol: 'capturista' });
       if (res.usuario?.debe_cambiar_pass) {
         setAvisoCambioPass(true);
-        setTimeout(() => navigate('/tecnico'), 1800);
+        setTimeout(() => navigate('/maiz/tecnico'), 1800);
       } else {
-        navigate('/tecnico');
+        navigate('/maiz/tecnico');
       }
     } catch (err: any) {
       setError(err.message || 'Credenciales incorrectas');
@@ -61,7 +61,7 @@ export default function LoginTecnicoPage() {
       {/* Header */}
       <div className="relative flex items-center px-4 py-3 flex-shrink-0">
         <button
-          onClick={() => navigate('/bienvenida')}
+          onClick={() => navigate('/maiz')}
           className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors flex items-center gap-1 text-white/70"
         >
           <ChevronLeft size={22} /> <span className="text-sm font-medium">Volver</span>

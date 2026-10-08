@@ -94,7 +94,7 @@ export default function B13Transaccion() {
     try {
       await api.transacciones.create(payload);
       toast('Transacción registrada. El productor recibirá notificación si está en el sistema.', 'success');
-      navigate('/transacciones', { replace: true });
+      navigate('/maiz/bodega/transacciones', { replace: true });
     } catch (err: any) {
       toast(err.message, 'error');
     } finally { setLoading(false); }
@@ -105,7 +105,7 @@ export default function B13Transaccion() {
 
   return (
     <div className="w-full">
-      <PageBanner title="Registrar Transacción" subtitle="Nueva compra de maíz" back="/transacciones" />
+      <PageBanner title="Registrar Transacción" subtitle="Nueva compra de maíz" back="/maiz/bodega/transacciones" />
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">

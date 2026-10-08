@@ -82,7 +82,7 @@ export default function DetalleProductorTecnicoPage() {
   if (!error && !productor) {
     return (
       <div className="min-h-full pb-8">
-        <PageHeaderTecnico title="Productor" subtitle="Detalle del registro" back="/tecnico" />
+        <PageHeaderTecnico title="Productor" subtitle="Detalle del registro" back="/maiz/tecnico" />
         <div className="p-4">
           <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center">
             <p className="text-[13px] text-slate-500 font-medium">
@@ -99,7 +99,7 @@ export default function DetalleProductorTecnicoPage() {
       <PageHeaderTecnico
         title={productor ? `${productor.nombres} ${productor.apellido_paterno}` : 'Productor'}
         subtitle="Detalle del registro"
-        back="/tecnico"
+        back="/maiz/tecnico"
       />
 
       <div className="p-4 space-y-4">
@@ -120,7 +120,7 @@ export default function DetalleProductorTecnicoPage() {
 
         {productor?.encuesta_estado && productor.encuesta_estado !== 'no_aplica' && (
           <button
-            onClick={() => navigate(`/tecnico/productor/${id}/encuesta`, { state: { nombreProductor: `${productor.nombres} ${productor.apellido_paterno}` } })}
+            onClick={() => navigate(`/maiz/tecnico/productor/${id}/encuesta`, { state: { nombreProductor: `${productor.nombres} ${productor.apellido_paterno}` } })}
             className={`w-full flex items-center justify-between rounded-2xl border p-4 text-left transition-colors ${
               productor.encuesta_estado === 'pendiente'
                 ? 'bg-amber-50 border-amber-200 hover:bg-amber-100'
@@ -143,7 +143,7 @@ export default function DetalleProductorTecnicoPage() {
             <h3 className="text-[13px] font-black text-slate-800">
               Parcelas (UPs) {ups.length > 0 && <span className="text-slate-400 font-normal">({ups.length})</span>}
             </h3>
-            <button onClick={() => navigate(`/tecnico/productor/${id}/up/nueva`)}
+            <button onClick={() => navigate(`/maiz/tecnico/productor/${id}/up/nueva`)}
               className="flex items-center gap-1 text-[12.5px] font-bold text-[#1A5C38]">
               <Plus size={14} /> Agregar UP
             </button>
@@ -172,7 +172,7 @@ export default function DetalleProductorTecnicoPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => navigate(`/tecnico/productor/${id}/ciclo`, { state: { up_id: up.up_id } })}
+                        onClick={() => navigate(`/maiz/tecnico/productor/${id}/ciclo`, { state: { up_id: up.up_id } })}
                         className="flex-shrink-0 flex items-center gap-1.5 bg-[#1A5C38]/10 text-[#1A5C38] px-3 py-2 rounded-xl text-[12.5px] font-bold active:scale-95 transition-all">
                         <CalendarPlus size={14} /> Ciclo
                       </button>

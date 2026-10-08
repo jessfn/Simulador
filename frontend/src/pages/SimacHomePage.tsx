@@ -135,9 +135,9 @@ export default function SimacHomePage() {
   const irAMaiz = () => {
     if (saliendo) return;
     const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (sinMovimiento) { navigate('/bienvenida'); return; }
+    if (sinMovimiento) { navigate('/maiz'); return; }
     setSaliendo(true);
-    window.setTimeout(() => navigate('/bienvenida'), 220);
+    window.setTimeout(() => navigate('/maiz'), 220);
   };
 
   return (

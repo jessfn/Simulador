@@ -366,13 +366,13 @@ export default function B05MisBodegas() {
                       {/* Acciones principales */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => navigate("/bodegas/" + b.id)}
+                          onClick={() => navigate("/maiz/bodega/mis-bodegas/" + b.id)}
                           className="flex-1 flex items-center justify-center gap-1.5 bg-[#1A5C38] text-white rounded-xl py-2.5 text-[13px] font-semibold active:opacity-80 transition-opacity"
                         >
                           Detalle <ChevronRight size={13} />
                         </button>
                         <button
-                          onClick={() => navigate("/bodegas/" + b.id + "/semaforo")}
+                          onClick={() => navigate("/maiz/bodega/mis-bodegas/" + b.id + "/semaforo")}
                           className="flex-1 bg-[#eef8f2] text-gray-700 rounded-xl py-2.5 text-[13px] font-semibold active:opacity-70 transition-opacity"
                         >
                           Semáforo
@@ -414,7 +414,7 @@ export default function B05MisBodegas() {
                             {sem.label}
                           </p>
                           <button
-                            onClick={() => navigate("/bodegas/" + b.id)}
+                            onClick={() => navigate("/maiz/bodega/mis-bodegas/" + b.id)}
                             style={{ width: "100%", background: "#1A5C38", color: "white", fontSize: 12, fontWeight: 600, padding: "7px 12px", borderRadius: 8, border: "none", cursor: "pointer" }}
                           >
                             Ver detalle
@@ -444,7 +444,7 @@ export default function B05MisBodegas() {
 
       {/* FAB */}
       <button
-        onClick={() => navigate("/bodegas/seleccionar")}
+        onClick={() => navigate("/maiz/bodega/seleccionar")}
         className="fixed bottom-24 right-5 w-14 h-14 bg-[#1A5C38] text-white rounded-full shadow-xl flex items-center justify-center active:scale-95 transition-transform z-10"
       >
         <Plus size={24} />

@@ -107,7 +107,7 @@ export default function HistorialVentasSection({ token, apiUrl }: Props) {
                 </span>
                 {txn.estado_confirmacion === 'pendiente' && (
                   <button
-                    onClick={() => navigate(`/productor/transaccion/${txn.id}/confirmar`)}
+                    onClick={() => navigate(`/maiz/productor/transaccion/${txn.id}/confirmar`)}
                     className="text-xs text-[#1A5C38] underline"
                   >
                     Confirmar →

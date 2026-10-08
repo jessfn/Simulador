@@ -13,14 +13,14 @@ export default function DisponibilidadTipoPage() {
 
   const seleccionar = (tipo: string) => {
     sessionStorage.setItem('disp_tipo', tipo);
-    navigate('/productor/disponibilidad/variedad');
+    navigate('/maiz/productor/disponibilidad/variedad');
   };
 
   return (
     <div className="bg-[#eef8f2]">
       <div className="sticky top-0 z-20 w-full bg-gradient-to-br from-[#1A5C38] via-[#1e6b42] to-[#22733f] rounded-b-3xl shadow-[0_4px_20px_rgba(26,92,56,0.25)]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-3 pb-5">
-          <button onClick={() => navigate('/productor')}
+          <button onClick={() => navigate('/maiz/productor')}
             className="flex items-center gap-0.5 text-green-200/80 text-[13px] font-medium mb-1.5 active:opacity-60 transition-opacity">
             <ChevronLeft size={16} strokeWidth={2.5} className="-ml-1" /> Volver
           </button>

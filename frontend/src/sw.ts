@@ -23,12 +23,12 @@ self.addEventListener('push', (event: PushEvent) => {
   try {
     data = event.data?.json() ?? {};
   } catch {
-    data = { title: 'SIMAC', body: event.data?.text() ?? 'Nueva notificación' };
+    data = { title: 'Maíz', body: event.data?.text() ?? 'Nueva notificación' };
   }
 
   const esChat = data.data?.tipo === 'chat_ayuda';
 
-  const title   = data.title  ?? 'SIMAC';
+  const title   = data.title  ?? 'Maíz';
   const options: NotificationOptions = {
     body:    data.body   ?? '',
     icon:    data.icon   ?? '/icono.png',

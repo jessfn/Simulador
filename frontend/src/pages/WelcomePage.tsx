@@ -17,16 +17,16 @@ const OPCIONES: Record<'productor' | 'bodega', { titulo: string; subtitulo: stri
     titulo: 'Soy Productor',
     subtitulo: 'Elige la opción según tu caso',
     items: [
-      { icon: LogIn,       title: 'Ya tengo cuenta',        desc: 'Entra con tu CURP y tu PIN de 4 dígitos.', to: '/login-productor', accent: true },
-      { icon: UserPlus,    title: 'Soy nuevo, registrarme', desc: 'No estás en el padrón. Crea tu cuenta desde cero con tu CURP.', to: '/registro-nuevo' },
+      { icon: LogIn,       title: 'Ya tengo cuenta',        desc: 'Entra con tu CURP y tu PIN de 4 dígitos.', to: '/maiz/productor/login', accent: true },
+      { icon: UserPlus,    title: 'Soy nuevo, registrarme', desc: 'No estás en el padrón. Crea tu cuenta desde cero con tu CURP.', to: '/maiz/productor/registro' },
     ],
   },
   bodega: {
     titulo: 'Soy Bodega / Industria',
     subtitulo: 'Elige una opción',
     items: [
-      { icon: LogIn,    title: 'Ya tengo cuenta',     desc: 'Entra con tu correo electrónico y contraseña.', to: '/login', accent: true },
-      { icon: UserPlus, title: 'Crear cuenta nueva',  desc: 'Registra tu bodega o industria por primera vez.', to: '/registro' },
+      { icon: LogIn,    title: 'Ya tengo cuenta',     desc: 'Entra con tu correo electrónico y contraseña.', to: '/maiz/bodega/login', accent: true },
+      { icon: UserPlus, title: 'Crear cuenta nueva',  desc: 'Registra tu bodega o industria por primera vez.', to: '/maiz/bodega/registro' },
     ],
   },
 };
@@ -253,7 +253,7 @@ export default function WelcomePage() {
         <div className="relative z-20 flex flex-col h-full px-10 py-10">
           {/* Fila superior: volver a SIMAC + insignia */}
           <div className="flex items-center gap-3 flex-wrap">
-          <BotonVolverSimac onClick={() => navigate('/inicio')} />
+          <BotonVolverSimac onClick={() => navigate('/')} />
           <div
             className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 w-fit"
             style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(-10px)', transition: 'opacity 0.5s ease, transform 0.5s ease' }}
@@ -300,7 +300,7 @@ export default function WelcomePage() {
 
         {/* Volver a SIMAC (móvil y tablet): flotante, respeta la barra de estado */}
         <BotonVolverSimac
-          onClick={() => navigate('/inicio')}
+          onClick={() => navigate('/')}
           className="lg:hidden absolute z-20"
           style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 14 }}
         />
@@ -414,7 +414,7 @@ export default function WelcomePage() {
 
             {/* Técnico ECA */}
             <button
-              onClick={() => navigate('/tecnico/login')}
+              onClick={() => navigate('/maiz/tecnico/login')}
               onPointerDown={() => setPressedTecnico(true)}
               onPointerUp={() => setPressedTecnico(false)}
               onPointerLeave={() => setPressedTecnico(false)}

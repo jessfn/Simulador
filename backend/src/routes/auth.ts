@@ -664,7 +664,7 @@ router.post('/recuperar-password', async (req: Request, res: Response): Promise<
     );
 
     const appUrl = process.env.APP_URL || 'https://maiz.agricultura.gob.mx';
-    const resetUrl = `${appUrl}/reset-password/${token}`;
+    const resetUrl = `${appUrl}/maiz/reset-password/${token}`;
 
     const emailEnviado = await enviarEmailRecuperacion(user.email, user.nombre_completo || 'Usuario', resetUrl);
 

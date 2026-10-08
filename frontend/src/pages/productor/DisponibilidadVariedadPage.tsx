@@ -19,7 +19,7 @@ export default function DisponibilidadVariedadPage() {
     v.code.toUpperCase() === 'OTRA' || v.label.toLowerCase().includes('otra');
 
   useEffect(() => {
-    if (!tipoMaiz) { navigate('/productor/disponibilidad/tipo'); return; }
+    if (!tipoMaiz) { navigate('/maiz/productor/disponibilidad/tipo'); return; }
     const token = localStorage.getItem('simac_token');
     fetch(`${BASE}/catalogos-productor?tipo_maiz=${tipoMaiz}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -42,7 +42,7 @@ export default function DisponibilidadVariedadPage() {
       setVariedadSel(null);
       setVariedadLibre('');
       sessionStorage.removeItem('disp_variedad_libre');
-      navigate('/productor/disponibilidad/volumen');
+      navigate('/maiz/productor/disponibilidad/volumen');
     }
   };
 
@@ -100,7 +100,7 @@ export default function DisponibilidadVariedadPage() {
                   autoFocus
                 />
                 <button
-                  onClick={() => { if (variedadLibre.trim()) navigate('/productor/disponibilidad/volumen'); }}
+                  onClick={() => { if (variedadLibre.trim()) navigate('/maiz/productor/disponibilidad/volumen'); }}
                   disabled={!variedadLibre.trim()}
                   className="mt-3 w-full bg-[#1A5C38] text-white py-3 rounded-xl font-semibold disabled:opacity-40"
                 >

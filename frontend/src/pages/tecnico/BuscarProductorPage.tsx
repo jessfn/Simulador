@@ -64,7 +64,7 @@ export default function BuscarProductorPage() {
   function continuar() {
     const curpUpper = curp.toUpperCase().trim();
     if (resultado?.tipo === 'PUEDE_ACTIVAR') {
-      navigate(`/tecnico/registrar/${curpUpper}/datos`, {
+      navigate(`/maiz/tecnico/registrar/${curpUpper}/datos`, {
         state: {
           curp: curpUpper,
           nombres: resultado.nombres,
@@ -75,7 +75,7 @@ export default function BuscarProductorPage() {
       });
     } else if (resultado?.tipo === 'NO_EN_PADRON') {
       const d = resultado.datos_renapo || {};
-      navigate(`/tecnico/registrar/${curpUpper}/datos`, {
+      navigate(`/maiz/tecnico/registrar/${curpUpper}/datos`, {
         state: {
           curp: curpUpper,
           nombres: d.nombres,
@@ -94,7 +94,7 @@ export default function BuscarProductorPage() {
 
   return (
     <div className="min-h-full pb-8">
-      <PageHeaderTecnico title="Registrar productor" subtitle="Paso 1 · Verificación de CURP" back="/tecnico" />
+      <PageHeaderTecnico title="Registrar productor" subtitle="Paso 1 · Verificación de CURP" back="/maiz/tecnico" />
 
       <div className="p-4 space-y-4">
         <div className="bg-white rounded-2xl border border-slate-100 p-5">

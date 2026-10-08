@@ -211,7 +211,7 @@ export default function AgregarUPPage() {
             </div>
 
             <button
-              onClick={() => navigate('/productor/perfil')}
+              onClick={() => navigate('/maiz/productor/perfil')}
               className="w-full bg-[#1A5C38] text-white font-bold text-[14px] py-3.5 rounded-2xl active:scale-[0.98] transition-all shadow-lg shadow-[#1A5C38]/25">
               Ver mi perfil
             </button>

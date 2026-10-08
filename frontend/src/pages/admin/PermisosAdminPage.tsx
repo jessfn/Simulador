@@ -365,7 +365,7 @@ function ModalCredenciales({ creds, onClose }: { creds: CredencialesNuevas; onCl
 
   function csv() {
     const blob = new Blob([`nombre_completo,email,password_temporal,rol,estado_asignado\n"${creds.nombre_completo}","${creds.email}","${creds.password_temporal}","${creds.rol}","${creds.estado_asignado ?? ''}"`], { type: 'text/csv' });
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `credenciales_SIMAC_${Date.now()}.csv` });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `credenciales_Maiz_${Date.now()}.csv` });
     a.click();
   }
 

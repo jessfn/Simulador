@@ -132,7 +132,7 @@ async function responderConBot(opts: {
     notificar({
       usuarioId: opts.usuarioId,
       tipo: 'chat_ayuda',
-      titulo: '🤖 Asistente SIMAC',
+      titulo: '🤖 Asistente Maíz',
       mensaje: respuesta.respuesta,
       referenciaId: opts.conversacionId,
       referenciaTipo: 'chat_ayuda',
@@ -154,7 +154,7 @@ async function responderConBot(opts: {
           mensaje: `${rolLegible(opts.rolUsuario)} tiene una duda que el asistente no pudo resolver. Toca para tomar control.`,
           referenciaId: opts.conversacionId,
           referenciaTipo: 'chat_ayuda',
-          url: `/admin/chats?conv=${opts.conversacionId}`,
+          url: `/maiz/admin/chats?conv=${opts.conversacionId}`,
         }).catch(() => {});
       }
     }
@@ -277,7 +277,7 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
         mensaje: contenido?.trim() || `Nuevo ${tipo === 'imagen' ? 'imagen' : tipo === 'audio' ? 'audio' : tipo === 'ubicacion' ? 'ubicación' : 'archivo'} recibido`,
         referenciaId: conv.id,
         referenciaTipo: 'chat_ayuda',
-        url: '/admin/chats',
+        url: '/maiz/admin/chats',
       }).catch(() => {});
     }
 

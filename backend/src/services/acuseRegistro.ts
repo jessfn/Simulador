@@ -120,7 +120,7 @@ export function generarAcuseRegistro(datos: DatosAcuse): PDFKit.PDFDocument {
   fila('Tipo de cuenta', rolLegible(datos.rol));
   fila('Correo electrónico', datos.email || 'No registrado');
   fila('Teléfono', datos.telefono || 'No registrado');
-  fila('Fecha de registro en SIMAC', fmtFechaLarga(datos.fechaRegistro));
+  fila('Fecha de registro en Maíz', fmtFechaLarga(datos.fechaRegistro));
 
   if (datos.extra?.length) {
     y += 14;
@@ -137,10 +137,10 @@ export function generarAcuseRegistro(datos: DatosAcuse): PDFKit.PDFDocument {
   doc.moveTo(56, y).lineTo(doc.page.width - 56, y).strokeColor('#E5E7EB').lineWidth(1).stroke();
   y += 14;
   doc.fillColor(GRIS_CLARO).font('Helvetica').fontSize(8.5).text(
-    'Este acuse confirma que los datos anteriores se encontraban registrados en la plataforma SIMAC al momento de su ' +
+    'Este acuse confirma que los datos anteriores se encontraban registrados en la plataforma Maíz al momento de su ' +
     'generación. Es un comprobante interno de la plataforma y no constituye, por sí mismo, una constancia oficial de ' +
     'programas de apoyo gubernamentales. Cualquier discrepancia con la información oficial deberá aclararse directamente ' +
-    'con el equipo de soporte de SIMAC.',
+    'con el equipo de soporte de Maíz.',
     56, y, { width: doc.page.width - 112, align: 'justify' }
   );
 
@@ -154,7 +154,7 @@ export function generarAcuseRegistro(datos: DatosAcuse): PDFKit.PDFDocument {
   doc.fillColor(GRIS_CLARO).fontSize(8)
     .text(`Código de verificación: ${codigoVerificacion(datos.usuarioId, datos.fechaRegistro)}`, 56, pieY + 24);
   doc.fillColor(GRIS_CLARO).fontSize(7.5)
-    .text('SIMAC — Secretaría de Agricultura y Desarrollo Rural', 56, pieY + 40);
+    .text('Maíz — Secretaría de Agricultura y Desarrollo Rural', 56, pieY + 40);
 
   doc.end();
   return doc;

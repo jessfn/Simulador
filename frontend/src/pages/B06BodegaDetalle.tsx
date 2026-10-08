@@ -72,7 +72,7 @@ export default function B06BodegaDetalle() {
 
           {/* Volver */}
           <button
-            onClick={() => navigate('/mis-bodegas')}
+            onClick={() => navigate('/maiz/bodega/mis-bodegas')}
             className="flex items-center gap-0.5 text-green-200/80 text-[13px] font-medium mb-2 active:opacity-60 hover:text-green-100 transition-opacity"
           >
             <ChevronLeft size={16} strokeWidth={2.5} className="-ml-1" />
@@ -109,7 +109,7 @@ export default function B06BodegaDetalle() {
         {tab === 'general' && (
           <div className="space-y-4">
           <button
-            onClick={() => navigate(`/bodegas/${id}/editar`)}
+            onClick={() => navigate(`/maiz/bodega/mis-bodegas/${id}/editar`)}
             className="flex items-center gap-2 px-5 py-3 bg-[#1A5C38] text-white rounded-2xl text-[15px] font-semibold active:opacity-80 transition-opacity"
           >
             <PenLine size={16} /> Editar datos de contacto
@@ -170,7 +170,7 @@ export default function B06BodegaDetalle() {
         {tab === 'inventario' && (
           <div className="space-y-4">
             <button
-              onClick={() => navigate(`/inventario?bodega_id=${id}`)}
+              onClick={() => navigate(`/maiz/bodega/inventario?bodega_id=${id}`)}
               className="flex items-center gap-2 px-5 py-3 bg-[#1A5C38] text-white rounded-2xl text-[15px] font-semibold active:opacity-80 transition-opacity"
             >
               <Zap size={16} /> Actualizar inventario
@@ -233,7 +233,7 @@ export default function B06BodegaDetalle() {
         {tab === 'precios' && (
           <div className="space-y-4">
             <button
-              onClick={() => navigate(`/precio-diario?bodega_id=${id}`)}
+              onClick={() => navigate(`/maiz/bodega/precio-diario?bodega_id=${id}`)}
               className="flex items-center gap-2 px-5 py-3 bg-[#1A5C38] text-white rounded-2xl text-[15px] font-semibold active:opacity-80 transition-opacity"
             >
               <Zap size={16} /> Publicar precio de hoy
@@ -271,7 +271,7 @@ export default function B06BodegaDetalle() {
         {tab === 'senales' && (
           <div className="space-y-4">
             <button
-              onClick={() => navigate(`/senales/nueva?bodega_id=${id}`)}
+              onClick={() => navigate(`/maiz/bodega/senales/nueva?bodega_id=${id}`)}
               className="flex items-center gap-2 px-5 py-3 bg-[#1A5C38] text-white rounded-2xl text-[15px] font-semibold active:opacity-80 transition-opacity"
             >
               <Signal size={16} /> Nueva señal de compra
@@ -282,7 +282,7 @@ export default function B06BodegaDetalle() {
                 No hay requerimientos activos para esta bodega.
               </p>
               <button
-                onClick={() => navigate('/requerimientos')}
+                onClick={() => navigate('/maiz/bodega/requerimientos')}
                 className="text-[14px] text-[#1A5C38] font-semibold underline mt-2 active:opacity-70"
               >
                 Publicar un requerimiento

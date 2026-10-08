@@ -5,9 +5,9 @@ import { useAuthStore } from '../store/auth';
 import ChatBubble from './ChatBubble';
 
 const NAV = [
-  { path: '/tecnico', icon: Home, label: 'Inicio' },
-  { path: '/tecnico/registrar', icon: UserPlus, label: 'Registrar' },
-  { path: '/tecnico/perfil', icon: UserCircle, label: 'Perfil' },
+  { path: '/maiz/tecnico', icon: Home, label: 'Inicio' },
+  { path: '/maiz/tecnico/registrar', icon: UserPlus, label: 'Registrar' },
+  { path: '/maiz/tecnico/perfil', icon: UserCircle, label: 'Perfil' },
 ];
 
 export function LayoutTecnico({ children }: { children: ReactNode }) {
@@ -17,7 +17,7 @@ export function LayoutTecnico({ children }: { children: ReactNode }) {
 
   function handleLogout() {
     logout();
-    navigate('/tecnico/login');
+    navigate('/maiz/tecnico/login');
   }
 
   const nombre = user?.nombre_completo || user?.nombres || 'Técnico ECA';
@@ -36,7 +36,7 @@ export function LayoutTecnico({ children }: { children: ReactNode }) {
               <ShieldCheck size={18} className="text-white" />
             </div>
             <div>
-              <p className="text-[14px] font-black text-slate-900 leading-none">SIMAC · Técnicos ECA</p>
+              <p className="text-[14px] font-black text-slate-900 leading-none">Maíz · Técnicos ECA</p>
               <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{nombre}</p>
             </div>
           </div>
@@ -63,7 +63,7 @@ export function LayoutTecnico({ children }: { children: ReactNode }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-stretch">
           {NAV.map(({ path, icon: Icon, label }) => {
-            const active = pathname === path || (path !== '/tecnico' && pathname.startsWith(path + '/'));
+            const active = pathname === path || (path !== '/maiz/tecnico' && pathname.startsWith(path + '/'));
             return (
               <Link key={path} to={path}
                 className={`flex-1 flex flex-col items-center justify-center pt-2.5 pb-3 gap-1 transition-colors

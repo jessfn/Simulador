@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
       {/* Header */}
       <div className="relative flex-shrink-0 flex items-center px-4 h-12 sm:h-14">
         <button
-          onClick={() => navigate('/login')}
+          onClick={() => navigate('/maiz/bodega/login')}
           className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors"
         >
           <ChevronLeft size={22} className="text-white/70" />
@@ -127,13 +127,13 @@ export default function ResetPasswordPage() {
                 <h1 className="lg:hidden text-xl font-bold text-white mb-2">Enlace inválido</h1>
                 <p className="text-white/60 text-sm mb-6 leading-relaxed">{tokenError}</p>
                 <button
-                  onClick={() => navigate('/recuperar-password')}
+                  onClick={() => navigate('/maiz/recuperar-password')}
                   className="w-full bg-white text-[#1A5C38] rounded-xl py-3 text-sm font-bold active:scale-[0.98] transition-all"
                 >
                   Solicitar nuevo enlace
                 </button>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/maiz/bodega/login')}
                   className="mt-3 w-full bg-white/10 ring-1 ring-white/20 text-white rounded-xl py-3 text-sm font-medium active:scale-[0.98] transition-all"
                 >
                   Volver al inicio
@@ -252,7 +252,7 @@ export default function ResetPasswordPage() {
                   Ya puedes iniciar sesión con tu nueva contraseña.
                 </p>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/maiz/bodega/login')}
                   className="w-full bg-white hover:bg-white/90 active:bg-white/80 text-[#1A5C38] rounded-xl py-3 text-sm font-bold active:scale-[0.98] transition-all"
                 >
                   Ir al inicio de sesión

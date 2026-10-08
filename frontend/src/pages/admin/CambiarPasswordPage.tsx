@@ -45,7 +45,7 @@ export default function CambiarPasswordPage() {
         setAuth(token, { ...user, debe_cambiar_pass: false });
       }
       setTimeout(() => {
-        const redirectTo = (user as any)?.redirect_post_login || '/admin';
+        const redirectTo = (user as any)?.redirect_post_login || '/maiz/admin';
         navigate(redirectTo, { replace: true });
       }, 1800);
     } catch {
@@ -74,7 +74,7 @@ export default function CambiarPasswordPage() {
           <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center mb-4 shadow-lg">
             <ShieldCheck size={28} className="text-white" strokeWidth={2} />
           </div>
-          <h1 className="text-white text-xl font-black tracking-tight">SIMAC</h1>
+          <h1 className="text-white text-xl font-black tracking-tight">Maíz</h1>
           <p className="text-white/60 text-xs font-medium mt-0.5 tracking-wide uppercase">Plan Nacional Maíz</p>
         </div>
 

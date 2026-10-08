@@ -16,7 +16,7 @@ export default function IncentivosPage() {
 
       <div className="max-w-lg mx-auto px-4 sm:px-6 pt-5 pb-6">
 
-        <button onClick={() => navigate('/productor/ventanillas?tipo=incentivo')}
+        <button onClick={() => navigate('/maiz/productor/ventanillas?tipo=incentivo')}
           className="w-full bg-white rounded-2xl p-5 shadow-sm ring-1 ring-zinc-100
                      flex items-center gap-4 mb-3 text-left active:scale-[0.98] hover:ring-zinc-200 transition-all duration-200">
           <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
@@ -32,7 +32,7 @@ export default function IncentivosPage() {
           <ChevronRight size={18} className="text-zinc-400 shrink-0" />
         </button>
 
-        <button onClick={() => navigate('/productor/ventanillas?tipo=cobertura')}
+        <button onClick={() => navigate('/maiz/productor/ventanillas?tipo=cobertura')}
           className="w-full bg-white rounded-2xl p-5 shadow-sm ring-1 ring-zinc-100
                      flex items-center gap-4 mb-6 text-left active:scale-[0.98] hover:ring-zinc-200 transition-all duration-200">
           <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center shrink-0">
@@ -61,7 +61,7 @@ export default function IncentivosPage() {
                 <p className="text-xs text-zinc-500 mt-1">
                   No son apoyos del gobierno. Los cobra la bodega directamente.
                 </p>
-                <button onClick={() => navigate('/productor/mapa')}
+                <button onClick={() => navigate('/maiz/productor/mapa')}
                   className="mt-3 text-[#1A5C38] text-sm font-semibold flex items-center gap-1 hover:underline">
                   Ver bodegas con servicios <ChevronRight size={14} />
                 </button>

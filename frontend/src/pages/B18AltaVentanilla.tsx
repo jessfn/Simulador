@@ -25,7 +25,7 @@ export default function B18AltaVentanilla() {
     setLoading(true);
     try {
       await api.ventanillas.create({ ...form, bodega_id: Number(form.bodega_id) });
-      navigate('/ventanillas');
+      navigate('/maiz/bodega/ventanillas');
     } catch (err: any) {
       toast(err.message, 'error');
     } finally { setLoading(false); }
@@ -36,7 +36,7 @@ export default function B18AltaVentanilla() {
 
   return (
     <div className="w-full pb-10">
-      <PageHeader title="Nueva Ventanilla" back="/ventanillas" />
+      <PageHeader title="Nueva Ventanilla" back="/maiz/bodega/ventanillas" />
 
       <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <form onSubmit={handleSubmit} className="space-y-6">

@@ -300,7 +300,7 @@ export default function MapaBodegasPage() {
             </div>
           </div>
           {!up.location_confirmed && (
-            <button onClick={() => navigate('/productor/ubicacion')}
+            <button onClick={() => navigate('/maiz/productor/ubicacion')}
               className="w-full bg-amber-500 hover:bg-amber-400 text-white text-[11px] font-bold py-2 rounded-lg transition-all shadow-sm">
               Actualizar ubicación →
             </button>
@@ -428,7 +428,7 @@ export default function MapaBodegasPage() {
                 <CheckCircle2 size={11} /> Me interesa
               </button>
             )}
-            <button onClick={() => navigate(`/productor/mapa/bodega/${b.id}`)}
+            <button onClick={() => navigate(`/maiz/productor/mapa/bodega/${b.id}`)}
               className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-[10px] font-bold py-2 rounded-lg flex items-center justify-center gap-1 transition-all">
               <Navigation size={10} /> Detalle
             </button>
@@ -568,7 +568,7 @@ export default function MapaBodegasPage() {
           <p className="text-amber-800 text-[11px] font-medium flex-1">
             Ubicación aproximada — distancias estimadas desde tu municipio.
           </p>
-          <button onClick={() => navigate('/productor/ubicacion')}
+          <button onClick={() => navigate('/maiz/productor/ubicacion')}
             className="text-amber-700 text-[11px] font-bold underline flex-shrink-0">
             Actualizar →
           </button>

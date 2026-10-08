@@ -78,7 +78,7 @@ export default function B15Tarifario() {
 
   return (
     <div className="w-full">
-      <PageBanner title="Tarifario de Servicios" subtitle="Precios que ofreces en tu bodega" back="/mas" />
+      <PageBanner title="Tarifario de Servicios" subtitle="Precios que ofreces en tu bodega" back="/maiz/bodega/mas" />
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -166,7 +166,7 @@ export default function B15Tarifario() {
         )}
 
         <button
-          onClick={() => navigate('/tarifario/proponer')}
+          onClick={() => navigate('/maiz/bodega/tarifario/proponer')}
           className="w-full text-[15px] text-[#1A5C38] font-bold border-2 border-dashed border-[#1A5C38]/40 rounded-[1.5rem] py-5 hover:bg-[#1A5C38]/[0.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           <Plus size={18} strokeWidth={2.5} />

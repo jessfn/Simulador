@@ -9,6 +9,7 @@ import { useAuthStore } from './store/auth';
 import WelcomePage from './pages/WelcomePage';
 import SimacHomePage from './pages/SimacHomePage';
 import TitleManager from './components/TitleManager';
+import { aRutaNueva } from './rutas';
 import B01Login from './pages/B01Login';
 import B02Register from './pages/B02Register';
 
@@ -104,7 +105,7 @@ import PerfilTecnicoPage from './pages/tecnico/PerfilTecnicoPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/maiz/bodega/login" replace />;
 }
 
 function isAdminPanelUser(user: any) {
@@ -115,10 +116,10 @@ function isAdminPanelUser(user: any) {
 function GuestOnly({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
   if (isAuthenticated) {
-    if (user?.rol === 'productor') return <Navigate to="/productor" replace />;
-    if (isAdminPanelUser(user)) return <Navigate to="/admin" replace />;
-    if (user?.rol === 'capturista') return <Navigate to="/tecnico" replace />;
-    return <Navigate to="/dashboard" replace />;
+    if (user?.rol === 'productor') return <Navigate to="/maiz/productor" replace />;
+    if (isAdminPanelUser(user)) return <Navigate to="/maiz/admin" replace />;
+    if (user?.rol === 'capturista') return <Navigate to="/maiz/tecnico" replace />;
+    return <Navigate to="/maiz/bodega/dashboard" replace />;
   }
   return <>{children}</>;
 }
@@ -126,15 +127,15 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
 function RequireCapturista({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
-  if (!isAuthenticated) return <Navigate to="/tecnico/login" replace />;
-  if (user?.rol !== 'capturista') return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/maiz/tecnico/login" replace />;
+  if (user?.rol !== 'capturista') return <Navigate to="/maiz/bodega/login" replace />;
   // CRIT-05 (auditoría seguridad 2026-09-21): antes debe_cambiar_pass solo
   // se mostraba como aviso de 1.8s en el login y nunca se aplicaba — un
   // técnico con contraseña temporal podía usar todo el sistema sin
   // cambiarla jamás. Se bloquea cualquier ruta de /tecnico que no sea el
   // perfil (donde está el formulario de cambio de contraseña).
-  if (user?.debe_cambiar_pass && location.pathname !== '/tecnico/perfil') {
-    return <Navigate to="/tecnico/perfil" replace />;
+  if (user?.debe_cambiar_pass && location.pathname !== '/maiz/tecnico/perfil') {
+    return <Navigate to="/maiz/tecnico/perfil" replace />;
   }
   return <>{children}</>;
 }
@@ -144,7 +145,7 @@ const BASE_ESTADO_REGISTRO = import.meta.env.VITE_API_URL || 'http://localhost:3
 // Rutas del propio flujo de completar registro: siempre accesibles aunque
 // falte ubicación o ciclo (si no, nadie podría completarlos — ticket 05,
 // "evitar bloqueo circular").
-const RUTAS_COMPLETAR_REGISTRO = ['/productor/ubicacion', '/productor/ciclo', '/productor/ups/nueva'];
+const RUTAS_COMPLETAR_REGISTRO = ['/maiz/productor/ubicacion', '/maiz/productor/ciclo', '/maiz/productor/ups/nueva'];
 
 interface EstadoRegistroProductor {
   requiere_ubicacion: boolean;
@@ -182,8 +183,8 @@ function RequireProductor({ children }: { children: React.ReactNode }) {
     // (`cargando` no se reactiva en revalidaciones posteriores).
   }, [isAuthenticated, user?.rol, token, reintento, location.pathname]);
 
-  if (!isAuthenticated) return <Navigate to="/login-productor" replace />;
-  if (user?.rol !== 'productor') return <Navigate to="/dashboard" replace />;
+  if (!isAuthenticated) return <Navigate to="/maiz/productor/login" replace />;
+  if (user?.rol !== 'productor') return <Navigate to="/maiz/bodega/dashboard" replace />;
 
   if (cargando) {
     return (
@@ -207,8 +208,8 @@ function RequireProductor({ children }: { children: React.ReactNode }) {
 
   const enRutaLibre = RUTAS_COMPLETAR_REGISTRO.includes(location.pathname);
   if (estado && !enRutaLibre) {
-    if (estado.requiere_ubicacion) return <Navigate to="/productor/ubicacion" replace />;
-    if (estado.requiere_ciclo) return <Navigate to="/productor/ciclo" replace />;
+    if (estado.requiere_ubicacion) return <Navigate to="/maiz/productor/ubicacion" replace />;
+    if (estado.requiere_ciclo) return <Navigate to="/maiz/productor/ciclo" replace />;
   }
 
   return <>{children}</>;
@@ -216,9 +217,9 @@ function RequireProductor({ children }: { children: React.ReactNode }) {
 
 function RequireBodeguero({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.rol === 'productor') return <Navigate to="/productor" replace />;
-  if (user?.rol === 'capturista') return <Navigate to="/tecnico" replace />;
+  if (!isAuthenticated) return <Navigate to="/maiz/bodega/login" replace />;
+  if (user?.rol === 'productor') return <Navigate to="/maiz/productor" replace />;
+  if (user?.rol === 'capturista') return <Navigate to="/maiz/tecnico" replace />;
   return <>{children}</>;
 }
 
@@ -234,14 +235,14 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 // sentido mandarlo al login de admin). Ver plan de rediseño (Fase 0, punto 2).
 function BloquearPreciosMercadoParaBodega({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
-  if (!isAdminPanelUser(user)) return <Navigate to="/dashboard" replace />;
+  if (!isAdminPanelUser(user)) return <Navigate to="/maiz/bodega/dashboard" replace />;
   return <>{children}</>;
 }
 
 function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
-  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
-  if (!isAdminPanelUser(user)) return <Navigate to="/admin/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/maiz/admin/login" replace />;
+  if (!isAdminPanelUser(user)) return <Navigate to="/maiz/admin/login" replace />;
   return <>{children}</>;
 }
 
@@ -249,7 +250,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 const ORDEN_VISTAS = ['resumen', 'productores', 'parcelas', 'bodegas', 'tecnicos', 'alertas', 'precios', 'produccion', 'mercado', 'senasica', 'avisos-privacidad'];
 
 function rutaDeVista(vista: string): string {
-  return vista === 'resumen' ? '/admin' : `/admin/${vista}`;
+  return vista === 'resumen' ? '/maiz/admin' : `/maiz/admin/${vista}`;
 }
 
 /** Bloquea acceso a rutas admin si el usuario OREF no tiene permiso de ver esa vista. */
@@ -260,22 +261,32 @@ function RequireVista({ vista, soloAdmin, children }: { vista?: string; soloAdmi
 
   if (soloAdmin && !esAdminOResponsable) {
     const primera = permisosTotal ? 'resumen' : ORDEN_VISTAS.find(v => puedeVerVista(v));
-    return <Navigate to={primera ? rutaDeVista(primera) : '/admin/perfil'} replace />;
+    return <Navigate to={primera ? rutaDeVista(primera) : '/maiz/admin/perfil'} replace />;
   }
-  if (vista && !permisosTotal && !puedeVerVista(vista)) {
+  // Admin y responsable tienen permiso total desde el primer render (el store lo marca un instante después).
+  if (vista && !esAdminOResponsable && !permisosTotal && !puedeVerVista(vista)) {
     const primera = ORDEN_VISTAS.find(v => v !== vista && puedeVerVista(v));
-    return <Navigate to={primera ? rutaDeVista(primera) : '/admin/perfil'} replace />;
+    return <Navigate to={primera ? rutaDeVista(primera) : '/maiz/admin/perfil'} replace />;
   }
   return <>{children}</>;
 }
 
 function SmartRedirect() {
   const { isAuthenticated, user } = useAuthStore();
-  if (!isAuthenticated) return <Navigate to="/inicio" replace />;
-  if (user?.rol === 'productor') return <Navigate to="/productor" replace />;
-  if (user?.rol === 'capturista') return <Navigate to="/tecnico" replace />;
-  if (isAdminPanelUser(user)) return <Navigate to="/admin" replace />;
-  return <Navigate to="/dashboard" replace />;
+  if (!isAuthenticated) return <Navigate to="/" replace />;
+  if (user?.rol === 'productor') return <Navigate to="/maiz/productor" replace />;
+  if (user?.rol === 'capturista') return <Navigate to="/maiz/tecnico" replace />;
+  if (isAdminPanelUser(user)) return <Navigate to="/maiz/admin" replace />;
+  return <Navigate to="/maiz/bodega/dashboard" replace />;
+}
+
+/** Rutas anteriores -> actuales; lo desconocido regresa al inicio correcto según la sesión. */
+function RutaDesconocida() {
+  const { pathname, search, hash } = useLocation();
+  const destino = aRutaNueva(pathname + search + hash);
+  if (destino && destino !== pathname + search + hash) return <Navigate to={destino} replace />;
+  if (pathname.startsWith('/maiz')) return <Navigate to="/maiz" replace />;
+  return <SmartRedirect />;
 }
 
 function RootShell() {
@@ -285,133 +296,133 @@ function RootShell() {
 export const router = createBrowserRouter([{
   element: <RootShell />,
   children: [
-  { path: '/inicio', element: <GuestOnly><SimacHomePage /></GuestOnly> },
-  { path: '/bienvenida', element: <GuestOnly><WelcomePage /></GuestOnly> },
-  { path: '/login', element: <GuestOnly><B01Login /></GuestOnly> },
-  { path: '/registro', element: <GuestOnly><B02Register /></GuestOnly> },
-  { path: '/bodegas/seleccionar', element: <RequireAuth><B03SelectBodegas /></RequireAuth> },
+  { path: '/', element: <GuestOnly><SimacHomePage /></GuestOnly> },
+  { path: '/maiz', element: <GuestOnly><WelcomePage /></GuestOnly> },
+  { path: '/maiz/bodega/login', element: <GuestOnly><B01Login /></GuestOnly> },
+  { path: '/maiz/bodega/registro', element: <GuestOnly><B02Register /></GuestOnly> },
+  { path: '/maiz/bodega/seleccionar', element: <RequireAuth><B03SelectBodegas /></RequireAuth> },
   {
-    path: '/dashboard',
+    path: '/maiz/bodega/dashboard',
     element: <ProtectedLayout><B04Dashboard /></ProtectedLayout>,
   },
   {
-    path: '/mis-bodegas',
+    path: '/maiz/bodega/mis-bodegas',
     element: <ProtectedLayout><B05MisBodegas /></ProtectedLayout>,
   },
   {
-    path: '/bodegas/:id',
+    path: '/maiz/bodega/mis-bodegas/:id',
     element: <ProtectedLayout><B06BodegaDetalle /></ProtectedLayout>,
   },
   {
-    path: '/bodegas/:id/semaforo',
+    path: '/maiz/bodega/mis-bodegas/:id/semaforo',
     element: <ProtectedLayout><B08Semaforo /></ProtectedLayout>,
   },
   {
-    path: '/bodegas/:id/editar',
+    path: '/maiz/bodega/mis-bodegas/:id/editar',
     element: <ProtectedLayout><B28EditarBodega /></ProtectedLayout>,
   },
   {
-    path: '/onboarding',
+    path: '/maiz/bodega/onboarding',
     element: <ProtectedLayout><B29OnboardingBodeguero /></ProtectedLayout>,
   },
   {
-    path: '/inventario',
+    path: '/maiz/bodega/inventario',
     element: <ProtectedLayout><B07Inventario /></ProtectedLayout>,
   },
   {
-    path: '/precio-diario',
+    path: '/maiz/bodega/precio-diario',
     element: <ProtectedLayout><B09PrecioCompra /></ProtectedLayout>,
   },
   {
-    path: '/senales/nueva',
+    path: '/maiz/bodega/senales/nueva',
     element: <ProtectedLayout><B10Requerimiento /></ProtectedLayout>,
   },
   {
-    path: '/requerimientos',
+    path: '/maiz/bodega/requerimientos',
     element: <ProtectedLayout><B10Requerimiento /></ProtectedLayout>,
   },
   {
-    path: '/oferta',
+    path: '/maiz/bodega/oferta',
     element: <ProtectedLayout><B11OfertaTabla /></ProtectedLayout>,
   },
   {
-    path: '/propuestas-disponibles',
+    path: '/maiz/bodega/propuestas-disponibles',
     element: <ProtectedLayout><B31PropuestasDisponibles /></ProtectedLayout>,
   },
   {
-    path: '/oferta/mis-intereses',
+    path: '/maiz/bodega/oferta/mis-intereses',
     element: <ProtectedLayout><B30MisInteresesOferta /></ProtectedLayout>,
   },
   {
-    path: '/transacciones',
+    path: '/maiz/bodega/transacciones',
     element: <ProtectedLayout><B14HistorialTransacciones /></ProtectedLayout>,
   },
   {
-    path: '/transacciones/nueva',
+    path: '/maiz/bodega/transacciones/nueva',
     element: <ProtectedLayout><B13Transaccion /></ProtectedLayout>,
   },
   {
-    path: '/transacciones/:id',
+    path: '/maiz/bodega/transacciones/:id',
     element: <ProtectedLayout><B26DetalleTransaccion /></ProtectedLayout>,
   },
   {
-    path: '/senales/:id/interesados',
+    path: '/maiz/bodega/senales/:id/interesados',
     element: <ProtectedLayout><B27InteresadosSenal /></ProtectedLayout>,
   },
   {
-    path: '/tarifario',
+    path: '/maiz/bodega/tarifario',
     element: <ProtectedLayout><B15Tarifario /></ProtectedLayout>,
   },
   {
-    path: '/tarifario/proponer',
+    path: '/maiz/bodega/tarifario/proponer',
     element: <ProtectedLayout><B16ProponerConcepto /></ProtectedLayout>,
   },
   {
-    path: '/ventanillas',
+    path: '/maiz/bodega/ventanillas',
     element: <ProtectedLayout><B17MisVentanillas /></ProtectedLayout>,
   },
   {
-    path: '/ventanillas/nueva',
+    path: '/maiz/bodega/ventanillas/nueva',
     element: <ProtectedLayout><B18AltaVentanilla /></ProtectedLayout>,
   },
   {
-    path: '/ventanillas/:id/solicitudes',
+    path: '/maiz/bodega/ventanillas/:id/solicitudes',
     element: <ProtectedLayout><B20Solicitudes /></ProtectedLayout>,
   },
   {
-    path: '/ventanillas/:id/solicitudes/:sid',
+    path: '/maiz/bodega/ventanillas/:id/solicitudes/:sid',
     element: <ProtectedLayout><B21DetalleSolicitud /></ProtectedLayout>,
   },
   {
-    path: '/mas',
+    path: '/maiz/bodega/mas',
     element: <ProtectedLayout><MasPage /></ProtectedLayout>,
   },
   {
-    path: '/precios-mercado',
+    path: '/maiz/bodega/precios-mercado',
     element: <RequireAuth><BloquearPreciosMercadoParaBodega><B22PreciosMercado /></BloquearPreciosMercadoParaBodega></RequireAuth>,
   },
   {
-    path: '/notificaciones',
+    path: '/maiz/bodega/notificaciones',
     element: <ProtectedLayout><B23Notificaciones /></ProtectedLayout>,
   },
   {
-    path: '/perfil',
+    path: '/maiz/bodega/perfil',
     element: <ProtectedLayout><B24PerfilBodega /></ProtectedLayout>,
   },
   {
-    path: '/configuracion',
+    path: '/maiz/bodega/configuracion',
     element: <ProtectedLayout><B25ConfiguracionPage /></ProtectedLayout>,
   },
   // Onboarding productor (sin auth)
-  { path: '/registro-nuevo', element: <RegistroNuevoPage /> },
-  { path: '/login-productor', element: <LoginPinPage /> },
-  { path: '/recuperar-nip', element: <RecuperarNipPage /> },
-  { path: '/recuperar-password', element: <RecuperarPasswordPage /> },
-  { path: '/reset-password/:token', element: <ResetPasswordPage /> },
+  { path: '/maiz/productor/registro', element: <RegistroNuevoPage /> },
+  { path: '/maiz/productor/login', element: <LoginPinPage /> },
+  { path: '/maiz/productor/recuperar-nip', element: <RecuperarNipPage /> },
+  { path: '/maiz/recuperar-password', element: <RecuperarPasswordPage /> },
+  { path: '/maiz/reset-password/:token', element: <ResetPasswordPage /> },
 
   // Rutas del productor (requieren auth + rol productor)
   {
-    path: '/productor',
+    path: '/maiz/productor',
     element: <RequireProductor><LayoutProductor><Outlet /></LayoutProductor></RequireProductor>,
     children: [
       { index: true, element: <DashboardProductorPage /> },
@@ -438,9 +449,9 @@ export const router = createBrowserRouter([{
   },
 
   // Rutas de Técnicos ECA (registro alterno de productores en campo)
-  { path: '/tecnico/login', element: <LoginTecnicoPage /> },
+  { path: '/maiz/tecnico/login', element: <LoginTecnicoPage /> },
   {
-    path: '/tecnico',
+    path: '/maiz/tecnico',
     element: <RequireCapturista><LayoutTecnico><Outlet /></LayoutTecnico></RequireCapturista>,
     children: [
       { index: true, element: <DashboardTecnicoPage /> },
@@ -456,10 +467,10 @@ export const router = createBrowserRouter([{
   },
 
   // Rutas administrativas (guardián Apple 2026)
-  { path: '/admin/login', element: <LoginAdminPage /> },
-  { path: '/admin/registro', element: <RegistroAdminPage /> },
+  { path: '/maiz/admin/login', element: <LoginAdminPage /> },
+  { path: '/maiz/admin/registro', element: <RegistroAdminPage /> },
   {
-    path: '/admin',
+    path: '/maiz/admin',
     element: <RequireAdmin><AdminShell><Outlet /></AdminShell></RequireAdmin>,
     children: [
       { index: true, element: <RequireVista vista="resumen"><DashboardAdminPage /></RequireVista> },
@@ -484,7 +495,6 @@ export const router = createBrowserRouter([{
     ],
   },
 
-  { path: '/', element: <SmartRedirect /> },
-  { path: '*', element: <SmartRedirect /> },
+  { path: '*', element: <RutaDesconocida /> },
   ],
 }]);

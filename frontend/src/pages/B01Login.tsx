@@ -21,7 +21,7 @@ export default function B01Login() {
       const res = await api.auth.login(email, password, 'bodega');
       const u = res.usuario || res.user;
       setAuth(res.token, { ...u, userId: u?.id ?? u?.userId });
-      navigate(u.rol === 'productor' ? '/productor' : '/dashboard');
+      navigate(u.rol === 'productor' ? '/maiz/productor' : '/maiz/bodega/dashboard');
     } catch (err: any) {
       setError(err.message || 'Credenciales incorrectas');
     } finally {
@@ -52,7 +52,7 @@ export default function B01Login() {
       {/* Header */}
       <div className="relative flex items-center px-4 py-3 flex-shrink-0">
         <button
-          onClick={() => navigate('/bienvenida')}
+          onClick={() => navigate('/maiz')}
           className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors flex items-center gap-1 text-white/70"
         >
           <ChevronLeft size={22} /> <span className="text-sm font-medium">Volver</span>
@@ -72,7 +72,7 @@ export default function B01Login() {
               Acceso para<br />Bodegas e Industrias
             </h2>
             <p className="text-white/50 text-lg leading-relaxed mb-8">
-              Ingresa con tu correo y contraseña para gestionar tu operación en el Sistema SIMAC.
+              Ingresa con tu correo y contraseña para gestionar tu operación en Maíz.
             </p>
             <div className="space-y-4">
               {[
@@ -120,7 +120,7 @@ export default function B01Login() {
                 <label className="text-xs font-semibold text-white/50 uppercase tracking-wide">Contraseña</label>
                 <button
                   type="button"
-                  onClick={() => navigate('/recuperar-password')}
+                  onClick={() => navigate('/maiz/recuperar-password')}
                   className="text-[12px] text-green-300 hover:text-green-200 font-semibold transition-colors"
                 >
                   ¿Olvidaste tu contraseña?
@@ -156,7 +156,7 @@ export default function B01Login() {
 
           {/* Opciones */}
           <div className="mt-6 space-y-3">
-            <button onClick={() => navigate('/registro')}
+            <button onClick={() => navigate('/maiz/bodega/registro')}
               className="w-full flex items-center justify-center gap-2 bg-white/10 ring-1 ring-white/15 hover:bg-white/15
                          text-white py-3.5 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all">
               <UserPlus size={16} /> Crear cuenta nueva
@@ -165,7 +165,7 @@ export default function B01Login() {
             {/* OCULTO C11 — acceso a registro de productor
             <div className="border-t border-white/10 pt-4 text-center">
               <button
-                onClick={() => navigate('/bienvenida', { state: { menu: 'productor' } })}
+                onClick={() => navigate('/maiz', { state: { menu: 'productor' } })}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-300 hover:text-green-200 transition-colors"
               >
                 <Wheat size={15} /> ¿Eres productor? Ver opciones

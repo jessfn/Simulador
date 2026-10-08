@@ -76,7 +76,7 @@ export default function VentanillasPage() {
         setTimeout(() => setErrorMsg(''), 4000);
         return;
       }
-      navigate(`/productor/solicitud/${data.solicitud_id || data.id}`);
+      navigate(`/maiz/productor/solicitud/${data.solicitud_id || data.id}`);
     } catch {
       setErrorMsg('Error de conexión. Verifica tu internet e intenta de nuevo.');
       setTimeout(() => setErrorMsg(''), 4000);

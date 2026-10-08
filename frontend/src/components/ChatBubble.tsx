@@ -662,7 +662,7 @@ export default function ChatBubble() {
               <MessageCircle size={17} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-white text-[14.5px] font-bold leading-tight">Ayuda y soporte SIMAC</div>
+              <div className="text-white text-[14.5px] font-bold leading-tight">Ayuda y soporte Maíz</div>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className={`w-1.5 h-1.5 rounded-full ${enHorario ? 'bg-emerald-300' : 'bg-rose-400'}`} />
                 <span className={`text-[10px] font-semibold ${enHorario ? 'text-white/75' : 'text-rose-300'}`}>
@@ -717,7 +717,7 @@ export default function ChatBubble() {
                     <div style={bubbleShadow} className={`flex flex-col animate-msg-in ${esMio ? 'items-end' : 'items-start'}`}>
                       {esBot && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 mb-0.5 ml-1">
-                          <Sparkles size={11} /> Asistente SIMAC
+                          <Sparkles size={11} /> Asistente Maíz
                         </span>
                       )}
                       <div style={bubbleRadius(esMio)} className={`relative max-w-[78%] ${esSoloImagen ? 'p-[3px]' : 'px-3.5 py-2.5'} ${
@@ -854,7 +854,7 @@ export default function ChatBubble() {
         <ImageLightbox
           src={lightboxImg.url}
           onClose={() => setLightboxImg(null)}
-          remitente={lightboxImg.esMio ? 'Tú' : 'Ayuda y soporte SIMAC'}
+          remitente={lightboxImg.esMio ? 'Tú' : 'Ayuda y soporte Maíz'}
           fecha={lightboxImg.fecha}
           caption={lightboxImg.caption}
         />

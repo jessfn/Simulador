@@ -241,7 +241,7 @@ export default function B25ConfiguracionPage() {
         {/* ── Accesos rápidos ── */}
         <div className="bg-white rounded-[1.5rem] shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-black/[0.04] overflow-hidden transition-transform duration-500 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 group/card">
           <button
-            onClick={() => navigate('/notificaciones')}
+            onClick={() => navigate('/maiz/bodega/notificaciones')}
             className="w-full flex items-center gap-4 px-6 py-5 text-left hover:bg-[#f4fbf7]/50 active:bg-[#eef8f2] transition-colors"
           >
             <div className="w-12 h-12 rounded-[1.25rem] bg-[#1A5C38]/[0.08] flex items-center justify-center flex-shrink-0 transition-transform duration-500 group-hover/card:scale-110 group-hover/card:-rotate-3">
@@ -257,7 +257,7 @@ export default function B25ConfiguracionPage() {
 
         {/* Info de versión */}
         <div className="text-center py-4">
-          <p className="text-[13px] font-medium text-gray-400">SIMAC · Plan Nacional Maíz 2026 · v1.0</p>
+          <p className="text-[13px] font-medium text-gray-400">Maíz · Plan Nacional Maíz 2026 · v1.0</p>
         </div>
 
         </div>

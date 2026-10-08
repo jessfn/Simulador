@@ -195,7 +195,7 @@ export default function CicloProductivoPage() {
       // con marcar un estado local — se vuelve a consultar el estado real
       // del servidor y solo entonces se navega al inicio del productor.
       await fetch(`${BASE}/productor/estado-registro`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-      navigate('/productor', { state: { mensaje: 'Ciclo productivo guardado con éxito' } });
+      navigate('/maiz/productor', { state: { mensaje: 'Ciclo productivo guardado con éxito' } });
     } catch { setError('Error de conexión al servidor. Revisa tu internet e intenta de nuevo.');
     } finally { setLoading(false); }
   };
@@ -405,7 +405,7 @@ export default function CicloProductivoPage() {
             </div>
 
             <button
-              onClick={() => navigate('/productor/ups/nueva')}
+              onClick={() => navigate('/maiz/productor/ups/nueva')}
               className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#1A5C38]/40 bg-white/60 py-4 text-[14px] font-bold text-[#1A5C38] hover:bg-white hover:border-[#1A5C38] active:scale-[0.98] transition-all"
             >
               <span className="text-xl leading-none">+</span> Agregar otra parcela
@@ -429,7 +429,7 @@ export default function CicloProductivoPage() {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-[15px] font-black text-white tracking-tight leading-none">Ciclos productivos</h1>
-              <p className="text-[11px] text-white/60 font-bold mt-1">Tu siembra registrada en SIMAC</p>
+              <p className="text-[11px] text-white/60 font-bold mt-1">Tu siembra registrada en Maíz</p>
             </div>
           </div>
         </div>

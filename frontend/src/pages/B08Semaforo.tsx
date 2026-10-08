@@ -40,7 +40,7 @@ export default function B08Semaforo() {
 
   return (
     <div className="w-full">
-      <PageBanner title="Estado de Compra" subtitle="Visible para productores" back={`/bodegas/${id}`} />
+      <PageBanner title="Estado de Compra" subtitle="Visible para productores" back={`/maiz/bodega/mis-bodegas/${id}`} />
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="max-w-2xl mx-auto space-y-4">
