@@ -117,11 +117,11 @@ export function tituloDePagina(pathname: string): string {
 }
 
 // Color de la barra de estado del celular y del fondo de la página por pantalla.
-// Evita que asome blanco arriba. SIMAC usa guinda (su barra) y Maíz su verde oscuro.
+// Evita que asome blanco arriba. SIMAC y Maíz usan el verde oscuro de su fondo.
 const COLOR_BARRA_NORMAL = '#1A5C38';
 // [ruta, fondo de la página, color de la barra de estado]
 const TEMAS: Array<[RegExp, string, string]> = [
-  [/^\/inicio$/, '#611232', '#611232'],
+  [/^\/inicio$/, '#092213', '#092213'],
   [/^\/bienvenida$/, '#092213', '#092213'],
 ];
 

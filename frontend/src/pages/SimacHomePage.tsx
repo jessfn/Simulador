@@ -105,17 +105,6 @@ export default function SimacHomePage() {
 
   return (
     <div className={`sh-root${saliendo ? ' saliendo' : ''}`}>
-      <div className="sh-estado" aria-hidden="true" />
-      <header className="sh-top">
-        <div className="in">
-          <div className="sh-logos">
-            <img className="gob" src="/images/gobmex.png" alt="Gobierno de México" />
-            <span className="sep" />
-            <img className="agri" src="/images/agricultura.png" alt="Secretaría de Agricultura y Desarrollo Rural" />
-          </div>
-        </div>
-      </header>
-
       <main className="sh-main">
         <div className="sh-fondo" aria-hidden="true">
           <img src="/background-rye.jpg" alt="" />
@@ -171,8 +160,11 @@ export default function SimacHomePage() {
 
       <footer className="sh-bottom">
         <div className="in">
-          <span><b>SIMAC</b>Sistema de Información de Mercados Agrícolas y Consulta</span>
-          <span>Secretaría de Agricultura y Desarrollo Rural · Gobierno de México</span>
+          <div className="sh-logos">
+            <img className="gob" src="/images/gobmex.png" alt="Gobierno de México" />
+            <span className="sep" />
+            <img className="agri" src="/images/agricultura.png" alt="Secretaría de Agricultura y Desarrollo Rural" />
+          </div>
         </div>
       </footer>
     </div>

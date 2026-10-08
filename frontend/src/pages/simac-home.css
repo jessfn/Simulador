@@ -15,20 +15,15 @@
 .sh-root :focus-visible{outline:3px solid var(--dorado-2);outline-offset:3px;border-radius:12px}
 
 /* Barras guinda */
-.sh-top,.sh-bottom{background:var(--guinda);position:relative;z-index:5;flex-shrink:0}
-.sh-top{padding-top:var(--sat);border-bottom:2px solid var(--dorado)}
+.sh-bottom{background:var(--guinda);position:relative;z-index:5;flex-shrink:0}
 .sh-bottom{padding-bottom:env(safe-area-inset-bottom);border-top:2px solid var(--dorado)}
-.sh-top .in{max-width:1200px;margin:0 auto;padding:11px var(--pad);display:flex;align-items:center;justify-content:center;gap:12px}
 .sh-logos{display:flex;align-items:center;justify-content:center;gap:clamp(12px,2.4vw,22px);min-width:0}
 .sh-logos img{display:block;filter:brightness(0) invert(1);width:auto}
-.sh-logos .gob{height:clamp(28px,4.4vw,42px)}
-.sh-logos .agri{height:clamp(26px,4vw,38px)}
+.sh-logos .gob{height:clamp(30px,4.6vw,44px)}
+.sh-logos .agri{height:clamp(27px,4.2vw,40px)}
 .sh-logos .sep{width:1px;align-self:stretch;min-height:22px;background:rgba(255,255,255,.35)}
-.sh-bottom .in{max-width:1200px;margin:0 auto;padding:10px var(--pad);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 20px;font-size:clamp(11px,1.3vw,12.5px);color:rgba(255,255,255,.8)}
-.sh-bottom b{font-family:var(--titulo);font-size:clamp(14px,1.8vw,16px);color:#fff;margin-right:8px}
+.sh-bottom .in{max-width:1200px;margin:0 auto;padding:12px var(--pad);display:flex;align-items:center;justify-content:center}
 
-/* Franja sólida bajo la barra de estado del teléfono (nunca se ve fondo ni desvanecido) */
-.sh-estado{position:fixed;top:0;left:0;right:0;height:var(--sat);background:var(--guinda);z-index:60;pointer-events:none}
 
 /* Escenario */
 .sh-main{position:relative;flex:1 0 auto;display:flex;flex-direction:column;isolation:isolate;background:#092213}
@@ -42,7 +37,7 @@
 .sh-hero{position:relative;z-index:1;flex:1 0 auto;display:flex;flex-direction:column}
 .sh-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
 
-.sh-stage{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(22px,min(5vw,5vh),56px) var(--pad) clamp(18px,min(3vw,3vh),34px)}
+.sh-stage{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:calc(var(--sat) + clamp(22px,min(5vw,5vh),56px)) var(--pad) clamp(18px,min(3vw,3vh),34px)}
 .sh-titulo{position:relative;margin:clamp(8px,1.6vw,16px) 0 0;line-height:.95}
 .sh-titulo h1{margin:0;font-family:var(--titulo);font-weight:700;font-size:clamp(40px,min(11vw,14vh),108px);letter-spacing:.02em;line-height:1;
   background:linear-gradient(180deg,#ffffff 0%,#dcffe9 45%,#86eab0 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
