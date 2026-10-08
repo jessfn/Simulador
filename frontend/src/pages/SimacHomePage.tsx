@@ -14,77 +14,147 @@ const PROXIMOS = [
   },
 ];
 
-// Canvas ligero: pocos nodos que flotan despacio, unidos por líneas finas.
-// 30 fps máximo, se pausa si la pestaña no está visible y respeta "reducir movimiento".
-function useRedCanvas(ref: React.RefObject<HTMLCanvasElement | null>) {
+// Fondo vivo: orbes de luz verde que flotan, olas fluidas y partículas tipo luciérnaga.
+// Pocos elementos (ligero), tiempo basado en reloj (fluido a cualquier velocidad de pantalla),
+// se pausa si la pestaña no se ve y queda quieto si el dispositivo pide menos animación.
+interface Orbe { fx: number; fy: number; ax: number; ay: number; px: number; py: number; r: number; c: [number, number, number]; a: number }
+interface Ola { base: number; amp: number; len: number; vel: number; a: number; c: [number, number, number] }
+interface Luz { x: number; y: number; v: number; r: number; ph: number }
+
+const ORBES: Orbe[] = [
+  { fx: 0.11, fy: 0.09, ax: 0.30, ay: 0.22, px: 0.0, py: 1.2, r: 0.55, c: [52, 211, 153], a: 0.20 },
+  { fx: 0.08, fy: 0.12, ax: 0.34, ay: 0.26, px: 2.1, py: 0.4, r: 0.62, c: [16, 185, 129], a: 0.17 },
+  { fx: 0.13, fy: 0.07, ax: 0.26, ay: 0.30, px: 4.0, py: 2.6, r: 0.48, c: [45, 212, 191], a: 0.13 },
+  { fx: 0.06, fy: 0.10, ax: 0.38, ay: 0.20, px: 5.3, py: 3.9, r: 0.38, c: [188, 149, 92], a: 0.10 },
+];
+const OLAS: Ola[] = [
+  { base: 0.87, amp: 0.034, len: 1.00, vel: 0.30, a: 0.16, c: [52, 211, 153] },
+  { base: 0.91, amp: 0.028, len: 1.45, vel: -0.24, a: 0.14, c: [16, 185, 129] },
+  { base: 0.95, amp: 0.024, len: 1.90, vel: 0.20, a: 0.16, c: [6, 120, 85] },
+];
+
+function useCampoVivo(ref: React.RefObject<HTMLCanvasElement | null>) {
   useEffect(() => {
     const c = ref.current;
-    const x = c?.getContext('2d');
-    if (!c || !x) return;
+    const g = c?.getContext('2d');
+    if (!c || !g) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let W = 0, H = 0, raf = 0, last = 0;
-    let N: { x: number; y: number; vx: number; vy: number; r: number }[] = [];
+    let W = 0, H = 0, raf = 0, ultimo = 0, t = 0;
+    let luces: Luz[] = [];
+    const puntero = { x: 0, y: 0, tx: 0, ty: 0 };
 
     function size() {
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       const r = c!.getBoundingClientRect();
       W = r.width; H = r.height;
-      c!.width = W * dpr; c!.height = H * dpr;
-      x!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.min(26, Math.max(10, Math.round((W * H) / 38000)));
-      N = Array.from({ length: n }, () => ({
+      c!.width = Math.max(1, Math.round(W * dpr)); c!.height = Math.max(1, Math.round(H * dpr));
+      g!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const n = Math.min(36, Math.max(14, Math.round((W * H) / 26000)));
+      luces = Array.from({ length: n }, () => ({
         x: Math.random() * W, y: Math.random() * H,
-        vx: (Math.random() - 0.5) * 0.28, vy: (Math.random() - 0.5) * 0.28,
-        r: 1.4 + Math.random() * 1.6,
+        v: 0.12 + Math.random() * 0.28, r: 0.7 + Math.random() * 1.7, ph: Math.random() * 6.28,
       }));
     }
 
-    function draw(move: boolean) {
-      const g = x!;
-      g.clearRect(0, 0, W, H);
-      const maxD = Math.min(210, W * 0.3);
-      for (const n of N) {
-        if (move) {
-          n.x += n.vx; n.y += n.vy;
-          if (n.x < 0 || n.x > W) n.vx *= -1;
-          if (n.y < 0 || n.y > H) n.vy *= -1;
-        }
+    function dibujar() {
+      g!.clearRect(0, 0, W, H);
+      g!.globalCompositeOperation = 'screen';
+      puntero.x += (puntero.tx - puntero.x) * 0.04;
+      puntero.y += (puntero.ty - puntero.y) * 0.04;
+      const diag = Math.max(W, H);
+
+      // Orbes de luz
+      for (const o of ORBES) {
+        const x = W * (0.5 + o.ax * Math.sin(t * o.fx * 6.283 + o.px)) + puntero.x * 26 * o.r;
+        const y = H * (0.5 + o.ay * Math.cos(t * o.fy * 6.283 + o.py)) + puntero.y * 18 * o.r;
+        const rad = diag * o.r;
+        const grad = g!.createRadialGradient(x, y, 0, x, y, rad);
+        grad.addColorStop(0, `rgba(${o.c[0]},${o.c[1]},${o.c[2]},${o.a})`);
+        grad.addColorStop(0.55, `rgba(${o.c[0]},${o.c[1]},${o.c[2]},${o.a * 0.35})`);
+        grad.addColorStop(1, `rgba(${o.c[0]},${o.c[1]},${o.c[2]},0)`);
+        g!.fillStyle = grad;
+        g!.fillRect(Math.max(0, x - rad), Math.max(0, y - rad), rad * 2, rad * 2);
       }
-      g.lineWidth = 0.8;
-      for (let i = 0; i < N.length; i++) {
-        for (let j = i + 1; j < N.length; j++) {
-          const a = N[i], b = N[j], d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (d < maxD) {
-            g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y);
-            g.strokeStyle = `rgba(214,255,235,${0.34 * (1 - d / maxD)})`; g.stroke();
-          }
+
+      // Olas fluidas
+      for (const w of OLAS) {
+        const paso = Math.max(8, Math.round(W / 70));
+        g!.beginPath();
+        g!.moveTo(0, H);
+        for (let x = 0; x <= W + paso; x += paso) {
+          const k = (x / W) * 6.283 * w.len;
+          const y = H * w.base
+            + Math.sin(k + t * w.vel * 3) * H * w.amp
+            + Math.sin(k * 2.3 - t * w.vel * 2.1) * H * w.amp * 0.45
+            + puntero.y * 6;
+          g!.lineTo(x, y);
         }
+        g!.lineTo(W + paso, H); g!.closePath();
+        const gr = g!.createLinearGradient(0, H * (w.base - w.amp * 2), 0, H);
+        gr.addColorStop(0, `rgba(${w.c[0]},${w.c[1]},${w.c[2]},${w.a})`);
+        gr.addColorStop(1, `rgba(${w.c[0]},${w.c[1]},${w.c[2]},0)`);
+        g!.fillStyle = gr; g!.fill();
+        g!.strokeStyle = `rgba(167,243,208,${w.a * 1.4})`; g!.lineWidth = 1;
+        g!.beginPath();
+        for (let x = 0; x <= W + paso; x += paso) {
+          const k = (x / W) * 6.283 * w.len;
+          const y = H * w.base + Math.sin(k + t * w.vel * 3) * H * w.amp + Math.sin(k * 2.3 - t * w.vel * 2.1) * H * w.amp * 0.45 + puntero.y * 6;
+          if (x === 0) g!.moveTo(x, y); else g!.lineTo(x, y);
+        }
+        g!.stroke();
       }
-      g.fillStyle = 'rgba(240,210,160,.85)';
-      for (const n of N) { g.beginPath(); g.arc(n.x, n.y, n.r, 0, 6.283); g.fill(); }
+
+      // Luciérnagas
+      for (const l of luces) {
+        const brillo = 0.18 + 0.42 * (0.5 + 0.5 * Math.sin(t * 2.2 + l.ph));
+        g!.beginPath(); g!.arc(l.x, l.y, l.r * 3.4, 0, 6.283);
+        g!.fillStyle = `rgba(167,243,208,${brillo * 0.16})`; g!.fill();
+        g!.beginPath(); g!.arc(l.x, l.y, l.r, 0, 6.283);
+        g!.fillStyle = `rgba(236,253,245,${brillo})`; g!.fill();
+      }
+      g!.globalCompositeOperation = 'source-over';
     }
 
-    const loop = (ts: number) => {
-      raf = requestAnimationFrame(loop);
-      if (ts - last < 33) return;
-      last = ts;
-      draw(true);
+    function avanzar(dt: number) {
+      t += dt;
+      for (const l of luces) {
+        l.y -= l.v * dt * 60;
+        l.x += Math.sin(t * 0.8 + l.ph) * 0.18;
+        if (l.y < -8) { l.y = H + 8; l.x = Math.random() * W; }
+      }
+    }
+
+    const bucle = (ts: number) => {
+      raf = requestAnimationFrame(bucle);
+      const dt = Math.min(0.05, ultimo ? (ts - ultimo) / 1000 : 0.016);
+      ultimo = ts;
+      avanzar(dt); dibujar();
     };
-    const start = () => {
-      cancelAnimationFrame(raf); size();
-      if (reduce) draw(false); else raf = requestAnimationFrame(loop);
+    const iniciar = () => {
+      cancelAnimationFrame(raf); size(); ultimo = 0;
+      if (reduce) { t = 3; dibujar(); } else raf = requestAnimationFrame(bucle);
     };
-    const onVis = () => {
+    const alCambiarVisibilidad = () => {
       if (document.hidden) cancelAnimationFrame(raf);
-      else if (!reduce) raf = requestAnimationFrame(loop);
+      else if (!reduce) { ultimo = 0; raf = requestAnimationFrame(bucle); }
     };
-    start();
-    window.addEventListener('resize', start);
-    document.addEventListener('visibilitychange', onVis);
+    const alMover = (e: PointerEvent | TouchEvent) => {
+      const p = 'touches' in e ? e.touches[0] : e;
+      if (!p || !W || !H) return;
+      puntero.tx = (p.clientX / W - 0.5) * 2;
+      puntero.ty = (p.clientY / H - 0.5) * 2;
+    };
+    iniciar();
+    window.addEventListener('resize', iniciar);
+    document.addEventListener('visibilitychange', alCambiarVisibilidad);
+    window.addEventListener('pointermove', alMover);
+    window.addEventListener('touchmove', alMover, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('resize', start);
-      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('resize', iniciar);
+      document.removeEventListener('visibilitychange', alCambiarVisibilidad);
+      window.removeEventListener('pointermove', alMover);
+      window.removeEventListener('touchmove', alMover);
     };
   }, [ref]);
 }
@@ -92,7 +162,7 @@ function useRedCanvas(ref: React.RefObject<HTMLCanvasElement | null>) {
 export default function SimacHomePage() {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  useRedCanvas(canvasRef);
+  useCampoVivo(canvasRef);
   const [saliendo, setSaliendo] = useState(false);
 
   const irAMaiz = () => {
