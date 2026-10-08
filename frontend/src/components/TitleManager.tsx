@@ -117,13 +117,12 @@ export function tituloDePagina(pathname: string): string {
 }
 
 // Color de la barra de estado del celular y del fondo de la página por pantalla.
-// SIMAC y Maíz comparten el mismo color de barra de estado (guinda): al pasar de una a otra
-// no cambia, así no hay desvanecido. Evita también que asome blanco arriba.
-const COLOR_BARRA_ESTADO = '#611232';
+// Evita que asome blanco arriba. SIMAC usa guinda (su barra) y Maíz su verde oscuro.
 const COLOR_BARRA_NORMAL = '#1A5C38';
-const TEMAS: Array<[RegExp, string]> = [
-  [/^\/inicio$/, '#611232'],
-  [/^\/bienvenida$/, '#092213'],
+// [ruta, fondo de la página, color de la barra de estado]
+const TEMAS: Array<[RegExp, string, string]> = [
+  [/^\/inicio$/, '#611232', '#611232'],
+  [/^\/bienvenida$/, '#092213', '#092213'],
 ];
 
 function fondoPorDefecto(): string {
@@ -137,7 +136,7 @@ function aplicarColorDeMarco(pathname: string) {
   const ruta = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
   const tema = TEMAS.find(([patron]) => patron.test(ruta));
   if (tema) {
-    meta?.setAttribute('content', COLOR_BARRA_ESTADO);
+    meta?.setAttribute('content', tema[2]);
     html.style.background = tema[1];
     body.style.background = tema[1];
   } else {

@@ -133,22 +133,29 @@ export default function SimacHomePage() {
           <div className="sh-greca sh-rise" style={{ animationDelay: '.36s' }}><span>Elige un cultivo</span></div>
 
           <div className="sh-cultivos sh-rise" style={{ animationDelay: '.45s' }}>
-            <button className="sh-cultivo on" onClick={irAMaiz} aria-label="Entrar a Maíz">
-              <span className="go" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <button className="sh-card sh-card--on" onClick={irAMaiz} aria-label="Entrar a Maíz">
+              <span className="ico"><img src="/images/maiz-icono.png" alt="" /></span>
+              <span className="txt">
+                <span className="nombre">Maíz</span>
+                <span className="tag">Disponible</span>
               </span>
-              <span className="ico"><img src="/images/maiz-icono.png" alt="" width="84" height="96" /></span>
-              <span className="nombre">Maíz</span>
-              <span className="tag">Disponible</span>
+              <span className="go" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </span>
             </button>
 
             {PROXIMOS.map(c => (
-              <div key={c.nombre} className="sh-cultivo off" aria-label={`${c.nombre}, próximamente`}>
+              <div key={c.nombre} className="sh-card sh-card--off" aria-label={`${c.nombre}, próximamente`}>
                 <span className="ico">
                   <svg viewBox="0 0 48 48" fill="none" stroke="#e3c08a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">{c.icono}</svg>
                 </span>
-                <span className="nombre">{c.nombre}</span>
-                <span className="tag">Próximamente</span>
+                <span className="txt">
+                  <span className="nombre">{c.nombre}</span>
+                  <span className="tag">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                    Próximamente
+                  </span>
+                </span>
               </div>
             ))}
           </div>

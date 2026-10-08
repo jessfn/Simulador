@@ -227,8 +227,6 @@ export default function WelcomePage() {
       className="relative flex overflow-hidden bg-[#092213]"
       style={{ position: 'fixed', inset: 0, overscrollBehavior: 'none' }}
     >
-      {/* Status bar color band — cubre safe-area-inset-top en iOS */}
-      <div className="fixed top-0 inset-x-0 z-[999] bg-[#611232]" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
 
       {/* ── LEFT PANEL — corn illustration (hidden on mobile) ── */}
       <div className="hidden lg:flex lg:w-[55%] relative flex-col overflow-hidden">
@@ -300,15 +298,12 @@ export default function WelcomePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#092213]/80 via-[#092213]/15 to-[#092213]/15" />
         </div>
 
-        {/* Barra superior sólida (móvil y tablet): mismo guinda de SIMAC, sin degradados */}
-        <div
-          className="lg:hidden absolute top-0 inset-x-0 z-20 bg-[#611232] border-b-2 border-[#BC955C]"
-          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-        >
-          <div className="h-[52px] flex items-center px-3.5">
-            <BotonVolverSimac onClick={() => navigate('/inicio')} />
-          </div>
-        </div>
+        {/* Volver a SIMAC (móvil y tablet): flotante, respeta la barra de estado */}
+        <BotonVolverSimac
+          onClick={() => navigate('/inicio')}
+          className="lg:hidden absolute z-20"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 14 }}
+        />
 
         {/* Right panel content */}
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16 max-lg:pt-[calc(env(safe-area-inset-top,0px)+76px)] lg:bg-[#040f08]/0">

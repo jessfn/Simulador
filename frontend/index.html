@@ -43,7 +43,7 @@
         var maiz = p === '/bienvenida';
         var bg = guinda ? '#611232' : (!token || maiz) ? '#092213' : '';
         if (bg) document.documentElement.style.background = bg;
-        window.__simacTema = (guinda || maiz) ? '#611232' : null;
+        window.__simacTema = guinda ? '#611232' : maiz ? '#092213' : null;
       } catch(e) {}
     </script>
     <meta name="theme-color" content="#1A5C38" />
