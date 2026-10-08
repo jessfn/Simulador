@@ -14,23 +14,17 @@ const PROXIMOS = [
   },
 ];
 
-// Fondo vivo: orbes de luz verde que flotan, olas fluidas y partículas tipo luciérnaga.
-// Pocos elementos (ligero), tiempo basado en reloj (fluido a cualquier velocidad de pantalla),
-// se pausa si la pestaña no se ve y queda quieto si el dispositivo pide menos animación.
+// Fondo suave y ligero: unos pocos orbes de luz verde tenue que flotan y algunas partículas.
+// 30 fps máximo, resolución interna baja (son formas difusas), se pausa si la pestaña no se ve
+// y queda quieto si el dispositivo pide menos animación.
 interface Orbe { fx: number; fy: number; ax: number; ay: number; px: number; py: number; r: number; c: [number, number, number]; a: number }
-interface Ola { base: number; amp: number; len: number; vel: number; a: number; c: [number, number, number] }
 interface Luz { x: number; y: number; v: number; r: number; ph: number }
 
 const ORBES: Orbe[] = [
-  { fx: 0.11, fy: 0.09, ax: 0.30, ay: 0.22, px: 0.0, py: 1.2, r: 0.55, c: [52, 211, 153], a: 0.20 },
-  { fx: 0.08, fy: 0.12, ax: 0.34, ay: 0.26, px: 2.1, py: 0.4, r: 0.62, c: [16, 185, 129], a: 0.17 },
-  { fx: 0.13, fy: 0.07, ax: 0.26, ay: 0.30, px: 4.0, py: 2.6, r: 0.48, c: [45, 212, 191], a: 0.13 },
-  { fx: 0.06, fy: 0.10, ax: 0.38, ay: 0.20, px: 5.3, py: 3.9, r: 0.38, c: [188, 149, 92], a: 0.10 },
-];
-const OLAS: Ola[] = [
-  { base: 0.87, amp: 0.034, len: 1.00, vel: 0.30, a: 0.16, c: [52, 211, 153] },
-  { base: 0.91, amp: 0.028, len: 1.45, vel: -0.24, a: 0.14, c: [16, 185, 129] },
-  { base: 0.95, amp: 0.024, len: 1.90, vel: 0.20, a: 0.16, c: [6, 120, 85] },
+  { fx: 0.11, fy: 0.09, ax: 0.30, ay: 0.22, px: 0.0, py: 1.2, r: 0.55, c: [52, 211, 153], a: 0.085 },
+  { fx: 0.08, fy: 0.12, ax: 0.34, ay: 0.26, px: 2.1, py: 0.4, r: 0.62, c: [16, 185, 129], a: 0.075 },
+  { fx: 0.13, fy: 0.07, ax: 0.26, ay: 0.30, px: 4.0, py: 2.6, r: 0.48, c: [45, 212, 191], a: 0.055 },
+  { fx: 0.06, fy: 0.10, ax: 0.38, ay: 0.20, px: 5.3, py: 3.9, r: 0.38, c: [188, 149, 92], a: 0.04 },
 ];
 
 function useCampoVivo(ref: React.RefObject<HTMLCanvasElement | null>) {
@@ -44,12 +38,12 @@ function useCampoVivo(ref: React.RefObject<HTMLCanvasElement | null>) {
     const puntero = { x: 0, y: 0, tx: 0, ty: 0 };
 
     function size() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dpr = 1;
       const r = c!.getBoundingClientRect();
       W = r.width; H = r.height;
       c!.width = Math.max(1, Math.round(W * dpr)); c!.height = Math.max(1, Math.round(H * dpr));
       g!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.min(36, Math.max(14, Math.round((W * H) / 26000)));
+      const n = Math.min(18, Math.max(8, Math.round((W * H) / 60000)));
       luces = Array.from({ length: n }, () => ({
         x: Math.random() * W, y: Math.random() * H,
         v: 0.12 + Math.random() * 0.28, r: 0.7 + Math.random() * 1.7, ph: Math.random() * 6.28,
@@ -76,39 +70,11 @@ function useCampoVivo(ref: React.RefObject<HTMLCanvasElement | null>) {
         g!.fillRect(Math.max(0, x - rad), Math.max(0, y - rad), rad * 2, rad * 2);
       }
 
-      // Olas fluidas
-      for (const w of OLAS) {
-        const paso = Math.max(8, Math.round(W / 70));
-        g!.beginPath();
-        g!.moveTo(0, H);
-        for (let x = 0; x <= W + paso; x += paso) {
-          const k = (x / W) * 6.283 * w.len;
-          const y = H * w.base
-            + Math.sin(k + t * w.vel * 3) * H * w.amp
-            + Math.sin(k * 2.3 - t * w.vel * 2.1) * H * w.amp * 0.45
-            + puntero.y * 6;
-          g!.lineTo(x, y);
-        }
-        g!.lineTo(W + paso, H); g!.closePath();
-        const gr = g!.createLinearGradient(0, H * (w.base - w.amp * 2), 0, H);
-        gr.addColorStop(0, `rgba(${w.c[0]},${w.c[1]},${w.c[2]},${w.a})`);
-        gr.addColorStop(1, `rgba(${w.c[0]},${w.c[1]},${w.c[2]},0)`);
-        g!.fillStyle = gr; g!.fill();
-        g!.strokeStyle = `rgba(167,243,208,${w.a * 1.4})`; g!.lineWidth = 1;
-        g!.beginPath();
-        for (let x = 0; x <= W + paso; x += paso) {
-          const k = (x / W) * 6.283 * w.len;
-          const y = H * w.base + Math.sin(k + t * w.vel * 3) * H * w.amp + Math.sin(k * 2.3 - t * w.vel * 2.1) * H * w.amp * 0.45 + puntero.y * 6;
-          if (x === 0) g!.moveTo(x, y); else g!.lineTo(x, y);
-        }
-        g!.stroke();
-      }
-
       // Luciérnagas
       for (const l of luces) {
-        const brillo = 0.18 + 0.42 * (0.5 + 0.5 * Math.sin(t * 2.2 + l.ph));
+        const brillo = 0.10 + 0.22 * (0.5 + 0.5 * Math.sin(t * 1.6 + l.ph));
         g!.beginPath(); g!.arc(l.x, l.y, l.r * 3.4, 0, 6.283);
-        g!.fillStyle = `rgba(167,243,208,${brillo * 0.16})`; g!.fill();
+        g!.fillStyle = `rgba(167,243,208,${brillo * 0.10})`; g!.fill();
         g!.beginPath(); g!.arc(l.x, l.y, l.r, 0, 6.283);
         g!.fillStyle = `rgba(236,253,245,${brillo})`; g!.fill();
       }
@@ -126,7 +92,8 @@ function useCampoVivo(ref: React.RefObject<HTMLCanvasElement | null>) {
 
     const bucle = (ts: number) => {
       raf = requestAnimationFrame(bucle);
-      const dt = Math.min(0.05, ultimo ? (ts - ultimo) / 1000 : 0.016);
+      if (ultimo && ts - ultimo < 32) return;
+      const dt = Math.min(0.06, ultimo ? (ts - ultimo) / 1000 : 0.033);
       ultimo = ts;
       avanzar(dt); dibujar();
     };
