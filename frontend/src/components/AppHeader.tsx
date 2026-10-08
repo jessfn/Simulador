@@ -48,15 +48,20 @@ export default function AppHeader({ subtitle, initials, notifCount = 0, onBrand,
       <div className="simac-header-in relative z-10 h-16 max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
         {/* Marca */}
         <button onClick={onBrand} className="group flex items-center gap-2.5 min-w-0">
-          <div
-            className="relative w-9 h-9 rounded-[12px] overflow-hidden bg-white ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.06),0_6px_16px_rgba(26,92,56,0.16)] transition-transform duration-500 group-hover:scale-[1.06] group-active:scale-95"
-            style={{ transitionTimingFunction: SPRING }}
-          >
-            <img src="/icono.png" alt="Maíz" className="w-full h-full object-cover" />
-            <span className="absolute inset-0 rounded-[12px] ring-1 ring-inset ring-white/40" />
-          </div>
+          <span
+            role="img"
+            aria-label="Maíz"
+            className="block h-8 aspect-[420/480] transition-transform duration-500 group-hover:scale-[1.08] group-active:scale-95"
+            style={{
+              transitionTimingFunction: SPRING,
+              background: 'linear-gradient(90deg,#4fae75 0%,#4fae75 30%,#f0bf4a 38%,#e6a92f 62%,#4fae75 70%,#4fae75 100%)',
+              WebkitMask: 'url(/images/maiz-icono.png) center / contain no-repeat',
+              mask: 'url(/images/maiz-icono.png) center / contain no-repeat',
+              filter: 'drop-shadow(0 2px 5px rgba(26,92,56,0.22))',
+            }}
+          />
           <div className="flex flex-col leading-none min-w-0 text-left">
-            <span className="text-[15.5px] font-bold tracking-[-0.02em] text-slate-900 leading-none">Maíz</span>
+            <span className="text-[24px] font-bold tracking-[-0.01em] text-slate-900 leading-none" style={{ fontFamily: "Patria, Georgia, serif" }}>Maíz</span>
             {subtitle && (
               <span className="text-[10.5px] text-slate-400 font-medium tracking-tight leading-tight mt-[3px] truncate max-w-[165px] sm:max-w-[330px] lg:max-w-[440px]">
                 {subtitle}
