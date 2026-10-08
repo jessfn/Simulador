@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useVolver } from '../../hooks/useVolver';
 import { ChevronLeft, Building2, Mail, CheckCircle2, AlertCircle, Loader2, Copy, Check } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export default function RecuperarPasswordPage() {
   const navigate = useNavigate();
+  const volver = useVolver('/maiz/bodega/login');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,7 +53,7 @@ export default function RecuperarPasswordPage() {
       {/* Header */}
       <div className="relative flex-shrink-0 flex items-center px-4 h-12 sm:h-14">
         <button
-          onClick={() => navigate('/maiz/bodega/login')}
+          onClick={volver}
           className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors"
         >
           <ChevronLeft size={22} className="text-white/70" />

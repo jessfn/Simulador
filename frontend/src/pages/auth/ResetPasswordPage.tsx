@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useVolver } from '../../hooks/useVolver';
 import { ChevronLeft, KeyRound, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -15,6 +16,7 @@ function Regla({ ok, texto }: { ok: boolean; texto: string }) {
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const volver = useVolver('/maiz/bodega/login');
   const { token } = useParams<{ token: string }>();
 
   const [verificando, setVerificando] = useState(true);
@@ -77,7 +79,7 @@ export default function ResetPasswordPage() {
       {/* Header */}
       <div className="relative flex-shrink-0 flex items-center px-4 h-12 sm:h-14">
         <button
-          onClick={() => navigate('/maiz/bodega/login')}
+          onClick={volver}
           className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors"
         >
           <ChevronLeft size={22} className="text-white/70" />

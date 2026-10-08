@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useVolver } from '../hooks/useVolver';
 import {
   ChevronLeft, Warehouse, Factory, Eye, EyeOff,
   AlertCircle, Loader2, Wheat, Check, ShieldCheck,
@@ -27,6 +28,7 @@ export default function B02Register() {
   const [loading,        setLoading]        = useState(false);
   const { setAuth } = useAuthStore();
   const navigate    = useNavigate();
+  const volver = useVolver('/maiz/bodega/login');
 
   useEffect(() => {
     api.auth.states().then((res: any) => setStates(res.states || res)).catch(() => {});
@@ -178,7 +180,7 @@ export default function B02Register() {
         {/* Header fijo */}
         <div className="flex-shrink-0 flex items-center gap-3 px-4 sm:px-6 lg:px-10 py-3.5 border-b border-white/[0.06]">
           <button
-            onClick={() => navigate('/maiz/bodega/login')}
+            onClick={volver}
             className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors flex items-center gap-1.5 text-white/50 hover:text-white/80"
           >
             <ChevronLeft size={19} />

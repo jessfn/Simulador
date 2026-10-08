@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useVolver } from '../../hooks/useVolver';
 import {
   Eye, EyeOff, ChevronLeft, AlertCircle, Loader2, Info,
   ClipboardCheck, MapPin, UserCheck, Wheat,
@@ -16,6 +17,7 @@ export default function LoginTecnicoPage() {
   const [avisoCambioPass, setAvisoCambioPass] = useState(false);
   const { setAuth } = useAuthStore();
   const navigate = useNavigate();
+  const volver = useVolver('/maiz');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,7 +63,7 @@ export default function LoginTecnicoPage() {
       {/* Header */}
       <div className="relative flex items-center px-4 py-3 flex-shrink-0">
         <button
-          onClick={() => navigate('/maiz')}
+          onClick={volver}
           className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors flex items-center gap-1 text-white/70"
         >
           <ChevronLeft size={22} /> <span className="text-sm font-medium">Volver</span>

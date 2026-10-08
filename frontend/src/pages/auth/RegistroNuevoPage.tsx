@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useVolver } from '../../hooks/useVolver';
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -82,6 +83,7 @@ interface DatosManual {
 
 export default function RegistroNuevoPage() {
   const navigate = useNavigate();
+  const volver = useVolver('/maiz/productor/login');
   const [searchParams] = useSearchParams();
   const esModoManual = searchParams.get('modo') === 'manual';
   const curpDesdeActivar = searchParams.get('curp') ?? '';
@@ -492,7 +494,7 @@ export default function RegistroNuevoPage() {
       setPaso(1);
       if (esModoManual) navigate('/maiz/productor/registro', { replace: true });
     }
-    else navigate('/maiz/productor/login');
+    else volver();
   };
 
   // --- STYLES ---

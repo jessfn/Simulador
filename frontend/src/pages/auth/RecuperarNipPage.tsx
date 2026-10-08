@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useVolver } from '../../hooks/useVolver';
 import { ChevronLeft, Wheat, Phone, KeyRound, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -8,6 +9,7 @@ type Step = 'curp' | 'telefono' | 'nuevo_nip' | 'exito';
 
 export default function RecuperarNipPage() {
   const navigate = useNavigate();
+  const volver = useVolver('/maiz/productor/login');
   const location = useLocation();
   const [step, setStep] = useState<Step>('curp');
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ export default function RecuperarNipPage() {
     setError('');
     if (step === 'telefono') { setStep('curp'); setUltimos4(''); }
     else if (step === 'nuevo_nip') { setStep('telefono'); setNuevoNip(''); setConfirmarNip(''); }
-    else navigate('/maiz/productor/login');
+    else volver();
   };
 
   // Paso 1: verificar CURP

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useVolver } from '../hooks/useVolver';
 import {
   Search, Plus, X, MapPin, CheckCircle, ChevronLeft,
   Warehouse, List, Map as MapIcon, Layers, AlertCircle, ChevronDown
@@ -88,6 +89,7 @@ export default function B03SelectBodegas() {
   const [searchFocused, setSearchFocused] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const volver = useVolver('/maiz/bodega/login');
   const { toast } = useToast();
 
   async function search(q = query, est = estado, mun = municipio) {
@@ -167,7 +169,7 @@ export default function B03SelectBodegas() {
 
           {/* Fila 1: Volver — independiente, pequeño, arriba a la izq */}
           <button
-            onClick={() => navigate('/maiz/bodega/login')}
+            onClick={volver}
             className="flex items-center gap-0.5 text-green-200/80 text-[13px] font-medium mb-2 active:opacity-60 hover:text-green-100 transition-opacity"
           >
             <ChevronLeft size={16} strokeWidth={2.5} className="-ml-1" />

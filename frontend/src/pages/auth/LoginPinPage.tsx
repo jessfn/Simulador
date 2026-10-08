@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useVolver } from '../../hooks/useVolver';
 import { ChevronLeft, Wheat, AlertCircle, Loader2, UserPlus, KeyRound, Building2, ChevronRight, LayoutDashboard, MapPin, BarChart3 } from 'lucide-react';
 import PinInput from '../../components/productor/PinInput';
 import { useAuthStore } from '../../store/auth';
@@ -13,6 +14,7 @@ export default function LoginPinPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const volver = useVolver('/maiz');
   const { setAuth } = useAuthStore();
 
   const handleContinuar = () => {
@@ -82,7 +84,7 @@ export default function LoginPinPage() {
       {/* Header */}
       <div className="relative flex items-center px-4 py-3 sm:py-4 pt-safe">
         <button
-          onClick={() => step === 'pin' ? (setStep('curp'), setPin(''), setError('')) : navigate('/')}
+          onClick={() => step === 'pin' ? (setStep('curp'), setPin(''), setError('')) : volver()}
           className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors"
         >
           <ChevronLeft size={22} className="text-white/70" />

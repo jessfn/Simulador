@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useVolver } from '../hooks/useVolver';
 import { Wheat, Building2, ClipboardCheck, ChevronRight, ChevronLeft, X, LogIn, UserPlus } from 'lucide-react';
 
 type Menu = null | 'productor' | 'bodega';
@@ -178,18 +179,18 @@ function CornCanvas() {
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
 }
 
-/* ── Botón para volver al inicio de SIMAC ── */
+/* ── Botón para volver a la pantalla anterior ── */
 function BotonVolverSimac({ onClick, className = '', style }: { onClick: () => void; className?: string; style?: React.CSSProperties }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Volver al inicio de SIMAC"
+      aria-label="Volver"
       style={style}
       className={`inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 text-white text-[13px] font-semibold pl-2.5 pr-4 py-2 transition-all hover:bg-white/25 active:scale-95 ${className}`}
     >
       <ChevronLeft size={17} strokeWidth={2.4} />
-      SIMAC
+      Volver
     </button>
   );
 }
@@ -197,6 +198,7 @@ function BotonVolverSimac({ onClick, className = '', style }: { onClick: () => v
 /* ── Main page ── */
 export default function WelcomePage() {
   const navigate = useNavigate();
+  const volver = useVolver('/');
   const location = useLocation();
   const menuInicial = (location.state as { menu?: Menu } | null)?.menu ?? null;
   const [menu, setMenu] = useState<Menu>(menuInicial);
@@ -253,7 +255,7 @@ export default function WelcomePage() {
         <div className="relative z-20 flex flex-col h-full px-10 py-10">
           {/* Fila superior: volver a SIMAC + insignia */}
           <div className="flex items-center gap-3 flex-wrap">
-          <BotonVolverSimac onClick={() => navigate('/')} />
+          <BotonVolverSimac onClick={volver} />
           <div
             className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 w-fit"
             style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(-10px)', transition: 'opacity 0.5s ease, transform 0.5s ease' }}
@@ -298,9 +300,9 @@ export default function WelcomePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#092213]/80 via-[#092213]/15 to-[#092213]/15" />
         </div>
 
-        {/* Volver a SIMAC (móvil y tablet): flotante, respeta la barra de estado */}
+        {/* Volver (móvil y tablet): flotante, respeta la barra de estado */}
         <BotonVolverSimac
-          onClick={() => navigate('/')}
+          onClick={volver}
           className="lg:hidden absolute z-20"
           style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 14 }}
         />
@@ -315,16 +317,16 @@ export default function WelcomePage() {
           >
             <div className="w-[72px] h-[72px] lg:w-20 lg:h-20 rounded-[22px] lg:rounded-[26px] bg-white/10 backdrop-blur-xl ring-1 ring-white/20 flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.4)] mb-4">
               <img
-                src="/icono.png"
+                src="/images/maiz-icono.png"
                 alt="Maíz"
-                className="w-12 h-12 lg:w-14 lg:h-14 rounded-[14px]"
-                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                className="h-10 lg:h-12 w-auto opacity-90"
+                style={{ filter: 'brightness(0) invert(1)' }}
               />
             </div>
             <h1 className="text-[38px] lg:text-[44px] font-bold text-white tracking-[-0.5px] leading-none" style={{ fontFamily: "Patria, Georgia, serif" }}>
               Maíz
             </h1>
-            <p className="text-[13px] text-emerald-400/70 font-semibold mt-1.5 tracking-[0.12em] uppercase text-center">
+            <p className="text-[10.5px] font-semibold mt-2 tracking-[0.14em] uppercase text-center bg-gradient-to-r from-gray-400 via-white to-gray-400 bg-clip-text text-transparent">
               Plan Nacional Maíz 2026
             </p>
           </div>
