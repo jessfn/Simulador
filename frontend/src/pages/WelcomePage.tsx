@@ -253,16 +253,9 @@ export default function WelcomePage() {
 
         {/* Overlay content */}
         <div className="relative z-20 flex flex-col h-full px-10 py-10">
-          {/* Fila superior: volver a SIMAC + insignia */}
+          {/* Fila superior: volver */}
           <div className="flex items-center gap-3 flex-wrap">
           <BotonVolverSimac onClick={volver} />
-          <div
-            className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 w-fit"
-            style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(-10px)', transition: 'opacity 0.5s ease, transform 0.5s ease' }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] font-bold text-emerald-300/90 tracking-widest uppercase">Plan Nacional Maíz 2026</span>
-          </div>
           </div>
 
           {/* Bottom text */}
@@ -271,12 +264,9 @@ export default function WelcomePage() {
               style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(20px)', transition: 'opacity 0.7s ease 0.15s, transform 0.7s ease 0.15s' }}
             >
               <h2 className="text-[38px] xl:text-[46px] font-bold text-white leading-tight tracking-tight" style={{ fontFamily: "Patria, Georgia, serif" }}>
-                El campo mexicano<br />
-                <span className="text-emerald-400">conectado</span> al mercado
+                Del surco a la bodega,<br />
+                el <span className="text-emerald-400">maíz</span> de México
               </h2>
-              <p className="text-white/45 text-[15px] font-medium mt-3 leading-relaxed max-w-md">
-                Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México.
-              </p>
             </div>
           </div>
         </div>
@@ -452,12 +442,6 @@ export default function WelcomePage() {
           </div>
 
           {/* Footer */}
-          <p
-            className="mt-8 text-center text-[10px] text-white/18 max-w-[260px] leading-relaxed"
-            style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.6s ease 0.28s' }}
-          >
-            Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México
-          </p>
         </div>
       </div>
 

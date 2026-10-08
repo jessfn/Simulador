@@ -15,7 +15,6 @@ const NAV = [
   { path: '/maiz/bodega/mas', icon: MoreHorizontal, label: 'Más' },
 ];
 
-const SYSTEM_NAME = 'Sistema de Ordenamiento de la Producción y Comercialización del Maíz en México';
 
 export function Layout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -50,7 +49,6 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Header premium "liquid glass" (compartido) ── */}
       <AppHeader
-        subtitle={SYSTEM_NAME}
         initials={initials}
         notifCount={noLeidas}
         onBrand={() => navigate('/maiz/bodega/dashboard')}
