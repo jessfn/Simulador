@@ -234,8 +234,8 @@ export default function WelcomePage() {
       <div className="hidden lg:flex lg:w-[55%] relative flex-col overflow-hidden">
         {/* Rye background image loaded locally */}
         <img
-          src="/background-rye.jpg"
-          alt="Campos de centeno"
+          src="/milpa.jpg"
+          alt="Milpa"
           className="absolute inset-0 w-full h-full object-cover brightness-[0.45] saturate-[0.6]"
         />
         {/* Deep green gradient background (on top to filter the image green) */}
@@ -278,8 +278,8 @@ export default function WelcomePage() {
         <div className="lg:hidden absolute inset-0">
           {/* Rye background image loaded locally */}
           <img
-            src="/background-rye.jpg"
-            alt="Campos de centeno"
+            src="/milpa.jpg"
+            alt="Milpa"
             className="absolute inset-0 w-full h-full object-cover brightness-[0.42] saturate-[0.6]"
           />
           {/* Deep green gradient overlay (on top to filter the image green) */}
