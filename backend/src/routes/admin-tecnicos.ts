@@ -123,6 +123,38 @@ const CAMPOS_PROGRAMA = `
   (SELECT COUNT(*)::int FROM producer_programa pp WHERE pp.usuario_capturista_id = u.id AND pp.programa = '${PROGRAMA_FRIJOL}') AS registros_frijol`;
 
 // =============================================
+// GET /api/admin/tecnicos/catalogos
+// Listas para los formularios del panel: tipos de técnico, programas, estados.
+// GET /api/admin/tecnicos/municipios?state_id=XX  — municipios de un estado.
+// (van antes de "/:id" para que no se confundan con un id)
+// =============================================
+router.get('/catalogos', authMiddleware, verTecnicos, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [tipos, programas, estados] = await Promise.all([
+      pool.query(`SELECT code, label FROM cat_catalog WHERE catalog = 'tipo_tecnico' AND is_active = true ORDER BY sort_order, label`),
+      pool.query(`SELECT clave, nombre, cultivo FROM cat_programa WHERE activo = true ORDER BY nombre`),
+      pool.query(`SELECT state_id, name FROM geo_state ORDER BY name`),
+    ]);
+    res.json({ tipos_tecnico: tipos.rows, programas: programas.rows, estados: estados.rows });
+  } catch (error) {
+    console.error('Error en catálogos de técnicos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.get('/municipios', authMiddleware, verTecnicos, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const stateId = String(req.query.state_id || '');
+    if (!stateId) { res.status(400).json({ error: 'Falta state_id' }); return; }
+    const r = await pool.query('SELECT municipality_id, name FROM geo_municipality WHERE state_id = $1 ORDER BY name', [stateId]);
+    res.json({ municipios: r.rows });
+  } catch (error) {
+    console.error('Error en municipios de técnicos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// =============================================
 // POST /api/admin/tecnicos
 // Alta de un técnico ECA con tipo, programas y zona. Crea la cuenta con contraseña temporal aleatoria
 // (que debe cambiar en su primer acceso) y la devuelve UNA sola vez; no se guarda en texto plano.

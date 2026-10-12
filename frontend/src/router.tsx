@@ -98,6 +98,7 @@ import FrijolEntradaPage from './pages/FrijolEntradaPage';
 import FrijolTableroPage from './pages/frijol/FrijolTableroPage';
 import ElegirProgramaPage from './pages/frijol/ElegirProgramaPage';
 import EnConstruccionPage from './pages/frijol/EnConstruccionPage';
+import FrijolPerfilPage from './pages/frijol/FrijolPerfilPage';
 import { destinoTecnico, tienePrograma, PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from './utils/tecnicoDestino';
 import DashboardTecnicoPage from './pages/tecnico/DashboardTecnicoPage';
 import BuscarProductorPage from './pages/tecnico/BuscarProductorPage';
@@ -475,7 +476,7 @@ export const router = createBrowserRouter([{
       { index: true, element: <FrijolTableroPage /> },
       { path: 'nuevo', element: <EnConstruccionPage titulo="Nuevo registro" /> },
       { path: 'registros', element: <EnConstruccionPage titulo="Mis registros" /> },
-      { path: 'perfil', element: <EnConstruccionPage titulo="Mi perfil" /> },
+      { path: 'perfil', element: <FrijolPerfilPage /> },
     ],
   },
   {

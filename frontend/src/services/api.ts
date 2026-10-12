@@ -298,7 +298,15 @@ export const api = {
   },
   admin: {
     tecnicos: {
-      listar: (q?: string) => request(`/admin/tecnicos${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+      listar: (filtros?: string | { q?: string; programa?: string; tipo_tecnico?: string; state_id?: string }) => {
+        const f = typeof filtros === 'string' ? { q: filtros } : (filtros || {});
+        const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();
+        return request(`/admin/tecnicos${qs ? `?${qs}` : ''}`);
+      },
+      catalogos: () => request('/admin/tecnicos/catalogos'),
+      municipios: (stateId: string) => request(`/admin/tecnicos/municipios?state_id=${encodeURIComponent(stateId)}`),
+      crear: (data: Record<string, unknown>) =>
+        request('/admin/tecnicos', { method: 'POST', body: JSON.stringify(data) }),
       detalle: (id: number | string) => request(`/admin/tecnicos/${id}`),
       editar: (id: number | string, data: Record<string, unknown>) =>
         request(`/admin/tecnicos/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
