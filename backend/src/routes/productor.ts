@@ -626,6 +626,11 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
         ]
       );
       const producerId = p.rows[0].producer_id;
+      // Programa: todo productor que se registra por SIMAC Maíz queda en 'simac_maiz'.
+      await client.query(
+        `INSERT INTO producer_programa (producer_id, programa) VALUES ($1, 'simac_maiz') ON CONFLICT DO NOTHING`,
+        [producerId]
+      );
 
       // Crear TODAS las UPs (array o única). crearUP hace reverse-geocode, overlap e ids canónicos.
       for (const upData of upsList) {

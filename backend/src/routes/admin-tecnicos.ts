@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import pool from '../config/database';
+import { soloMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { checkPermiso } from './admin-permisos';
 
@@ -45,7 +46,7 @@ router.get('/', authMiddleware, verTecnicos, async (req: AuthRequest, res: Respo
               COUNT(DISTINCT p.producer_id) AS total_registros,
               COUNT(DISTINCT up.up_id) AS total_ups
        FROM usuarios u
-       LEFT JOIN producer p ON p.usuario_capturista_id = u.id
+       LEFT JOIN producer p ON p.usuario_capturista_id = u.id AND ${soloMaiz('p')}
        LEFT JOIN up up ON up.producer_id = p.producer_id
        ${where}
        GROUP BY u.id
@@ -84,7 +85,7 @@ router.get('/:id', authMiddleware, verDetalleTecnicos, async (req: AuthRequest, 
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
        LEFT JOIN cycle c ON c.up_id = u.up_id
-       WHERE p.usuario_capturista_id = $1
+       WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}
        GROUP BY p.producer_id
        ORDER BY p.fecha_captura DESC`,
       [id]

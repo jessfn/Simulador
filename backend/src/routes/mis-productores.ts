@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
+import { soloMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -19,7 +20,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
        LEFT JOIN usuarios u ON u.id = p.usuario_id
        LEFT JOIN up ON up.producer_id = p.producer_id
        LEFT JOIN cycle c ON c.up_id = up.up_id
-       WHERE sp.supervisor_id = $1
+       WHERE sp.supervisor_id = $1 AND ${soloMaiz('p')}
        GROUP BY p.producer_id, u.email, u.activo, p.apellido_paterno, p.nombres
        ORDER BY p.apellido_paterno, p.nombres`,
       [supervisorId]

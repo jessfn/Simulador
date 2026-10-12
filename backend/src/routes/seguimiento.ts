@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
+import { soloMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -11,11 +12,11 @@ const router = Router();
 router.get('/productores', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { q } = req.query;
-    let whereClause = '';
+    let whereClause = `WHERE ${soloMaiz('p')}`;
     const params: any[] = [];
 
     if (q) {
-      whereClause = `WHERE (p.nombres ILIKE $1 OR p.apellido_paterno ILIKE $1 OR p.curp ILIKE $1)`;
+      whereClause = `WHERE (p.nombres ILIKE $1 OR p.apellido_paterno ILIKE $1 OR p.curp ILIKE $1) AND ${soloMaiz('p')}`;
       params.push(`%${q}%`);
     }
 

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { soloMaiz, soloMaizDeUp } from '../utils/programas';
 
 const router = Router();
 
@@ -40,8 +41,8 @@ router.get('/resumen', authMiddleware, async (req: AuthRequest, res: Response): 
 
     const [productoresActivos, productoresPendientes, bodegasActivas, bodegasPendientes,
            disponibilidades, requerimientos, transacciones7d] = await Promise.all([
-      pool.query(`SELECT COUNT(*)::int AS total FROM producer p WHERE p.estado_validacion = 'activo' ${wP.sql}`, wP.params),
-      pool.query(`SELECT COUNT(*)::int AS total FROM producer p WHERE p.estado_validacion = 'pendiente' ${wP.sql}`, wP.params),
+      pool.query(`SELECT COUNT(*)::int AS total FROM producer p WHERE p.estado_validacion = 'activo' AND ${soloMaiz('p')} ${wP.sql}`, wP.params),
+      pool.query(`SELECT COUNT(*)::int AS total FROM producer p WHERE p.estado_validacion = 'pendiente' AND ${soloMaiz('p')} ${wP.sql}`, wP.params),
       pool.query(`SELECT COUNT(*)::int AS total FROM bodegas b WHERE b.estatus = 'aprobada' ${wB.sql}`, wB.params),
       pool.query(`SELECT COUNT(*)::int AS total FROM bodegas b WHERE b.estatus = 'pendiente' ${wB.sql}`, wB.params),
       pool.query(`SELECT COALESCE(SUM(COALESCE(volumen_estimado_ton, volumen_ton, 0)), 0)::numeric(12,2) AS total_ton FROM disponibilidad_productor WHERE COALESCE(activa, activo, true) = true`).catch(() => ({ rows: [{ total_ton: 0 }] })),
@@ -82,7 +83,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
         LEFT JOIN cycle c ON c.up_id = u.up_id
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
         LEFT JOIN estimacion_cosecha ec ON ec.up_id = u.up_id AND ec.ciclo_id = c.cycle_id
-        WHERE u.state_name IS NOT NULL ${wU.sql}
+        WHERE u.state_name IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
         GROUP BY u.state_name
         ORDER BY area_ha DESC
         LIMIT 20
@@ -97,7 +98,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        WHERE true ${wU.sql}
+        WHERE ${soloMaizDeUp('u')} ${wU.sql}
         GROUP BY c.cycle_type, c.cycle_year
         ORDER BY c.cycle_year DESC, c.cycle_type
         LIMIT 20
@@ -111,7 +112,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        WHERE true ${wU.sql}
+        WHERE ${soloMaizDeUp('u')} ${wU.sql}
         GROUP BY c.cycle_year
         ORDER BY c.cycle_year DESC
         LIMIT 6
@@ -120,6 +121,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
         SELECT COUNT(*)::int AS ups_sin_ciclo
         FROM up u
         WHERE NOT EXISTS (SELECT 1 FROM cycle c WHERE c.up_id = u.up_id)
+        AND ${soloMaizDeUp('u')}
         ${wU.sql}
       `, wU.params),
       pool.query(`
@@ -131,7 +133,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
         FROM up u
         LEFT JOIN cycle c ON c.up_id = u.up_id
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        WHERE true ${wU.sql}
+        WHERE ${soloMaizDeUp('u')} ${wU.sql}
       `, wU.params),
     ]);
 
@@ -393,6 +395,7 @@ router.get('/operacion', authMiddleware, async (req: AuthRequest, res: Response)
           COUNT(CASE WHEN EXISTS(SELECT 1 FROM cycle c WHERE c.up_id = u.up_id) THEN 1 END)::int AS con_ciclo,
           COUNT(CASE WHEN EXISTS(SELECT 1 FROM cycle_crop cc JOIN cycle c ON c.cycle_id = cc.cycle_id WHERE c.up_id = u.up_id) THEN 1 END)::int AS con_cultivo
         FROM up u
+        WHERE ${soloMaizDeUp('u')}
       `),
       pool.query(`
         SELECT
@@ -402,7 +405,7 @@ router.get('/operacion', authMiddleware, async (req: AuthRequest, res: Response)
           usu.nombre_completo AS tecnico
         FROM seguimiento_visitas sv
         JOIN up u ON u.up_id = sv.up_id
-        JOIN producer p ON p.producer_id = sv.producer_id
+        JOIN producer p ON p.producer_id = sv.producer_id AND ${soloMaiz('p')}
         LEFT JOIN usuarios usu ON usu.id = sv.usuario_captura
         ORDER BY sv.fecha_visita DESC
         LIMIT 10
@@ -418,8 +421,8 @@ router.get('/operacion', authMiddleware, async (req: AuthRequest, res: Response)
         SELECT
           DATE_TRUNC('day', created_at)::date AS dia,
           COUNT(*)::int AS nuevos_productores
-        FROM producer
-        WHERE created_at >= NOW() - INTERVAL '30 days'
+        FROM producer p
+        WHERE created_at >= NOW() - INTERVAL '30 days' AND ${soloMaiz('p')}
         GROUP BY dia
         ORDER BY dia
       `),
@@ -465,7 +468,7 @@ router.get('/mapa', authMiddleware, async (req: AuthRequest, res: Response): Pro
           COUNT(CASE WHEN a.nivel_alerta IN ('critico','alto') THEN 1 END)::int AS alertas_criticas
         FROM up u
         LEFT JOIN alertas a ON a.up_id = u.up_id AND a.estado_alerta = 'pendiente'
-        WHERE u.centroid IS NOT NULL ${wU.sql}
+        WHERE u.centroid IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
         GROUP BY u.up_id, u.up_name, u.state_name, u.municipality_name, u.area_ha_calc, u.centroid
         LIMIT 2000
       `, wU.params),
@@ -499,7 +502,7 @@ router.get('/mapa', authMiddleware, async (req: AuthRequest, res: Response): Pro
         JOIN producer p ON p.producer_id = u.producer_id
         LEFT JOIN cycle c ON c.up_id = u.up_id
         LEFT JOIN estimacion_cosecha ec ON ec.up_id = u.up_id AND ec.ciclo_id = c.cycle_id
-        WHERE u.state_name IS NOT NULL ${wU.sql}
+        WHERE u.state_name IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
         GROUP BY u.state_name
         ORDER BY produccion_ton DESC
       `, wU.params),

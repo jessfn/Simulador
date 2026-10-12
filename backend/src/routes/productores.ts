@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
+import { soloMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -40,6 +41,7 @@ router.get('/buscar', authMiddleware, async (req: AuthRequest, res: Response): P
          OR UPPER(TRIM(COALESCE(p.curp, ''))) LIKE $1
          ${extra}
        )
+       AND ${soloMaiz('p')}
        ORDER BY p.nombres, p.apellido_paterno
        LIMIT 10`,
       params

@@ -4,6 +4,7 @@ import fs from 'fs';
 import readline from 'readline';
 import path from 'path';
 import pool from '../config/database';
+import { soloMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { enviarPushNativa } from '../utils/webpush';
 
@@ -201,7 +202,7 @@ async function procesarCSV(
              ) / 1000.0)::numeric
            , 1) AS distancia_km
          FROM up u
-         JOIN producer p  ON p.producer_id = u.producer_id
+         JOIN producer p  ON p.producer_id = u.producer_id AND ${soloMaiz('p')}
          JOIN usuarios us ON us.id = p.usuario_id
          WHERE ST_DWithin(
            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,

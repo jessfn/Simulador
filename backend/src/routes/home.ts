@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
+import { soloMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -312,7 +313,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
     // ── ADMIN ───────────────────────────────────────────────────
     if (role === 'admin') {
       const [productoresRow, ciclosRow, alertasRow, bodegasRow, recientes, recientesProd, preciosRow, inventariosRow, usuariosRow] = await Promise.all([
-        pool.query(`SELECT COUNT(*)::int AS c FROM producer`),
+        pool.query(`SELECT COUNT(*)::int AS c FROM producer p WHERE ${soloMaiz('p')}`),
         pool.query(`SELECT COUNT(*)::int AS c FROM cycle`),
         pool.query(
           `SELECT COUNT(*)::int AS c FROM alertas
@@ -326,8 +327,8 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
            ORDER BY a.fecha_alerta DESC LIMIT 5`
         ),
         pool.query(
-          `SELECT COUNT(*)::int AS c FROM producer
-           WHERE created_at >= NOW() - INTERVAL '7 days'`
+          `SELECT COUNT(*)::int AS c FROM producer p
+           WHERE created_at >= NOW() - INTERVAL '7 days' AND ${soloMaiz('p')}`
         ).catch(() => ({ rows: [{ c: 0 }] } as any)),
         pool.query(`SELECT COUNT(*)::int AS c FROM precios_maiz`).catch(() => ({ rows: [{ c: 0 }] } as any)),
         pool.query(`SELECT COUNT(*)::int AS c FROM inventarios`).catch(() => ({ rows: [{ c: 0 }] } as any)),
