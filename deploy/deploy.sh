@@ -45,5 +45,5 @@ fi
 echo ">> Desplegando '$RAMA' a $AMBIENTE ..."
 ssh "${SSH_OPTS[@]}" "$HOST" "set -e; cd /var/www/Simulador && git pull -q origin $RAMA \
   && cd backend && npm install --no-audit --no-fund --silent && npx tsc && pm2 restart bodegas-api \
-  && cd ../frontend && npm install --no-audit --no-fund --silent && npm run $MODO_FRONT \
+  && cd ../frontend && npm install --legacy-peer-deps --no-audit --no-fund --silent && npm run $MODO_FRONT \
   && sudo nginx -s reload && echo DEPLOY_OK"

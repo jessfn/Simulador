@@ -4,8 +4,10 @@
 set -euo pipefail
 REPO="${1:?Falta la URL del repositorio}"
 
+# Ubuntu recien instalado: desactivar la fuente de CD-ROM que rompe apt
+sudo sed -i 's|^deb \[check-date=no\] file:///cdrom|# &|' /etc/apt/sources.list
 sudo apt-get update -y
-sudo apt-get install -y curl git nginx postgresql postgresql-contrib build-essential
+sudo apt-get install -y curl git nginx postgresql postgresql-contrib postgresql-14-postgis-3 build-essential
 # Node 20 LTS + PM2
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
@@ -15,6 +17,8 @@ sudo npm install -g pm2
 sudo mkdir -p /var/www && sudo chown "$USER":"$USER" /var/www
 [ -d /var/www/Simulador ] || git clone "$REPO" /var/www/Simulador
 cd /var/www/Simulador && git fetch -q origin && git checkout staging
+
+sudo systemctl enable --now postgresql@14-main
 
 # Base de datos propia de pruebas (NUNCA el RDS de produccion)
 DBPASS="$(openssl rand -hex 16)"
