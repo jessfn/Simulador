@@ -17,6 +17,7 @@ interface User {
   redirect_post_login?:string;
   programas?:         string[];
   tipo_tecnico?:      string | null;
+  tipo_tecnico_etiqueta?: string | null;
 }
 
 interface AuthState {

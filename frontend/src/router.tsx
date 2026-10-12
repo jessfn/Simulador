@@ -97,8 +97,10 @@ import LoginTecnicoPage from './pages/tecnico/LoginTecnicoPage';
 import FrijolEntradaPage from './pages/FrijolEntradaPage';
 import FrijolTableroPage from './pages/frijol/FrijolTableroPage';
 import ElegirProgramaPage from './pages/frijol/ElegirProgramaPage';
-import EnConstruccionPage from './pages/frijol/EnConstruccionPage';
 import FrijolPerfilPage from './pages/frijol/FrijolPerfilPage';
+import NuevoRegistroPage from './pages/frijol/NuevoRegistroPage';
+import RegistrosPage from './pages/frijol/RegistrosPage';
+import DetalleProductorFrijolPage from './pages/frijol/DetalleProductorFrijolPage';
 import { destinoTecnico, tienePrograma, PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from './utils/tecnicoDestino';
 import DashboardTecnicoPage from './pages/tecnico/DashboardTecnicoPage';
 import BuscarProductorPage from './pages/tecnico/BuscarProductorPage';
@@ -474,8 +476,10 @@ export const router = createBrowserRouter([{
     element: <RequireCapturista ruta="frijol" programa={PROGRAMA_FRIJOL}><LayoutTecnico><Outlet /></LayoutTecnico></RequireCapturista>,
     children: [
       { index: true, element: <FrijolTableroPage /> },
-      { path: 'nuevo', element: <EnConstruccionPage titulo="Nuevo registro" /> },
-      { path: 'registros', element: <EnConstruccionPage titulo="Mis registros" /> },
+      { path: 'nuevo', element: <NuevoRegistroPage /> },
+      { path: 'nuevo/:id', element: <NuevoRegistroPage /> },
+      { path: 'registros', element: <RegistrosPage /> },
+      { path: 'productor/:id', element: <DetalleProductorFrijolPage /> },
       { path: 'perfil', element: <FrijolPerfilPage /> },
     ],
   },
