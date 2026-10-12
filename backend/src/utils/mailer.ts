@@ -57,3 +57,32 @@ export async function enviarEmailRecuperacion(
 export function smtpConfigurado(): boolean {
   return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
+
+// Credenciales de un técnico recién dado de alta (contraseña temporal que debe cambiar al entrar).
+export async function enviarCredencialesTecnico(
+  destinatario: string,
+  nombre: string,
+  passwordTemporal: string
+): Promise<boolean> {
+  const transporter = crearTransporter();
+  if (!transporter) return false;
+
+  const fromName = process.env.SMTP_FROM_NAME || 'SIMAC';
+  const fromEmail = process.env.SMTP_USER!;
+  const urlBase = (process.env.APP_URL || '').replace(/\/+$/, '');
+  const urlEntrada = urlBase ? `${urlBase}/` : '';
+
+  await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: destinatario,
+    subject: 'Tu acceso como técnico — SIMAC',
+    html: `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+        <h2 style="color:#1a202c;font-size:18px;">Hola, ${nombre}</h2>
+        <p style="color:#4a5568;font-size:15px;line-height:1.6;">Se creó tu cuenta de técnico. Entra con tu correo y esta contraseña temporal; el sistema te pedirá cambiarla en tu primer acceso.</p>
+        <p style="background:#f1f5f9;border-radius:10px;padding:12px 16px;font-size:16px;letter-spacing:.04em;"><b>${destinatario}</b><br>Contraseña temporal: <b>${passwordTemporal}</b></p>
+        ${urlEntrada ? `<p style="font-size:14px;"><a href="${urlEntrada}">Abrir SIMAC</a></p>` : ''}
+      </div>`,
+  });
+  return true;
+}
