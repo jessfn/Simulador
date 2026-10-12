@@ -10,7 +10,7 @@ import { consultarCURPEnRENAPO } from '../services/renapoService';
 import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
 import { insertarUP } from '../utils/ups';
 import { requierePrograma } from '../middleware/programa';
-import { perfilProgramasDeTecnico, soloMaiz, PROGRAMA_MAIZ } from '../utils/programas';
+import { perfilProgramasDeTecnico, soloMaiz, tecnicoDeMaiz, PROGRAMA_MAIZ } from '../utils/programas';
 import {
   EncuestaError, determinarContextoTerritorial, guardarEncuestaEnTransaccion,
   obtenerRespuestaProductor, obtenerEdicionVigente,
@@ -351,11 +351,21 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
         client.release();
         return;
       }
-      if (capturistaActual && capturistaActual !== tecnicoId) {
+      // La propiedad para MAÍZ se valida contra el programa simac_maiz: un productor que llegó primero por Frijol
+      // (dueño de producer = técnico de frijol) puede ser tomado por un técnico de maíz sin bloqueo.
+      const progMaiz = await client.query(
+        `SELECT usuario_capturista_id FROM producer_programa WHERE producer_id = $1 AND programa = 'simac_maiz'`,
+        [producer_id_existente]
+      );
+      const dueñoMaiz = progMaiz.rows.length > 0 ? progMaiz.rows[0].usuario_capturista_id : null;
+      if (dueñoMaiz && dueñoMaiz !== tecnicoId) {
         await client.query('ROLLBACK');
         res.status(403).json({ error: 'Este productor ya está asignado a otro técnico' });
         client.release();
         return;
+      }
+      if (progMaiz.rows.length === 0 && capturistaActual && capturistaActual !== tecnicoId) {
+        // No está en maíz y su capturista es de otro programa (frijol): se permite; se crea abajo su renglón de maíz.
       }
 
       producerId = producer_id_existente;
@@ -367,7 +377,7 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
            sexo = COALESCE($4, sexo),
            fecha_nacimiento = COALESCE($5, fecha_nacimiento),
            fuente_registro = COALESCE($6, fuente_registro),
-           usuario_capturista_id = $7,
+           usuario_capturista_id = COALESCE(usuario_capturista_id, $7),
            estatus_registro = 'alterno',
            fecha_captura = COALESCE(fecha_captura, CURRENT_TIMESTAMP)
          WHERE producer_id = $8
@@ -381,6 +391,12 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
         client.release();
         return;
       }
+      // Renglón de maíz (si llegó por frijol no lo tenía); no pisa al técnico que ya sea responsable
+      await client.query(
+        `INSERT INTO producer_programa (producer_id, programa, usuario_capturista_id) VALUES ($1, 'simac_maiz', $2)
+         ON CONFLICT (producer_id, programa) DO UPDATE SET usuario_capturista_id = COALESCE(producer_programa.usuario_capturista_id, EXCLUDED.usuario_capturista_id)`,
+        [producerId, tecnicoId]
+      );
     } else {
       const curpN = String(curp).toUpperCase().trim();
       const existe = await client.query(
@@ -489,7 +505,7 @@ router.get('/mis-registros', authMiddleware, requiereCapturista, requiereProgram
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
-       WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}
+       WHERE ${tecnicoDeMaiz('p', '$1')}
        GROUP BY p.producer_id
        ORDER BY p.fecha_captura DESC`,
       [tecnicoId, edicion?.id || 0]
@@ -518,7 +534,7 @@ router.get('/productor/:producer_id/encuesta-insumos', authMiddleware, requiereC
     const tecnicoId = req.user!.userId;
     const { producer_id } = req.params;
     const own = await pool.query(
-      'SELECT producer_id FROM producer WHERE producer_id = $1 AND usuario_capturista_id = $2',
+      `SELECT p.producer_id FROM producer p WHERE p.producer_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`,
       [producer_id, tecnicoId]
     );
     if (own.rows.length === 0) { res.status(403).json({ error: 'Este productor no fue registrado por ti' }); return; }
@@ -536,7 +552,7 @@ router.post('/productor/:producer_id/encuesta-insumos', authMiddleware, requiere
     const tecnicoId = req.user!.userId;
     const { producer_id } = req.params;
     const own = await pool.query(
-      'SELECT producer_id FROM producer WHERE producer_id = $1 AND usuario_capturista_id = $2',
+      `SELECT p.producer_id FROM producer p WHERE p.producer_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`,
       [producer_id, tecnicoId]
     );
     if (own.rows.length === 0) { res.status(403).json({ error: 'Este productor no fue registrado por ti' }); client.release(); return; }
@@ -569,7 +585,7 @@ router.get('/productor/:producer_id/ups', authMiddleware, requiereCapturista, re
     const { producer_id } = req.params;
 
     const own = await pool.query(
-      'SELECT producer_id FROM producer WHERE producer_id = $1 AND usuario_capturista_id = $2',
+      `SELECT p.producer_id FROM producer p WHERE p.producer_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`,
       [producer_id, tecnicoId]
     );
     if (own.rows.length === 0) {
@@ -607,7 +623,7 @@ router.post('/productor/:producer_id/ups', authMiddleware, requiereCapturista, r
     const { producer_id } = req.params;
 
     const own = await client.query(
-      'SELECT producer_id FROM producer WHERE producer_id = $1 AND usuario_capturista_id = $2',
+      `SELECT p.producer_id FROM producer p WHERE p.producer_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`,
       [producer_id, tecnicoId]
     );
     if (own.rows.length === 0) {
@@ -671,7 +687,7 @@ router.patch('/productor/:producer_id', authMiddleware, requiereCapturista, requ
     vals.push(producer_id, tecnicoId);
     const result = await pool.query(
       `UPDATE producer SET ${updates.join(', ')}
-       WHERE producer_id = $${idx++} AND usuario_capturista_id = $${idx}
+       WHERE producer_id = $${idx++} AND ${tecnicoDeMaiz('producer', `$${idx}`)}
        RETURNING producer_id, curp, nombres, apellido_paterno, apellido_materno, phone AS telefono, state_id, municipality_id`,
       vals
     );
@@ -712,7 +728,7 @@ router.get('/perfil', authMiddleware, requiereCapturista, async (req: AuthReques
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
-       WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}`,
+       WHERE ${tecnicoDeMaiz('p', '$1')}`,
       [tecnicoId]
     );
     const perfilProg = await perfilProgramasDeTecnico(tecnicoId);

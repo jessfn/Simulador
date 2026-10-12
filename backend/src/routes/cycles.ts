@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
+import { tecnicoDeMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -37,7 +38,7 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
       ownershipQuery = `
         SELECT u.up_id FROM up u
         JOIN producer p ON p.producer_id = u.producer_id
-        WHERE u.up_id = $1 AND p.usuario_capturista_id = $2`;
+        WHERE u.up_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`;
       ownershipParams = [up_id, req.user!.userId];
     } else {
       ownershipQuery = `
@@ -109,7 +110,7 @@ router.get('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: R
       ownershipQuery = `
         SELECT u.up_id FROM up u
         JOIN producer p ON p.producer_id = u.producer_id
-        WHERE u.up_id = $1 AND p.usuario_capturista_id = $2`;
+        WHERE u.up_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`;
       ownershipParams = [up_id, req.user!.userId];
     } else {
       ownershipQuery = `
@@ -177,7 +178,7 @@ router.delete('/cycles/:cycle_id', authMiddleware, async (req: AuthRequest, res:
       `SELECT c.cycle_id FROM cycle c
        JOIN up u ON u.up_id = c.up_id
        JOIN producer p ON p.producer_id = u.producer_id
-       WHERE c.cycle_id = $1 AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)
+       WHERE c.cycle_id = $1 AND (p.usuario_id = $2 OR ${tecnicoDeMaiz('p', '$2')})
          AND c.crop = 'maiz'
          AND COALESCE(c.estado_ciclo, 'activo') = 'activo'`,
       [cycle_id, userId]
@@ -285,7 +286,7 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         JOIN producer p ON p.producer_id = u.producer_id
-        WHERE c.cycle_id = $1 AND p.usuario_capturista_id = $2`;
+        WHERE c.cycle_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`;
       cycleOwnershipParams = [cycle_id, req.user!.userId];
     } else {
       cycleOwnershipQuery = `
@@ -383,7 +384,7 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
        JOIN producer p ON p.producer_id = u.producer_id
        WHERE cc.cycle_crop_id = $1
          AND cy.crop = 'maiz'
-         AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)`,
+         AND (p.usuario_id = $2 OR ${tecnicoDeMaiz('p', '$2')})`,
       [id, req.user!.userId]
     );
     if (propio.rows.length === 0) {
@@ -490,7 +491,7 @@ router.patch('/cycles/:cycle_id/estado', authMiddleware, async (req: AuthRequest
        FROM cycle c
        JOIN up u ON u.up_id = c.up_id
        JOIN producer p ON p.producer_id = u.producer_id
-       WHERE c.cycle_id = $1 AND c.crop = 'maiz' AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)`,
+       WHERE c.cycle_id = $1 AND c.crop = 'maiz' AND (p.usuario_id = $2 OR ${tecnicoDeMaiz('p', '$2')})`,
       [cycle_id, req.user?.userId]
     );
 

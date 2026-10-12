@@ -47,6 +47,7 @@ import chatRoutes, { adminChatRouter } from './routes/chat';
 import frijolRoutes from './routes/frijol';
 import { scheduleBodegaDailyJobs } from './jobs/bodegaDailyJobs';
 import { schedulePreciosCron } from './jobs/preciosCron';
+import { scheduleFrijolVerificacion } from './jobs/frijolVerificacion';
 import { postgisDisponible } from './utils/postgis';
 import pool from './config/database';
 
@@ -210,6 +211,7 @@ app.listen(PORT, '0.0.0.0', () => {
   } else {
     scheduleBodegaDailyJobs();
     schedulePreciosCron();
+    scheduleFrijolVerificacion();
   }
 });
 
