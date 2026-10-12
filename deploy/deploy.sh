@@ -13,12 +13,14 @@ case "$AMBIENTE" in
     HOST="qasimac@10.1.24.200"
     SSH_OPTS=(-i "$HOME/.ssh/simacqa" -o StrictHostKeyChecking=no -o ConnectTimeout=20)
     MODO_FRONT="build:pruebas"
+    MIGRAR="npm run migrate:up --silent"   # en pruebas las migraciones se aplican solas
     ;;
   produccion)
     RAMA="main"
     HOST="jesus.rios@localhost"
     SSH_OPTS=(-p 2223 -i "$HOME/.ssh/jesus.rios.pem" -o StrictHostKeyChecking=no -o ConnectTimeout=20)
     MODO_FRONT="build"
+    MIGRAR="true"   # en produccion: snapshot primero y luego npm run migrate:up a mano (ver DEPLOY.md)
     ;;
   *) echo "Uso: $0 pruebas|produccion"; exit 1 ;;
 esac
@@ -44,6 +46,6 @@ fi
 
 echo ">> Desplegando '$RAMA' a $AMBIENTE ..."
 ssh "${SSH_OPTS[@]}" "$HOST" "set -e; cd /var/www/Simulador && git pull -q origin $RAMA \
-  && cd backend && npm install --no-audit --no-fund --silent && npx tsc && pm2 restart bodegas-api \
+  && cd backend && npm install --no-audit --no-fund --silent && npx tsc && $MIGRAR && pm2 restart bodegas-api \
   && cd ../frontend && npm install --legacy-peer-deps --no-audit --no-fund --silent && npm run $MODO_FRONT \
   && sudo nginx -s reload && echo DEPLOY_OK"
