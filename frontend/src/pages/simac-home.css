@@ -76,6 +76,10 @@
 .sh-card--on:hover{transform:translateY(-3px);border-color:var(--dorado-2);box-shadow:0 0 0 1px rgba(227,192,138,.4),0 20px 46px rgba(0,0,0,.4),0 0 44px rgba(52,211,153,.22)}
 .sh-card--on:hover .go{transform:translateY(-50%) translateX(3px)}
 .sh-card--on:active{transform:scale(.985)}
+.sh-card--on.sh-card--sec{grid-column:auto;min-height:104px;padding:14px 12px}
+.sh-card--on.sh-card--sec .fila{font-size:20px}
+.sh-card--on.sh-card--sec .icono{width:1em;height:1em;filter:none;color:rgba(255,255,255,.8);opacity:1}
+.sh-card--on.sh-card--sec .go{display:none}
 .sh-card--off{cursor:default;color:rgba(255,255,255,.82)}
 .sh-card--off .tag{color:rgba(227,192,138,.8)}
 
@@ -86,13 +90,16 @@
   .sh-card--on{grid-column:auto;min-height:138px;padding:16px 50px}
   .sh-card--on .fila{font-size:30px}
   .sh-card--on .go{right:12px;width:30px;height:30px}
+  .sh-card--on.sh-card--sec{min-height:138px;padding:16px 14px}
+  .sh-card--on.sh-card--sec .fila{font-size:22px}
 }
 @media (min-width:1280px){
   .sh-cultivos{width:min(100%,800px);gap:16px}
   .sh-card{min-height:152px}
-  .sh-card--on{min-height:152px}
+  .sh-card--on,.sh-card--on.sh-card--sec{min-height:152px}
   .sh-card .fila{font-size:24px}
   .sh-card--on .fila{font-size:32px}
+  .sh-card--on.sh-card--sec .fila{font-size:24px}
 }
 
 /* Cinta */

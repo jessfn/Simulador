@@ -15,6 +15,8 @@ interface User {
   debe_cambiar_pass?: boolean;
   es_panel_usuario?:  boolean;
   redirect_post_login?:string;
+  programas?:         string[];
+  tipo_tecnico?:      string | null;
 }
 
 interface AuthState {

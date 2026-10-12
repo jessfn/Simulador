@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useVolver } from '../hooks/useVolver';
 import CampoVivo from '../components/CampoVivo';
-import { Wheat, Building2, ClipboardCheck, ChevronRight, ChevronLeft, X, LogIn, UserPlus } from 'lucide-react';
+import BotonVolver from '../components/BotonVolver';
+import { Wheat, Building2, ClipboardCheck, ChevronRight, X, LogIn, UserPlus } from 'lucide-react';
 
 type Menu = null | 'productor' | 'bodega';
 
@@ -32,22 +33,6 @@ const OPCIONES: Record<'productor' | 'bodega', { titulo: string; subtitulo: stri
     ],
   },
 };
-
-/* ── Botón para volver a la pantalla anterior ── */
-function BotonVolverSimac({ onClick, className = '', style }: { onClick: () => void; className?: string; style?: React.CSSProperties }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="Volver"
-      style={style}
-      className={`inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 text-white text-[13px] font-semibold pl-2.5 pr-4 py-2 transition-all hover:bg-white/25 active:scale-95 ${className}`}
-    >
-      <ChevronLeft size={17} strokeWidth={2.4} />
-      Volver
-    </button>
-  );
-}
 
 /* ── Main page ── */
 export default function WelcomePage() {
@@ -109,7 +94,7 @@ export default function WelcomePage() {
         <div className="relative z-20 flex flex-col h-full px-10 py-10">
           {/* Fila superior: volver */}
           <div className="flex items-center gap-3 flex-wrap">
-          <BotonVolverSimac onClick={volver} />
+          <BotonVolver onClick={volver} />
           </div>
 
           {/* Bottom text */}
@@ -145,7 +130,7 @@ export default function WelcomePage() {
         </div>
 
         {/* Volver (móvil y tablet): flotante, respeta la barra de estado */}
-        <BotonVolverSimac
+        <BotonVolver
           onClick={volver}
           className="lg:hidden absolute z-20"
           style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 14 }}

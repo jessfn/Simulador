@@ -94,6 +94,11 @@ import InsumosAdminPage from './pages/admin/InsumosAdminPage';
 
 // Técnicos ECA — Importaciones
 import LoginTecnicoPage from './pages/tecnico/LoginTecnicoPage';
+import FrijolEntradaPage from './pages/FrijolEntradaPage';
+import FrijolTableroPage from './pages/frijol/FrijolTableroPage';
+import ElegirProgramaPage from './pages/frijol/ElegirProgramaPage';
+import EnConstruccionPage from './pages/frijol/EnConstruccionPage';
+import { destinoTecnico, tienePrograma, PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from './utils/tecnicoDestino';
 import DashboardTecnicoPage from './pages/tecnico/DashboardTecnicoPage';
 import BuscarProductorPage from './pages/tecnico/BuscarProductorPage';
 import DatosProductorPage from './pages/tecnico/DatosProductorPage';
@@ -118,24 +123,25 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
   if (isAuthenticated) {
     if (user?.rol === 'productor') return <Navigate to="/maiz/productor" replace />;
     if (isAdminPanelUser(user)) return <Navigate to="/maiz/admin" replace />;
-    if (user?.rol === 'capturista') return <Navigate to="/maiz/tecnico" replace />;
+    if (user?.rol === 'capturista') return <Navigate to={destinoTecnico(user.programas)} replace />;
     return <Navigate to="/maiz/bodega/dashboard" replace />;
   }
   return <>{children}</>;
 }
 
-function RequireCapturista({ children }: { children: React.ReactNode }) {
+function RequireCapturista({ children, programa, ruta = 'maiz' }: { children: React.ReactNode; programa?: string; ruta?: 'maiz' | 'frijol' }) {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
-  if (!isAuthenticated) return <Navigate to="/maiz/tecnico/login" replace />;
+  const login = ruta === 'frijol' ? '/frijol/tecnico/login' : '/maiz/tecnico/login';
+  if (!isAuthenticated) return <Navigate to={login} replace />;
   if (user?.rol !== 'capturista') return <Navigate to="/maiz/bodega/login" replace />;
-  // CRIT-05 (auditoría seguridad 2026-09-21): antes debe_cambiar_pass solo
-  // se mostraba como aviso de 1.8s en el login y nunca se aplicaba — un
-  // técnico con contraseña temporal podía usar todo el sistema sin
-  // cambiarla jamás. Se bloquea cualquier ruta de /tecnico que no sea el
-  // perfil (donde está el formulario de cambio de contraseña).
-  if (user?.debe_cambiar_pass && location.pathname !== '/maiz/tecnico/perfil') {
-    return <Navigate to="/maiz/tecnico/perfil" replace />;
+  // Un técnico sin el programa de esta sección va a la que sí tiene.
+  if (programa && !tienePrograma(user?.programas, programa)) return <Navigate to={destinoTecnico(user?.programas)} replace />;
+  // CRIT-05 (auditoría seguridad 2026-09-21): un técnico con contraseña temporal debe cambiarla
+  // antes de usar el sistema; solo se permite su perfil (ahí está el formulario de cambio).
+  const perfil = ruta === 'frijol' ? '/frijol/tecnico/perfil' : '/maiz/tecnico/perfil';
+  if (user?.debe_cambiar_pass && location.pathname !== perfil) {
+    return <Navigate to={perfil} replace />;
   }
   return <>{children}</>;
 }
@@ -457,10 +463,24 @@ export const router = createBrowserRouter([{
   },
 
   // Rutas de Técnicos ECA (registro alterno de productores en campo)
-  { path: '/maiz/tecnico/login', element: <LoginTecnicoPage /> },
+  { path: '/maiz/tecnico/login', element: <GuestOnly><LoginTecnicoPage /></GuestOnly> },
+  // Frijol: entrada pública y área del técnico (solo con el programa frijol_afb)
+  { path: '/frijol', element: <GuestOnly><FrijolEntradaPage /></GuestOnly> },
+  { path: '/frijol/tecnico/login', element: <GuestOnly><LoginTecnicoPage cultivo="frijol" /></GuestOnly> },
+  { path: '/tecnico/elegir', element: <RequireCapturista><ElegirProgramaPage /></RequireCapturista> },
+  {
+    path: '/frijol/tecnico',
+    element: <RequireCapturista ruta="frijol" programa={PROGRAMA_FRIJOL}><LayoutTecnico><Outlet /></LayoutTecnico></RequireCapturista>,
+    children: [
+      { index: true, element: <FrijolTableroPage /> },
+      { path: 'nuevo', element: <EnConstruccionPage titulo="Nuevo registro" /> },
+      { path: 'registros', element: <EnConstruccionPage titulo="Mis registros" /> },
+      { path: 'perfil', element: <EnConstruccionPage titulo="Mi perfil" /> },
+    ],
+  },
   {
     path: '/maiz/tecnico',
-    element: <RequireCapturista><LayoutTecnico><Outlet /></LayoutTecnico></RequireCapturista>,
+    element: <RequireCapturista programa={PROGRAMA_MAIZ}><LayoutTecnico><Outlet /></LayoutTecnico></RequireCapturista>,
     children: [
       { index: true, element: <DashboardTecnicoPage /> },
       { path: 'registrar', element: <BuscarProductorPage /> },

@@ -1,23 +1,32 @@
 import { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, UserPlus, LogOut, ShieldCheck, ChevronLeft, UserCircle } from 'lucide-react';
+import { Home, UserPlus, LogOut, ShieldCheck, ChevronLeft, UserCircle, ClipboardList } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import ChatBubble from './ChatBubble';
 
-const NAV = [
+const NAV_MAIZ = [
   { path: '/maiz/tecnico', icon: Home, label: 'Inicio' },
   { path: '/maiz/tecnico/registrar', icon: UserPlus, label: 'Registrar' },
   { path: '/maiz/tecnico/perfil', icon: UserCircle, label: 'Perfil' },
+];
+const NAV_FRIJOL = [
+  { path: '/frijol/tecnico', icon: Home, label: 'Inicio' },
+  { path: '/frijol/tecnico/nuevo', icon: UserPlus, label: 'Nuevo' },
+  { path: '/frijol/tecnico/registros', icon: ClipboardList, label: 'Registros' },
+  { path: '/frijol/tecnico/perfil', icon: UserCircle, label: 'Perfil' },
 ];
 
 export function LayoutTecnico({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const esFrijol = pathname.startsWith('/frijol');
+  const NAV = esFrijol ? NAV_FRIJOL : NAV_MAIZ;
+  const inicio = esFrijol ? '/frijol/tecnico' : '/maiz/tecnico';
 
   function handleLogout() {
     logout();
-    navigate('/maiz/tecnico/login');
+    navigate(esFrijol ? '/frijol/tecnico/login' : '/maiz/tecnico/login');
   }
 
   const nombre = user?.nombre_completo || user?.nombres || 'Técnico ECA';
@@ -36,7 +45,7 @@ export function LayoutTecnico({ children }: { children: ReactNode }) {
               <ShieldCheck size={18} className="text-white" />
             </div>
             <div>
-              <p className="text-[14px] font-black text-slate-900 leading-none">Maíz · Técnicos ECA</p>
+              <p className="text-[14px] font-black text-slate-900 leading-none">{esFrijol ? 'Frijol' : 'Maíz'} · Técnicos ECA</p>
               <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{nombre}</p>
             </div>
           </div>
@@ -63,7 +72,7 @@ export function LayoutTecnico({ children }: { children: ReactNode }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-stretch">
           {NAV.map(({ path, icon: Icon, label }) => {
-            const active = pathname === path || (path !== '/maiz/tecnico' && pathname.startsWith(path + '/'));
+            const active = pathname === path || (path !== inicio && pathname.startsWith(path + '/'));
             return (
               <Link key={path} to={path}
                 className={`flex-1 flex flex-col items-center justify-center pt-2.5 pb-3 gap-1 transition-colors

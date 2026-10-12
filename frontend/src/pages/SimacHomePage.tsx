@@ -5,11 +5,8 @@ import MenuPublico from '../components/MenuPublico';
 import CampoVivo from '../components/CampoVivo';
 
 const CINTA = ['Precios de mercado', 'Mapa de bodegas', 'Parcelas', 'Ciclos productivos', 'Apoyos y ventanillas', 'Consulta'];
+const FRIJOL_TRAZO = 'M14 30c0-9 6-16 17-18 5 7 2 18-6 24-4 3-9 1-11-6ZM22 24c2-3 5-5 8-6';
 const PROXIMOS = [
-  {
-    nombre: 'Frijol',
-    icono: <path d="M14 30c0-9 6-16 17-18 5 7 2 18-6 24-4 3-9 1-11-6ZM22 24c2-3 5-5 8-6" />,
-  },
   {
     nombre: 'Trigo',
     icono: <path d="M24 44V14M24 14c-4-1-6-4-6-8 4 1 6 4 6 8Zm0 0c4-1 6-4 6-8-4 1-6 4-6 8ZM24 26c-4-1-6-4-6-8 4 1 6 4 6 8Zm0 0c4-1 6-4 6-8-4 1-6 4-6 8ZM24 38c-4-1-6-4-6-8 4 1 6 4 6 8Zm0 0c4-1 6-4 6-8-4 1-6 4-6 8Z" />,
@@ -20,14 +17,16 @@ export default function SimacHomePage() {
   const navigate = useNavigate();
   const [saliendo, setSaliendo] = useState(false);
 
-  const irAMaiz = () => {
+  const irA = (ruta: string) => {
     if (saliendo) return;
     const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (sinMovimiento) { navigate('/maiz'); return; }
-    if (typeof document.startViewTransition === 'function') { navigate('/maiz', { viewTransition: true }); return; }
+    if (sinMovimiento) { navigate(ruta); return; }
+    if (typeof document.startViewTransition === 'function') { navigate(ruta, { viewTransition: true }); return; }
     setSaliendo(true);
-    window.setTimeout(() => navigate('/maiz'), 220);
+    window.setTimeout(() => navigate(ruta), 220);
   };
+  const irAMaiz = () => irA('/maiz');
+  const irAFrijol = () => irA('/frijol');
 
   return (
     <div className={`sh-root${saliendo ? ' saliendo' : ''}`}>
@@ -59,6 +58,14 @@ export default function SimacHomePage() {
               <span className="go" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </span>
+            </button>
+
+            <button className="sh-card sh-card--on sh-card--sec" onClick={irAFrijol} aria-label="Entrar a Frijol">
+              <span className="fila">
+                <svg className="icono" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d={FRIJOL_TRAZO} /></svg>
+                <span className="nombre">Frijol</span>
+              </span>
+              <span className="tag">Disponible</span>
             </button>
 
             {PROXIMOS.map(c => (

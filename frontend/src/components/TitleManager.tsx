@@ -10,6 +10,9 @@ const RUTAS: Array<[RegExp, string, string?]> = [
   // Entrada
   [/^\/$/, '', ''],
   [/^\/maiz$/, 'Maíz'],
+  [/^\/frijol$/, 'Frijol'],
+  [/^\/frijol\/tecnico\/login$/, 'Acceso de técnico'],
+  [/^\/tecnico\/elegir$/, 'Elegir programa', 'Técnico'],
   [/^\/maiz\/bodega\/login$/, 'Acceso para bodega o industria'],
   [/^\/maiz\/bodega\/registro$/, 'Registro de bodega o industria'],
   [/^\/maiz\/productor\/login$/, 'Acceso de productor'],
@@ -51,6 +54,14 @@ const RUTAS: Array<[RegExp, string, string?]> = [
   [/^\/maiz\/tecnico\/productor\/[^/]+\/encuesta$/, 'Encuesta de insumos', 'Técnico'],
   [/^\/maiz\/tecnico\/perfil$/, 'Mi perfil', 'Técnico'],
   [/^\/maiz\/tecnico/, 'Técnico'],
+
+  // Frijol (técnico)
+  [/^\/frijol\/tecnico$/, 'Inicio', 'Técnico'],
+  [/^\/frijol\/tecnico\/nuevo$/, 'Nuevo registro', 'Técnico'],
+  [/^\/frijol\/tecnico\/registros$/, 'Mis registros', 'Técnico'],
+  [/^\/frijol\/tecnico\/productor\/[^/]+$/, 'Detalle del productor', 'Técnico'],
+  [/^\/frijol\/tecnico\/perfil$/, 'Mi perfil', 'Técnico'],
+  [/^\/frijol\/tecnico/, 'Técnico'],
 
   // Administración
   [/^\/maiz\/admin$/, 'Resumen', 'Administración'],
@@ -106,14 +117,23 @@ const RUTAS: Array<[RegExp, string, string?]> = [
   [/^\/maiz\/bodega\/configuracion/, 'Configuración', 'Bodega'],
 ];
 
+// Nombre del sistema que va al final del título: Frijol, SIMAC (pantallas comunes) o Maíz.
+function sistemaDe(ruta: string): string {
+  if (ruta.startsWith('/frijol')) return 'Frijol';
+  if (ruta === '/tecnico/elegir') return 'SIMAC';
+  return SISTEMA;
+}
+
 export function tituloDePagina(pathname: string): string {
   const ruta = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  const sistema = sistemaDe(ruta);
   for (const [patron, pagina, area] of RUTAS) {
     if (!patron.test(ruta)) continue;
     if (pagina === '') return TITULO_BASE;
-    if (pagina === 'Maíz') return 'Maíz';
-    return area ? `${pagina} · ${area} · ${SISTEMA}` : `${pagina} · ${SISTEMA}`;
+    if (pagina === 'Maíz' || pagina === 'Frijol') return pagina;
+    return area ? `${pagina} · ${area} · ${sistema}` : `${pagina} · ${sistema}`;
   }
+  if (ruta.startsWith('/frijol')) return 'Frijol';
   return ruta.startsWith('/maiz') ? 'Maíz' : TITULO_BASE;
 }
 
@@ -124,6 +144,7 @@ const COLOR_BARRA_NORMAL = '#1A5C38';
 const TEMAS: Array<[RegExp, string, string]> = [
   [/^\/$/, '#092213', '#092213'],
   [/^\/maiz$/, '#092213', '#092213'],
+  [/^\/frijol$/, '#092213', '#092213'],
 ];
 
 function fondoPorDefecto(): string {

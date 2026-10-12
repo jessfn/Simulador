@@ -24,7 +24,7 @@ function handle401(): void {
     const rol = persisted?.state?.user?.rol as string | undefined;
     const esPanelUsuario = persisted?.state?.user?.es_panel_usuario as boolean | undefined;
     if (rol === 'productor') loginPath = '/maiz/productor/login';
-    else if (rol === 'capturista') loginPath = '/maiz/tecnico/login';
+    else if (rol === 'capturista') loginPath = window.location.pathname.startsWith('/frijol') ? '/frijol/tecnico/login' : '/maiz/tecnico/login';
     else if (rol === 'admin' || rol === 'responsable' || (rol === 'user' && esPanelUsuario)) loginPath = '/maiz/admin/login';
   } catch { /* ignore */ }
   localStorage.removeItem('simac_token');
