@@ -6,7 +6,12 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "migrate:create": "node db/run.js create",
+    "migrate:up": "node db/run.js up",
+    "migrate:down": "node db/run.js down",
+    "migrate:status": "node db/run.js status",
+    "migrate:fake-base": "node db/run.js fake-base"
   },
   "dependencies": {
     "@types/pdfkit": "^0.17.6",
@@ -38,6 +43,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.11.10",
     "@types/web-push": "^3.6.4",
+    "node-pg-migrate": "^9.0.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.2"
   }
