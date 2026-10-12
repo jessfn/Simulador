@@ -50,13 +50,13 @@ async function productorPropio(req: AuthRequest, res: Response, producerId: stri
 // ─── Datos del productor y sus parcelas (para prellenar el registro) ────────
 async function datosProductor(producerId: number) {
   const p = await pool.query(
-    `SELECT p.producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo,
+    `SELECT p.producer_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo,
             to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento,
             p.phone AS telefono, p.correo, p.usuario_id IS NOT NULL AS tiene_cuenta
        FROM producer p WHERE p.producer_id = $1`, [producerId]);
   const fp = await pool.query('SELECT * FROM frijol_productor WHERE producer_id = $1', [producerId]);
   const parcelas = await pool.query(
-    `SELECT u.up_id, u.up_name, u.numero_up, u.area_ha_calc, u.area_ha_real, u.state_id, u.state_name, u.municipality_id,
+    `SELECT u.up_id::int AS up_id, u.up_name, u.numero_up, u.area_ha_calc::float AS area_ha_calc, u.area_ha_real::float AS area_ha_real, u.state_id, u.state_name, u.municipality_id,
             u.municipality_name, u.localidad, u.documento_propiedad, u.documento_propiedad_otro,
             ST_AsGeoJSON(u.geom)::json AS geom_geojson,
             COALESCE((SELECT json_agg(CASE c.cycle_type
@@ -230,7 +230,7 @@ router.get('/mis-registros', async (req: AuthRequest, res: Response): Promise<vo
     if (q) { params.push(`%${q}%`); cond.push(`(p.nombres ILIKE $${params.length} OR p.apellido_paterno ILIKE $${params.length} OR p.apellido_materno ILIKE $${params.length} OR p.curp ILIKE $${params.length})`); }
 
     const lista = await pool.query(
-      `SELECT p.producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, gm.name AS municipio,
+      `SELECT p.producer_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, gm.name AS municipio,
               pp.verificacion_identidad, pp.estatus_registro, pp.fecha_alta,
               (SELECT COUNT(DISTINCT u.up_id) FROM up u JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'frijol' WHERE u.producer_id = p.producer_id)::int AS parcelas_frijol,
               COALESCE((SELECT SUM(cc.area_sown_ha) FROM up u JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'frijol'
@@ -263,10 +263,10 @@ router.get('/productores/:producer_id', async (req: AuthRequest, res: Response):
     if (!pp) return;
     const base = await datosProductor(Number(req.params.producer_id));
     const cultivos = await pool.query(
-      `SELECT cc.cycle_crop_id, c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.tipo_riego, cc.variety_id, cc.variety_other,
-              cv.label AS variedad, cc.area_sown_ha, to_char(cc.planting_date,'YYYY-MM-DD') AS fecha_siembra,
-              to_char(cc.estimated_harvest_date,'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.yield_expected AS rendimiento_esperado_t_ha,
-              cc.destination AS destino, fc.tipo_siembra, fc.densidad_kg_ha, fc.usa_fertilizante, fc.tipos_fertilizante, fc.rotacion,
+      `SELECT cc.cycle_crop_id::int AS cycle_crop_id, c.cycle_id::int AS cycle_id, c.up_id::int AS up_id, c.cycle_year, c.cycle_type, c.tipo_riego, cc.variety_id, cc.variety_other,
+              cv.label AS variedad, cc.area_sown_ha::float AS area_sown_ha, to_char(cc.planting_date,'YYYY-MM-DD') AS fecha_siembra,
+              to_char(cc.estimated_harvest_date,'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.yield_expected::float AS rendimiento_esperado_t_ha,
+              cc.destination AS destino, fc.tipo_siembra, fc.densidad_kg_ha::float AS densidad_kg_ha, fc.usa_fertilizante, fc.tipos_fertilizante, fc.rotacion,
               fc.observaciones, fc.sin_observaciones, fc.capturado_en, fc.hubo_desconexion, fc.created_at
          FROM cycle_crop cc
          JOIN cycle c ON c.cycle_id = cc.cycle_id AND c.crop = 'frijol'
