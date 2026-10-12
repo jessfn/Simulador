@@ -19,7 +19,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
        JOIN producer p ON p.producer_id = sp.producer_id
        LEFT JOIN usuarios u ON u.id = p.usuario_id
        LEFT JOIN up ON up.producer_id = p.producer_id
-       LEFT JOIN cycle c ON c.up_id = up.up_id
+       LEFT JOIN cycle c ON c.up_id = up.up_id AND c.crop = 'maiz'
        WHERE sp.supervisor_id = $1 AND ${soloMaiz('p')}
        GROUP BY p.producer_id, u.email, u.activo, p.apellido_paterno, p.nombres
        ORDER BY p.apellido_paterno, p.nombres`,
@@ -134,7 +134,7 @@ router.get('/:producerId', authMiddleware, async (req: AuthRequest, res: Respons
            ST_AsGeoJSON(u.geom)::json AS geom_geojson,
            ST_X(ST_PointOnSurface(u.geom)) AS centroid_lng,
            ST_Y(ST_PointOnSurface(u.geom)) AS centroid_lat,
-           (SELECT COUNT(*)::int FROM cycle c WHERE c.up_id = u.up_id) AS total_ciclos
+           (SELECT COUNT(*)::int FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz') AS total_ciclos
          FROM up u WHERE u.producer_id = $1
          ORDER BY u.created_at DESC`,
         [producerId]

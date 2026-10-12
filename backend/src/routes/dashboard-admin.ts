@@ -80,7 +80,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
           COALESCE(SUM(cc.area_sown_ha), 0)::numeric(10,2) AS area_ha,
           COALESCE(SUM(ec.produccion_estimada_ton), 0)::numeric(10,2) AS produccion_ton
         FROM up u
-        LEFT JOIN cycle c ON c.up_id = u.up_id
+        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
         LEFT JOIN estimacion_cosecha ec ON ec.up_id = u.up_id AND ec.ciclo_id = c.cycle_id
         WHERE u.state_name IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
@@ -98,7 +98,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        WHERE ${soloMaizDeUp('u')} ${wU.sql}
+        WHERE c.crop = 'maiz' AND ${soloMaizDeUp('u')} ${wU.sql}
         GROUP BY c.cycle_type, c.cycle_year
         ORDER BY c.cycle_year DESC, c.cycle_type
         LIMIT 20
@@ -112,7 +112,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        WHERE ${soloMaizDeUp('u')} ${wU.sql}
+        WHERE c.crop = 'maiz' AND ${soloMaizDeUp('u')} ${wU.sql}
         GROUP BY c.cycle_year
         ORDER BY c.cycle_year DESC
         LIMIT 6
@@ -120,7 +120,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
       pool.query(`
         SELECT COUNT(*)::int AS ups_sin_ciclo
         FROM up u
-        WHERE NOT EXISTS (SELECT 1 FROM cycle c WHERE c.up_id = u.up_id)
+        WHERE NOT EXISTS (SELECT 1 FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz')
         AND ${soloMaizDeUp('u')}
         ${wU.sql}
       `, wU.params),
@@ -131,7 +131,7 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
           COALESCE(SUM(cc.area_sown_ha * COALESCE(cc.yield_expected, 0)), 0)::numeric(12,2) AS produccion_esperada_ton,
           COUNT(DISTINCT cc.cycle_crop_id)::int AS productores_con_ciclo
         FROM up u
-        LEFT JOIN cycle c ON c.up_id = u.up_id
+        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
         WHERE ${soloMaizDeUp('u')} ${wU.sql}
       `, wU.params),
@@ -392,8 +392,8 @@ router.get('/operacion', authMiddleware, async (req: AuthRequest, res: Response)
           COUNT(*)::int AS total_ups,
           COUNT(CASE WHEN u.up_name IS NOT NULL THEN 1 END)::int AS con_nombre,
           COUNT(CASE WHEN u.area_ha_calc > 0 THEN 1 END)::int AS con_area,
-          COUNT(CASE WHEN EXISTS(SELECT 1 FROM cycle c WHERE c.up_id = u.up_id) THEN 1 END)::int AS con_ciclo,
-          COUNT(CASE WHEN EXISTS(SELECT 1 FROM cycle_crop cc JOIN cycle c ON c.cycle_id = cc.cycle_id WHERE c.up_id = u.up_id) THEN 1 END)::int AS con_cultivo
+          COUNT(CASE WHEN EXISTS(SELECT 1 FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz') THEN 1 END)::int AS con_ciclo,
+          COUNT(CASE WHEN EXISTS(SELECT 1 FROM cycle_crop cc JOIN cycle c ON c.cycle_id = cc.cycle_id WHERE c.up_id = u.up_id AND c.crop = 'maiz') THEN 1 END)::int AS con_cultivo
         FROM up u
         WHERE ${soloMaizDeUp('u')}
       `),
@@ -500,7 +500,7 @@ router.get('/mapa', authMiddleware, async (req: AuthRequest, res: Response): Pro
           COALESCE(SUM(ec.produccion_estimada_ton), 0)::numeric(10,2) AS produccion_ton
         FROM up u
         JOIN producer p ON p.producer_id = u.producer_id
-        LEFT JOIN cycle c ON c.up_id = u.up_id
+        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
         LEFT JOIN estimacion_cosecha ec ON ec.up_id = u.up_id AND ec.ciclo_id = c.cycle_id
         WHERE u.state_name IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
         GROUP BY u.state_name

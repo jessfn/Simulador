@@ -1474,7 +1474,7 @@ router.get('/mi-ciclo', authMiddleware, async (req: AuthRequest, res: Response):
               COALESCE(cc.variety_other, cc.variety_id) AS variedad_nombre
        FROM cycle c
        LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-       WHERE c.up_id = $1
+       WHERE c.up_id = $1 AND c.crop = 'maiz'
        ORDER BY c.cycle_year DESC, c.cycle_id DESC
        LIMIT 1`,
       [upId]
@@ -1507,6 +1507,7 @@ router.post('/ciclo', authMiddleware, async (req: AuthRequest, res: Response): P
     const existente = await pool.query(
       `SELECT cycle_id FROM cycle
        WHERE up_id = $1 AND cycle_type = $2 AND cycle_year = $3
+         AND crop = 'maiz'
          AND COALESCE(estado_ciclo, 'activo') = 'activo'
        LIMIT 1`,
       [upId, cycle_type, cycle_year]
@@ -1521,8 +1522,8 @@ router.post('/ciclo', authMiddleware, async (req: AuthRequest, res: Response): P
     const result = await pool.query(
       `INSERT INTO cycle
          (up_id, cycle_year, cycle_type, declarado_por_productor,
-          hectareas_sembradas, fecha_siembra, variedad_nombre, estado_ciclo)
-       VALUES ($1, $2, $3, TRUE, $4, $5, $6, 'activo')
+          hectareas_sembradas, fecha_siembra, variedad_nombre, estado_ciclo, crop)
+       VALUES ($1, $2, $3, TRUE, $4, $5, $6, 'activo', 'maiz')
        RETURNING cycle_id, cycle_year, cycle_type`,
       [upId, cycle_year, cycle_type, hectareas_sembradas || null,
        fecha_siembra || null, variedad_nombre || null]
@@ -1740,7 +1741,7 @@ router.get('/mis-ups-con-ciclos', authMiddleware, async (req: AuthRequest, res: 
          ) AS ciclos_activos
        FROM up u
        JOIN producer p ON p.producer_id = u.producer_id
-       LEFT JOIN cycle c ON c.up_id = u.up_id AND COALESCE(c.estado_ciclo, 'activo') = 'activo'
+       LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz' AND COALESCE(c.estado_ciclo, 'activo') = 'activo'
        LEFT JOIN cycle_crop cr ON cr.cycle_id = c.cycle_id
        LEFT JOIN cat_crop_variety cv ON cv.code = cr.variety_id AND cv.is_active = TRUE
        WHERE p.usuario_id = $1

@@ -488,7 +488,7 @@ router.get('/mis-registros', authMiddleware, requiereCapturista, requiereProgram
               ) AS encuesta_respondida
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
-       LEFT JOIN cycle c ON c.up_id = u.up_id
+       LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
        WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}
        GROUP BY p.producer_id
        ORDER BY p.fecha_captura DESC`,
@@ -711,7 +711,7 @@ router.get('/perfil', authMiddleware, requiereCapturista, async (req: AuthReques
               COUNT(DISTINCT c.cycle_id) AS total_ciclos
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
-       LEFT JOIN cycle c ON c.up_id = u.up_id
+       LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
        WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}`,
       [tecnicoId]
     );

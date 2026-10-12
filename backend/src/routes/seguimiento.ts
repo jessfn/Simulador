@@ -49,7 +49,7 @@ router.get('/productores', authMiddleware, async (req: AuthRequest, res: Respons
                   FROM cycle_crop cc WHERE cc.cycle_id = c.cycle_id
                 )
               ))
-              FROM cycle c WHERE c.up_id = u.up_id
+              FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz'
             )
           )
         ) FILTER (WHERE u.up_id IS NOT NULL) as ups

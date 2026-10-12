@@ -139,7 +139,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       FROM cycle c
       LEFT JOIN up u ON u.up_id = c.up_id
       LEFT JOIN producer p ON p.producer_id = u.producer_id
-      WHERE (u.up_id IS NULL OR ${soloMaizDeUp('u')})
+      WHERE c.crop = 'maiz' AND (u.up_id IS NULL OR ${soloMaizDeUp('u')})
       ORDER BY c.cycle_year DESC, c.cycle_id
     `);
     addSheet('Ciclos', ciclos, [
@@ -183,7 +183,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       LEFT JOIN up u ON u.up_id = c.up_id
       LEFT JOIN producer p ON p.producer_id = u.producer_id
       LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id
-      WHERE (u.up_id IS NULL OR ${soloMaizDeUp('u')})
+      WHERE (c.cycle_id IS NULL OR c.crop = 'maiz') AND (u.up_id IS NULL OR ${soloMaizDeUp('u')})
       ORDER BY cc.cycle_crop_id DESC
     `);
     addSheet('Cultivos Ciclo', cycleCrop, [

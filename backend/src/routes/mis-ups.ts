@@ -37,7 +37,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
             'cycle_year', c.cycle_year,
             'cycle_type', c.cycle_type
           )
-          FROM cycle c WHERE c.up_id = u.up_id
+          FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz'
           ORDER BY c.cycle_year DESC, c.cycle_id DESC
           LIMIT 1
         ) AS ultimo_ciclo
@@ -100,7 +100,7 @@ router.get('/:up_id', authMiddleware, async (req: AuthRequest, res: Response): P
          ) FILTER (WHERE cc.cycle_crop_id IS NOT NULL) AS crops
          FROM cycle c
          LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-         WHERE c.up_id = $1
+         WHERE c.up_id = $1 AND c.crop = 'maiz'
          GROUP BY c.cycle_id
          ORDER BY c.cycle_year DESC, c.cycle_id DESC`,
         [up_id]
@@ -211,6 +211,13 @@ router.delete('/:up_id', authMiddleware, async (req: AuthRequest, res: Response)
     );
     if (own.rows.length === 0) {
       res.status(404).json({ error: 'Parcela no encontrada o no autorizada' });
+      return;
+    }
+
+    // Si la parcela también está registrada para otro cultivo (frijol), no se puede eliminar desde aquí.
+    const otroCultivo = await pool.query(`SELECT 1 FROM cycle WHERE up_id = $1 AND crop <> 'maiz' LIMIT 1`, [up_id]);
+    if (otroCultivo.rows.length > 0) {
+      res.status(409).json({ error: 'Esta parcela también está registrada para frijol; no se puede eliminar. Contacta a tu técnico.', codigo: 'PARCELA_CON_OTRO_CULTIVO' });
       return;
     }
 
