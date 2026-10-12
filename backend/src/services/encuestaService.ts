@@ -55,8 +55,10 @@ export async function determinarContextoTerritorial(
   producerId: number
 ): Promise<{ elegible: boolean; ups: { up_id: number; municipality_id: string | null; municipality_name: string | null }[] }> {
   const r = await client.query(
+    // La encuesta de insumos es de SIMAC Maíz: solo aplica si el productor está en ese programa
     `SELECT up_id, state_id, municipality_id, municipality_name
-     FROM up WHERE producer_id = $1`,
+     FROM up WHERE producer_id = $1
+       AND EXISTS (SELECT 1 FROM producer_programa pm WHERE pm.producer_id = $1 AND pm.programa = 'simac_maiz')`,
     [producerId]
   );
   const deSinaloa = r.rows.filter((row: any) => row.state_id === SINALOA_STATE_ID);

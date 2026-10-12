@@ -5,6 +5,7 @@
 // su rol lo tiene configurado (estadoClause).
 import { Router, Response } from 'express';
 import pool from '../config/database';
+import { soloMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { checkPermiso } from './admin-permisos';
 
@@ -103,6 +104,7 @@ router.get('/resumen', checkPermiso('insumos', 'ver'), async (req: AuthRequest, 
       `SELECT COUNT(DISTINCT p.producer_id) AS n
        FROM producer p JOIN up u ON u.producer_id = p.producer_id
        WHERE u.state_id = '25' ${pendFiltroTerr}
+         AND ${soloMaiz('p')}
          AND NOT EXISTS (SELECT 1 FROM encuesta_respuestas er WHERE er.producer_id = p.producer_id AND er.edicion_id = $1)`,
       pendientesParams
     );

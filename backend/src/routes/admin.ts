@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import pool from '../config/database';
+import { soloMaiz, soloMaizDeUp } from '../utils/programas';
 import { authMiddleware, requierePermisosTotales, AuthRequest } from '../middleware/auth';
 import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
 import { obtenerRespuestaProductor } from '../services/encuestaService';
@@ -119,7 +120,8 @@ router.get('/usuarios', authMiddleware, async (req: AuthRequest, res: Response):
   if (!esPanelAdmin(req.user)) { res.status(403).json({ error: 'Acceso denegado' }); return; }
   try {
     const { estado_validacion, estado, q, tipo_registro, rol } = req.query;
-    const conditions: string[] = [];
+    // Solo productores de SIMAC Maíz (los registrados únicamente para otro programa no aparecen aquí)
+    const conditions: string[] = [soloMaiz('p')];
     const params: any[] = [];
     let idx = 1;
 
@@ -191,6 +193,7 @@ router.get('/usuarios/estados-disponibles', authMiddleware, soloAdmin, async (re
       JOIN up ON up.producer_id = p.producer_id
       WHERE up.state_name IS NOT NULL
         AND up.state_name != ''
+        AND ${soloMaiz('p')}
       ORDER BY estado ASC
     `);
     res.json({ 
@@ -750,7 +753,7 @@ router.get('/actividad-reciente', authMiddleware, async (req: AuthRequest, res: 
   try {
     const estado = (u.rol === 'admin' || u.rol === 'responsable') ? null : (u.estado_asignado ?? null);
     const ep = estado ? [estado] : [];
-    const whereEstadoP = estado ? `WHERE p.state_name = $1` : '';
+    const whereEstadoP = estado ? `WHERE p.state_name = $1 AND ${soloMaiz('p')}` : `WHERE ${soloMaiz('p')}`;
 
     const productoresR = pool.query(`
       SELECT
@@ -1300,10 +1303,10 @@ router.get('/parcelas/filtros', authMiddleware, async (req: AuthRequest, res: Re
   try {
     const { sql: wSql, params: wParams } = estadoWhereClause(getEstadoFiltro(req.user), 1, 'UPPER(state_name)');
     const { rows: estadosRows } = await pool.query(
-      `SELECT DISTINCT state_name FROM up WHERE geom IS NOT NULL AND state_name IS NOT NULL ${wSql} ORDER BY state_name`, wParams
+      `SELECT DISTINCT state_name FROM up WHERE geom IS NOT NULL AND state_name IS NOT NULL AND ${soloMaizDeUp('up')} ${wSql} ORDER BY state_name`, wParams
     );
     const { rows: municipiosRows } = await pool.query(
-      `SELECT DISTINCT state_name, municipality_name FROM up WHERE geom IS NOT NULL AND municipality_name IS NOT NULL ${wSql} ORDER BY state_name, municipality_name`, wParams
+      `SELECT DISTINCT state_name, municipality_name FROM up WHERE geom IS NOT NULL AND municipality_name IS NOT NULL AND ${soloMaizDeUp('up')} ${wSql} ORDER BY state_name, municipality_name`, wParams
     );
     res.json({ estados: estadosRows.map((r: any) => r.state_name), municipios: municipiosRows });
   } catch (error) {
@@ -1318,7 +1321,7 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
   try {
     const { estado, municipio, q } = req.query as Record<string, string>;
     const params: any[] = [];
-    const conds: string[] = ['u.geom IS NOT NULL'];
+    const conds: string[] = ['u.geom IS NOT NULL', soloMaiz('p')];
     let pi = 1;
 
     if (estado)    { conds.push(`u.state_name = $${pi++}`);                       params.push(estado); }

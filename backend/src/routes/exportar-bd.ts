@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import ExcelJS from 'exceljs';
 import pool from '../config/database';
 import { authMiddleware } from '../middleware/auth';
+import { soloMaiz, soloMaizDeUp } from '../utils/programas';
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       FROM producer p
       LEFT JOIN geo_state s ON s.state_id = p.state_id
       LEFT JOIN geo_municipality m ON m.municipality_id = p.municipality_id
+      WHERE ${soloMaiz('p')}
       ORDER BY p.apellido_paterno, p.nombres
     `);
     addSheet('Productores', productores, [
@@ -80,6 +82,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         u.centroid_source, u.created_at, u.updated_at
       FROM up u
       LEFT JOIN producer p ON p.producer_id = u.producer_id
+      WHERE ${soloMaizDeUp('u')}
       ORDER BY u.up_id
     `);
     addSheet('Parcelas (UP)', ups, [
@@ -136,6 +139,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       FROM cycle c
       LEFT JOIN up u ON u.up_id = c.up_id
       LEFT JOIN producer p ON p.producer_id = u.producer_id
+      WHERE ${soloMaizDeUp('u')}
       ORDER BY c.cycle_year DESC, c.cycle_id
     `);
     addSheet('Ciclos', ciclos, [
@@ -179,6 +183,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       LEFT JOIN up u ON u.up_id = c.up_id
       LEFT JOIN producer p ON p.producer_id = u.producer_id
       LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id
+      WHERE ${soloMaizDeUp('u')}
       ORDER BY cc.cycle_crop_id DESC
     `);
     addSheet('Cultivos Ciclo', cycleCrop, [
@@ -217,6 +222,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       FROM cosecha_real cr
       LEFT JOIN producer p ON p.producer_id = cr.producer_id
       LEFT JOIN up u ON u.up_id = cr.up_id
+      WHERE (p.producer_id IS NULL OR ${soloMaiz('p')})
       ORDER BY cr.fecha_cosecha DESC
     `);
     addSheet('Cosecha Real', cosechaReal, [
@@ -246,6 +252,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       FROM estimacion_cosecha ec
       LEFT JOIN producer p ON p.producer_id = ec.producer_id
       LEFT JOIN up u ON u.up_id = ec.up_id
+      WHERE (p.producer_id IS NULL OR ${soloMaiz('p')})
       ORDER BY ec.fecha_estimacion DESC
     `);
     addSheet('Estimación Cosecha', estimacion, [
@@ -274,6 +281,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       FROM seguimiento_visitas sv
       LEFT JOIN producer p ON p.producer_id = sv.producer_id
       LEFT JOIN up u ON u.up_id = sv.up_id
+      WHERE (p.producer_id IS NULL OR ${soloMaiz('p')})
       ORDER BY sv.fecha_visita DESC
     `);
     addSheet('Seguimiento Visitas', seguimiento, [
@@ -304,6 +312,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       FROM seguimiento_incidencias si
       LEFT JOIN producer p ON p.producer_id = si.producer_id
       LEFT JOIN up u ON u.up_id = si.up_id
+      WHERE (p.producer_id IS NULL OR ${soloMaiz('p')})
       ORDER BY si.fecha DESC
     `);
     addSheet('Incidencias', incidencias, [
