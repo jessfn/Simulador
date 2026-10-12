@@ -290,7 +290,15 @@ function RutaDesconocida() {
 }
 
 function RootShell() {
-  return (<><TitleManager /><Outlet /></>);
+  return (<>
+    <TitleManager />
+    {import.meta.env.VITE_AMBIENTE === 'pruebas' && (
+      <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 99999, background: '#b45309', color: '#fff', font: '700 10px/1 system-ui,sans-serif', letterSpacing: '.12em', padding: '4px 12px', borderRadius: '0 0 8px 8px', pointerEvents: 'none' }}>
+        AMBIENTE DE PRUEBAS
+      </div>
+    )}
+    <Outlet />
+  </>);
 }
 
 export const router = createBrowserRouter([{
