@@ -59,6 +59,7 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
       WHERE up_id = $1 
         AND cycle_year = $2 
         AND cycle_type = $3 
+        AND crop = 'maiz'
         AND COALESCE(estado_ciclo, 'activo') = 'activo'
     `, [up_id, cycle_year, cycle_type]);
 
@@ -70,8 +71,8 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
     }
 
     const result = await pool.query(
-      `INSERT INTO cycle (up_id, cycle_year, cycle_type, tipo_riego)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO cycle (up_id, cycle_year, cycle_type, tipo_riego, crop)
+       VALUES ($1, $2, $3, $4, 'maiz')
        RETURNING cycle_id, up_id, cycle_year, cycle_type, tipo_riego, created_at`,
       [up_id, cycle_year, cycle_type, tipoRiegoValido]
     );
@@ -146,6 +147,7 @@ router.get('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: R
        FROM cycle c
        LEFT JOIN cycle_crop cc ON c.cycle_id = cc.cycle_id
        WHERE c.up_id = $1
+         AND c.crop = 'maiz'
          AND COALESCE(c.estado_ciclo, 'activo') != 'cancelado'
        GROUP BY c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.created_at, c.tipo_riego, c.estado_ciclo
        ORDER BY c.cycle_year DESC, c.cycle_type`,
@@ -176,6 +178,7 @@ router.delete('/cycles/:cycle_id', authMiddleware, async (req: AuthRequest, res:
        JOIN up u ON u.up_id = c.up_id
        JOIN producer p ON p.producer_id = u.producer_id
        WHERE c.cycle_id = $1 AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)
+         AND c.crop = 'maiz'
          AND COALESCE(c.estado_ciclo, 'activo') = 'activo'`,
       [cycle_id, userId]
     );
@@ -278,7 +281,7 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
     let cycleOwnershipParams: any[];
     if (req.user!.rol === 'capturista') {
       cycleOwnershipQuery = `
-        SELECT c.cycle_id, c.up_id, u.up_name, u.area_ha_calc, u.area_ha_real
+        SELECT c.cycle_id, c.up_id, c.crop AS cycle_crop, u.up_name, u.area_ha_calc, u.area_ha_real
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         JOIN producer p ON p.producer_id = u.producer_id
@@ -286,7 +289,7 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
       cycleOwnershipParams = [cycle_id, req.user!.userId];
     } else {
       cycleOwnershipQuery = `
-        SELECT c.cycle_id, c.up_id, u.up_name, u.area_ha_calc, u.area_ha_real
+        SELECT c.cycle_id, c.up_id, c.crop AS cycle_crop, u.up_name, u.area_ha_calc, u.area_ha_real
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         JOIN producer p ON p.producer_id = u.producer_id
@@ -296,6 +299,14 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
     const cycleCheck = await pool.query(cycleOwnershipQuery, cycleOwnershipParams);
     if (cycleCheck.rows.length === 0) {
       res.status(404).json({ error: 'Ciclo no encontrado' });
+      return;
+    }
+
+    // Un ciclo es de un solo cultivo: no se puede convertir un ciclo de maíz en frijol (ni al revés).
+    if (cycleCheck.rows[0].cycle_crop !== crop) {
+      res.status(400).json({
+        error: `Este ciclo es de ${cycleCheck.rows[0].cycle_crop}; no se puede registrar ${crop} en él.`,
+      });
       return;
     }
 
@@ -371,6 +382,7 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
        JOIN up u ON u.up_id = cy.up_id
        JOIN producer p ON p.producer_id = u.producer_id
        WHERE cc.cycle_crop_id = $1
+         AND cy.crop = 'maiz'
          AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)`,
       [id, req.user!.userId]
     );
@@ -478,7 +490,7 @@ router.patch('/cycles/:cycle_id/estado', authMiddleware, async (req: AuthRequest
        FROM cycle c
        JOIN up u ON u.up_id = c.up_id
        JOIN producer p ON p.producer_id = u.producer_id
-       WHERE c.cycle_id = $1 AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)`,
+       WHERE c.cycle_id = $1 AND c.crop = 'maiz' AND (p.usuario_id = $2 OR p.usuario_capturista_id = $2)`,
       [cycle_id, req.user?.userId]
     );
 

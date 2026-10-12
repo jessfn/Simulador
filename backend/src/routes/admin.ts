@@ -533,6 +533,18 @@ router.delete('/productores/:producer_id', authMiddleware, soloAdmin, async (req
       res.status(404).json({ error: 'Productor no encontrado' });
       return;
     }
+    // Si el productor también está en otro programa (p. ej. Frijol), borrarlo desde SIMAC destruiría ese registro.
+    const otrosProgramas = await client.query(
+      `SELECT 1 FROM producer_programa WHERE producer_id = $1 AND programa <> 'simac_maiz' LIMIT 1`,
+      [producer_id]
+    );
+    if (otrosProgramas.rows.length > 0) {
+      res.status(409).json({
+        error: 'Este productor también está registrado en Frijol. No se puede eliminar desde SIMAC.',
+        codigo: 'PRODUCTOR_EN_OTRO_PROGRAMA',
+      });
+      return;
+    }
     const prod = prodRow.rows[0];
     const nombreCompleto = [prod.nombres, prod.apellido_paterno, prod.apellido_materno].filter(Boolean).join(' ');
 
@@ -655,7 +667,7 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
         FROM cycle c
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
         LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.is_active = TRUE
-        WHERE c.up_id = up.up_id
+        WHERE c.up_id = up.up_id AND c.crop = 'maiz'
         ORDER BY c.cycle_year DESC, c.cycle_id DESC
         LIMIT 1
       ) ciclo ON TRUE
@@ -1374,7 +1386,7 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
         FROM cycle c
         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
         LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.is_active = TRUE
-        WHERE c.up_id = u.up_id
+        WHERE c.up_id = u.up_id AND c.crop = 'maiz'
         ORDER BY c.cycle_year DESC, c.cycle_id DESC LIMIT 1
       ) ciclo ON TRUE
       WHERE ${where}
@@ -1400,6 +1412,13 @@ router.delete('/parcelas/:up_id', authMiddleware, soloAdmin, async (req: AuthReq
       return;
     }
     const upName = check.rows[0].up_name || `UP-${up_id}`;
+
+    // Si la parcela tiene ciclos de otro cultivo (frijol), borrarla destruiría ese registro.
+    const otroCultivo = await client.query(`SELECT 1 FROM cycle WHERE up_id = $1 AND crop <> 'maiz' LIMIT 1`, [up_id]);
+    if (otroCultivo.rows.length > 0) {
+      res.status(409).json({ error: 'Esta parcela tiene registro de frijol.', codigo: 'PARCELA_CON_OTRO_CULTIVO' });
+      return;
+    }
 
     await client.query('BEGIN');
     await client.query(`DELETE FROM cycle_crop WHERE cycle_id IN (SELECT cycle_id FROM cycle WHERE up_id = $1)`, [up_id]);

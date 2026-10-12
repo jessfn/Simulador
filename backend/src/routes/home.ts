@@ -68,7 +68,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
         pool.query(
           `SELECT COUNT(*)::int AS c FROM cycle c
            JOIN up u ON u.up_id = c.up_id
-           WHERE u.producer_id = $1`,
+           WHERE u.producer_id = $1 AND c.crop = 'maiz'`,
           [producerId]
         ),
         // Bodegas en el mismo estado (cercanas) — fallback to total if state not set
@@ -314,7 +314,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
     if (role === 'admin') {
       const [productoresRow, ciclosRow, alertasRow, bodegasRow, recientes, recientesProd, preciosRow, inventariosRow, usuariosRow] = await Promise.all([
         pool.query(`SELECT COUNT(*)::int AS c FROM producer p WHERE ${soloMaiz('p')}`),
-        pool.query(`SELECT COUNT(*)::int AS c FROM cycle`),
+        pool.query(`SELECT COUNT(*)::int AS c FROM cycle WHERE crop = 'maiz'`),
         pool.query(
           `SELECT COUNT(*)::int AS c FROM alertas
            WHERE estado_alerta IN ('pendiente','confirmada')`
