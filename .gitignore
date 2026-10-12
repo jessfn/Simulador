@@ -5,3 +5,6 @@ certificados/
 
 # Agent configurations and credentials
 .agents/
+
+# Guia privada con credenciales (el repo es publico)
+DEPLOY_PRIVADO.md
