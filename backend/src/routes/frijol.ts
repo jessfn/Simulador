@@ -1,11 +1,13 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, requiereCapturista, AuthRequest } from '../middleware/auth';
+import { requierePrograma } from '../middleware/programa';
+import { PROGRAMA_FRIJOL } from '../utils/programas';
 
 // Módulo de registro de Frijol (técnicos ECA). Todo /api/frijol/* requiere sesión de técnico.
 // Aquí viven solo las rutas de frijol; maíz no se toca.
 const router = Router();
-router.use(authMiddleware, requiereCapturista);
+router.use(authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_FRIJOL));
 
 // Listas generales que usa la pantalla de frijol (catálogo `cat_catalog`).
 const CATALOGOS = [

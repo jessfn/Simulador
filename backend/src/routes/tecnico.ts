@@ -9,6 +9,8 @@ import { consultarPersonaPorCURP } from '../services/saderService';
 import { consultarCURPEnRENAPO } from '../services/renapoService';
 import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
 import { insertarUP } from '../utils/ups';
+import { requierePrograma } from '../middleware/programa';
+import { perfilProgramasDeTecnico, soloMaiz, PROGRAMA_MAIZ } from '../utils/programas';
 import {
   EncuestaError, determinarContextoTerritorial, guardarEncuestaEnTransaccion,
   obtenerRespuestaProductor, obtenerEdicionVigente,
@@ -71,6 +73,7 @@ router.post('/auth/login', authLimiter, async (req: Request, res: Response): Pro
     // está excluida de la regla (solo admin/responsable lo están).
     pool.query('UPDATE usuarios SET sesion_activa_jti=$1, ultimo_login=NOW() WHERE id=$2', [jti, usuario.id]).catch(() => {});
 
+    const perfilProg = await perfilProgramasDeTecnico(usuario.id);
     res.json({
       message: 'Inicio de sesión exitoso',
       token,
@@ -81,6 +84,11 @@ router.post('/auth/login', authLimiter, async (req: Request, res: Response): Pro
         telefono: usuario.telefono,
         rol: 'capturista',
         debe_cambiar_pass: !!usuario.debe_cambiar_pass,
+        // Programas con los que puede trabajar; el frontend decide a dónde entra con esto
+        programas: perfilProg.programas.length > 0 ? perfilProg.programas : [PROGRAMA_MAIZ],
+        tipo_tecnico: perfilProg.tipo_tecnico,
+        tipo_tecnico_etiqueta: perfilProg.tipo_tecnico_etiqueta,
+        zona: perfilProg.zona,
       },
     });
   } catch (error) {
@@ -99,7 +107,7 @@ router.post('/auth/login', authLimiter, async (req: Request, res: Response): Pro
 //    codigo NO_EN_PADRON (en vez de 404)
 //  - No existe en ningún lado → sigue bloqueando igual que hoy
 // =============================================
-router.post('/consultar-curp', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/consultar-curp', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   const { curp } = req.body;
 
   const CURP_RE = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
@@ -282,7 +290,7 @@ router.post('/consultar-curp', authMiddleware, requiereCapturista, async (req: A
 // Crea el productor (o actualiza uno existente en estado PUEDE_ACTIVAR) + su
 // primera UP, dentro de una transacción.
 // =============================================
-router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   const client = await pool.connect();
   try {
     const {
@@ -398,6 +406,12 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
          sexo || null, fechaNacValida, fuente || null, tecnicoId]
       );
       producerId = r.rows[0].producer_id;
+      // Programa: el técnico de maíz queda como responsable en 'simac_maiz'.
+      await client.query(
+        `INSERT INTO producer_programa (producer_id, programa, usuario_capturista_id)
+         VALUES ($1, 'simac_maiz', $2) ON CONFLICT DO NOTHING`,
+        [producerId, tecnicoId]
+      );
     }
 
     const upId = await insertarUP(client, producerId, req.body);
@@ -459,7 +473,7 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, async (req:
 // =============================================
 // GET /api/tecnico/mis-registros
 // =============================================
-router.get('/mis-registros', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/mis-registros', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tecnicoId = req.user!.userId;
     const edicion = await obtenerEdicionVigente();
@@ -475,7 +489,7 @@ router.get('/mis-registros', authMiddleware, requiereCapturista, async (req: Aut
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
        LEFT JOIN cycle c ON c.up_id = u.up_id
-       WHERE p.usuario_capturista_id = $1
+       WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}
        GROUP BY p.producer_id
        ORDER BY p.fecha_captura DESC`,
       [tecnicoId, edicion?.id || 0]
@@ -499,7 +513,7 @@ router.get('/mis-registros', authMiddleware, requiereCapturista, async (req: Aut
 // productor ya respondió (por su cuenta o en otra visita del técnico), se
 // reemplaza dentro de una transacción con control de concurrencia.
 // =============================================
-router.get('/productor/:producer_id/encuesta-insumos', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/productor/:producer_id/encuesta-insumos', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tecnicoId = req.user!.userId;
     const { producer_id } = req.params;
@@ -516,7 +530,7 @@ router.get('/productor/:producer_id/encuesta-insumos', authMiddleware, requiereC
   }
 });
 
-router.post('/productor/:producer_id/encuesta-insumos', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/productor/:producer_id/encuesta-insumos', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   const client = await pool.connect();
   try {
     const tecnicoId = req.user!.userId;
@@ -549,7 +563,7 @@ router.post('/productor/:producer_id/encuesta-insumos', authMiddleware, requiere
 // =============================================
 // GET /api/tecnico/productor/:producer_id/ups
 // =============================================
-router.get('/productor/:producer_id/ups', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/productor/:producer_id/ups', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tecnicoId = req.user!.userId;
     const { producer_id } = req.params;
@@ -586,7 +600,7 @@ router.get('/productor/:producer_id/ups', authMiddleware, requiereCapturista, as
 // =============================================
 // POST /api/tecnico/productor/:producer_id/ups
 // =============================================
-router.post('/productor/:producer_id/ups', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/productor/:producer_id/ups', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   const client = await pool.connect();
   try {
     const tecnicoId = req.user!.userId;
@@ -632,7 +646,7 @@ router.post('/productor/:producer_id/ups', authMiddleware, requiereCapturista, a
 // =============================================
 // PATCH /api/tecnico/productor/:producer_id
 // =============================================
-router.patch('/productor/:producer_id', authMiddleware, requiereCapturista, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch('/productor/:producer_id', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tecnicoId = req.user!.userId;
     const { producer_id } = req.params;
@@ -698,11 +712,18 @@ router.get('/perfil', authMiddleware, requiereCapturista, async (req: AuthReques
        FROM producer p
        LEFT JOIN up u ON u.producer_id = p.producer_id
        LEFT JOIN cycle c ON c.up_id = u.up_id
-       WHERE p.usuario_capturista_id = $1`,
+       WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}`,
       [tecnicoId]
     );
+    const perfilProg = await perfilProgramasDeTecnico(tecnicoId);
 
-    res.json({ ...usuario.rows[0], ...stats.rows[0] });
+    res.json({
+      ...usuario.rows[0], ...stats.rows[0],
+      programas: perfilProg.programas.length > 0 ? perfilProg.programas : [PROGRAMA_MAIZ],
+      tipo_tecnico: perfilProg.tipo_tecnico,
+      tipo_tecnico_etiqueta: perfilProg.tipo_tecnico_etiqueta,
+      zona: perfilProg.zona,
+    });
   } catch (error) {
     console.error('Error en get perfil de técnico:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
