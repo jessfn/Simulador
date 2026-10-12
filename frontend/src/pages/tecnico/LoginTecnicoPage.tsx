@@ -7,8 +7,9 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/auth';
+import { destinoTecnico } from '../../utils/tecnicoDestino';
 
-export default function LoginTecnicoPage() {
+export default function LoginTecnicoPage({ cultivo = 'maiz' }: { cultivo?: 'maiz' | 'frijol' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -17,7 +18,7 @@ export default function LoginTecnicoPage() {
   const [avisoCambioPass, setAvisoCambioPass] = useState(false);
   const { setAuth } = useAuthStore();
   const navigate = useNavigate();
-  const volver = useVolver('/maiz');
+  const volver = useVolver(cultivo === 'frijol' ? '/frijol' : '/maiz');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,11 +28,12 @@ export default function LoginTecnicoPage() {
       const res: any = await api.tecnico.login(email, password);
       if (!res?.token || !res?.usuario) throw new Error('Credenciales incorrectas');
       setAuth(res.token, { ...res.usuario, userId: res.usuario?.id, rol: 'capturista' });
+      const destino = destinoTecnico(res.usuario?.programas, cultivo);
       if (res.usuario?.debe_cambiar_pass) {
         setAvisoCambioPass(true);
-        setTimeout(() => navigate('/maiz/tecnico'), 1800);
+        setTimeout(() => navigate(destino), 1800);
       } else {
-        navigate('/maiz/tecnico');
+        navigate(destino);
       }
     } catch (err: any) {
       setError(err.message || 'Credenciales incorrectas');
@@ -164,7 +166,7 @@ export default function LoginTecnicoPage() {
             </form>
 
             <p className="mt-6 text-center text-[12px] text-white/35 leading-relaxed px-4">
-              Acceso exclusivo para personal técnico de campo del Plan Nacional Maíz.
+              {cultivo === 'frijol' ? 'Acceso exclusivo para personal técnico de campo del registro de Frijol.' : 'Acceso exclusivo para personal técnico de campo del Plan Nacional Maíz.'}
             </p>
           </div>{/* fin panel formulario */}
         </div>
