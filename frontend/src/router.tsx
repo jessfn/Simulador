@@ -98,6 +98,7 @@ import FrijolEntradaPage from './pages/FrijolEntradaPage';
 import FrijolTableroPage from './pages/frijol/FrijolTableroPage';
 import ElegirProgramaPage from './pages/frijol/ElegirProgramaPage';
 import EnConstruccionPage from './pages/frijol/EnConstruccionPage';
+import FrijolPerfilPage from './pages/frijol/FrijolPerfilPage';
 import { destinoTecnico, tienePrograma, PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from './utils/tecnicoDestino';
 import DashboardTecnicoPage from './pages/tecnico/DashboardTecnicoPage';
 import BuscarProductorPage from './pages/tecnico/BuscarProductorPage';
@@ -299,7 +300,7 @@ function RootShell() {
   return (<>
     <TitleManager />
     {import.meta.env.VITE_AMBIENTE === 'pruebas' && (
-      <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 99999, background: '#b45309', color: '#fff', font: '700 10px/1 system-ui,sans-serif', letterSpacing: '.12em', padding: '4px 12px', borderRadius: '0 0 8px 8px', pointerEvents: 'none' }}>
+      <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 99999, background: '#b45309', color: '#fff', font: '700 8.5px/1 system-ui,sans-serif', letterSpacing: '.12em', padding: '2px 10px', borderRadius: '0 0 6px 6px', pointerEvents: 'none', opacity: 0.92 }}>
         AMBIENTE DE PRUEBAS
       </div>
     )}
@@ -475,7 +476,7 @@ export const router = createBrowserRouter([{
       { index: true, element: <FrijolTableroPage /> },
       { path: 'nuevo', element: <EnConstruccionPage titulo="Nuevo registro" /> },
       { path: 'registros', element: <EnConstruccionPage titulo="Mis registros" /> },
-      { path: 'perfil', element: <EnConstruccionPage titulo="Mi perfil" /> },
+      { path: 'perfil', element: <FrijolPerfilPage /> },
     ],
   },
   {

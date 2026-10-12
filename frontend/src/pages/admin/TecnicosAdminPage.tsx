@@ -3,22 +3,13 @@ import { createPortal } from 'react-dom';
 import {
   Search, X, RefreshCw, AlertTriangle, Users,
   Trash2, Pencil, KeyRound, Copy, CheckCheck,
-  ShieldAlert, UserCog, Check,
+  ShieldAlert, UserCog, Check, Plus,
 } from 'lucide-react';
 import { usePermisosStore } from '../../store/permisos';
 import { api } from '../../services/api';
+import { ModalFormularioTecnico, ModalPasswordTemporal, type TecnicoCompleto } from './tecnicos/FormularioTecnico';
 
-interface Tecnico {
-  id: number;
-  email: string;
-  nombre_completo: string;
-  activo: boolean;
-  debe_cambiar_pass: boolean;
-  ultimo_login: string | null;
-  created_at: string;
-  total_registros: number;
-  total_ups: number;
-}
+type Tecnico = TecnicoCompleto;
 
 interface RegistroTecnico {
   producer_id: number;
@@ -45,18 +36,37 @@ function fmtFecha(iso: string | null) {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function EtiquetaPrograma({ clave }: { clave: string }) {
+  const frijol = clave === 'frijol_afb';
+  return (
+    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${frijol ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+      {frijol ? 'Frijol' : clave === 'simac_maiz' ? 'Maíz' : clave}
+    </span>
+  );
+}
+
+// "Durango (todo), Zacatecas: Fresnillo, Sombrerete"
+function resumenZona(zona: Tecnico['zona']): string {
+  const por: Record<string, { nombre: string; todo: boolean; munis: string[] }> = {};
+  for (const z of zona || []) {
+    const e = (por[z.state_id] ||= { nombre: z.state_name || z.state_id, todo: false, munis: [] });
+    if (z.municipality_id) e.munis.push(z.municipality_name || z.municipality_id); else e.todo = true;
+  }
+  return Object.values(por).map(e => (e.todo ? `${e.nombre} (todo)` : `${e.nombre}: ${e.munis.join(', ')}`)).join(' · ');
+}
+
 /* ─── Modal detalle técnico ──────────────────────────────────────── */
 function ModalDetalleTecnico({
   tecnico, onClose, puedeEditar,
 }: { tecnico: Tecnico; onClose: () => void; puedeEditar: boolean }) {
-  const [detalle, setDetalle] = useState<{ registros: RegistroTecnico[] } | null>(null);
+  const [detalle, setDetalle] = useState<{ registros: RegistroTecnico[]; frijol: RegistroTecnico[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     api.admin.tecnicos.detalle(tecnico.id)
-      .then((d: any) => setDetalle({ registros: d.registros || d.productores || [] }))
+      .then((d: any) => setDetalle({ registros: d.registros || d.productores || [], frijol: d.registros_frijol || [] }))
       .catch(() => setError('No se pudieron cargar los registros de este técnico.'))
       .finally(() => setLoading(false));
     return () => { document.body.style.overflow = ''; };
@@ -99,10 +109,17 @@ function ModalDetalleTecnico({
         </div>
 
         <div className="overflow-y-auto flex-1 px-6 pb-6 space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {tecnico.tipo_tecnico_etiqueta && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-200">{tecnico.tipo_tecnico_etiqueta}</span>}
+            {(tecnico.programas || []).map(p => <EtiquetaPrograma key={p} clave={p} />)}
+          </div>
+          {(tecnico.zona || []).length > 0 && (
+            <p className="text-[11.5px] text-gray-500 leading-relaxed"><span className="font-bold text-gray-400 uppercase text-[9.5px] tracking-wider mr-1.5">Zona</span>{resumenZona(tecnico.zona)}</p>
+          )}
           <div className="grid grid-cols-3 gap-2.5">
             <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100 text-center">
               <p className="text-[16px] font-black text-gray-900">{tecnico.total_registros}</p>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">Productores</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">Productores maíz</p>
             </div>
             <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100 text-center">
               <p className="text-[16px] font-black text-gray-900">{tecnico.total_ups}</p>
@@ -114,7 +131,20 @@ function ModalDetalleTecnico({
             </div>
           </div>
 
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pt-1">Registros capturados</p>
+          {(detalle?.frijol.length ?? 0) > 0 && (
+            <>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pt-1">Registros de frijol ({detalle!.frijol.length})</p>
+              <div className="divide-y divide-gray-50 bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
+                {detalle!.frijol.map(r => (
+                  <div key={r.producer_id} className="px-3.5 py-2.5">
+                    <p className="text-[12.5px] font-semibold text-gray-800 truncate">{r.nombres} {r.apellido_paterno} {r.apellido_materno || ''}</p>
+                    <p className="text-[10.5px] text-gray-400">{r.curp}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pt-1">Registros de maíz capturados</p>
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
@@ -151,83 +181,6 @@ function ModalDetalleTecnico({
           {!puedeEditar && (
             <p className="text-[10.5px] text-gray-300 italic text-center pt-2">No tienes permiso para editar técnicos.</p>
           )}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-/* ─── Modal editar técnico ───────────────────────────────────────── */
-function ModalEditarTecnico({
-  tecnico, onClose, onSaved,
-}: { tecnico: Tecnico; onClose: () => void; onSaved: (t: Tecnico) => void }) {
-  const [nombre, setNombre] = useState(tecnico.nombre_completo);
-  const [email, setEmail] = useState(tecnico.email);
-  const [activo, setActivo] = useState(tecnico.activo);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  async function guardar() {
-    setError(''); setLoading(true);
-    try {
-      await api.admin.tecnicos.editar(tecnico.id, { nombre_completo: nombre, email, activo });
-      onSaved({ ...tecnico, nombre_completo: nombre, email, activo });
-    } catch (e: any) {
-      setError(e.message || 'No se pudo guardar.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[8px]" />
-      <div
-        className="relative bg-white w-full sm:max-w-sm rounded-t-[28px] sm:rounded-[28px] shadow-2xl overflow-hidden"
-        style={{ animation: 'slideUpSheet .28s cubic-bezier(.34,1.25,.64,1)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mt-3 mb-1 sm:hidden" />
-        <div className="px-5 pt-4 pb-5">
-          <h2 className="text-[16px] font-bold text-slate-900 mb-4">Editar técnico</h2>
-
-          <div className="space-y-3">
-            <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Nombre completo</label>
-              <input value={nombre} onChange={e => setNombre(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-indigo-400 transition-colors" />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Email</label>
-              <input value={email} onChange={e => setEmail(e.target.value)} type="email"
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-indigo-400 transition-colors" />
-            </div>
-            <button onClick={() => setActivo(a => !a)}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200">
-              <span className="text-[13px] font-semibold text-gray-700">Cuenta activa</span>
-              <div className={`w-10 h-6 rounded-full transition-colors relative ${activo ? 'bg-emerald-500' : 'bg-gray-300'}`}>
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${activo ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-              </div>
-            </button>
-
-            {error && (
-              <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
-                <p className="text-red-600 text-[12px] font-medium">{error}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2 mt-5">
-            <button onClick={onClose} disabled={loading}
-              className="flex-1 py-3 rounded-xl text-[13px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">
-              Cancelar
-            </button>
-            <button onClick={guardar} disabled={loading || !nombre.trim() || !email.trim()}
-              className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50">
-              {loading ? 'Guardando…' : 'Guardar'}
-            </button>
-          </div>
         </div>
       </div>
     </div>,
@@ -332,12 +285,19 @@ function ModalResetPassword({
 export default function TecnicosAdminPage() {
   const { puedo, permisosTotal } = usePermisosStore();
   const puedeVerDetalle = permisosTotal || puedo('tecnicos', 'ver_detalle');
+  const puedeCrear      = permisosTotal || puedo('tecnicos', 'crear');
   const puedeEditar     = permisosTotal || puedo('tecnicos', 'editar');
   const puedeEliminar   = permisosTotal || puedo('tecnicos', 'eliminar');
 
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filtroPrograma, setFiltroPrograma] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [catalogos, setCatalogos] = useState<{ tipos_tecnico: { code: string; label: string }[]; programas: { clave: string; nombre: string }[]; estados: { state_id: string; name: string }[] } | null>(null);
+  const [crearAbierto, setCrearAbierto] = useState(false);
+  const [passInfo, setPassInfo] = useState<{ nombre: string; password: string; correo: boolean | null } | null>(null);
 
   const [verTecnico, setVerTecnico] = useState<Tecnico | null>(null);
   const [editarTecnico, setEditarTecnico] = useState<Tecnico | null>(null);
@@ -347,10 +307,10 @@ export default function TecnicosAdminPage() {
   const [deleteError, setDeleteError] = useState('');
   const [deleteSuccess, setDeleteSuccess] = useState('');
 
-  async function cargarTecnicos(q?: string) {
+  async function cargarTecnicos() {
     setLoading(true);
     try {
-      const res: any = await api.admin.tecnicos.listar(q);
+      const res: any = await api.admin.tecnicos.listar({ q: search || undefined, programa: filtroPrograma, tipo_tecnico: filtroTipo, state_id: filtroEstado });
       setTecnicos(res.tecnicos || []);
     } catch {
       setTecnicos([]);
@@ -360,10 +320,14 @@ export default function TecnicosAdminPage() {
   }
 
   useEffect(() => {
-    const t = setTimeout(() => cargarTecnicos(search || undefined), 300);
+    const t = setTimeout(() => cargarTecnicos(), 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [search, filtroPrograma, filtroTipo, filtroEstado]);
+
+  useEffect(() => {
+    api.admin.tecnicos.catalogos().then((c: any) => setCatalogos(c)).catch(() => setCatalogos(null));
+  }, []);
 
   async function handleDeleteConfirm() {
     if (!deleteTarget) return;
@@ -393,14 +357,25 @@ export default function TecnicosAdminPage() {
         <ModalDetalleTecnico tecnico={verTecnico} onClose={() => setVerTecnico(null)} puedeEditar={puedeEditar} />
       )}
       {editarTecnico && (
-        <ModalEditarTecnico
+        <ModalFormularioTecnico
           tecnico={editarTecnico}
           onClose={() => setEditarTecnico(null)}
-          onSaved={(t) => {
-            setTecnicos(prev => prev.map(x => x.id === t.id ? t : x));
-            setEditarTecnico(null);
+          onGuardado={() => { setEditarTecnico(null); cargarTecnicos(); }}
+        />
+      )}
+      {crearAbierto && (
+        <ModalFormularioTecnico
+          tecnico={null}
+          onClose={() => setCrearAbierto(false)}
+          onGuardado={(t, pass, correo) => {
+            setCrearAbierto(false);
+            if (pass) setPassInfo({ nombre: t.nombre_completo, password: pass, correo: correo ?? null });
+            cargarTecnicos();
           }}
         />
+      )}
+      {passInfo && (
+        <ModalPasswordTemporal nombre={passInfo.nombre} password={passInfo.password} correoEnviado={passInfo.correo} onClose={() => setPassInfo(null)} />
       )}
       {resetTecnico && (
         <ModalResetPassword tecnico={resetTecnico} onClose={() => setResetTecnico(null)} />
@@ -422,10 +397,18 @@ export default function TecnicosAdminPage() {
           <div className="flex items-center gap-1.5 text-indigo-800 font-bold text-[12px]">
             <UserCog size={13} /> Técnicos ECA
           </div>
-          <button onClick={() => cargarTecnicos(search || undefined)}
-            className="p-1.5 rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-700 hover:text-white border border-indigo-700/20 hover:border-transparent transition">
-            <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {puedeCrear && (
+              <button onClick={() => setCrearAbierto(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10.5px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition">
+                <Plus size={12} /> Nuevo técnico
+              </button>
+            )}
+            <button onClick={() => cargarTecnicos()} aria-label="Actualizar"
+              className="p-1.5 rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-700 hover:text-white border border-indigo-700/20 hover:border-transparent transition">
+              <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
         <div className="border-t border-indigo-900/10 mx-2" />
         <div className="px-3 py-1.5 flex items-center gap-3 flex-wrap">
@@ -454,10 +437,25 @@ export default function TecnicosAdminPage() {
           <div className="flex items-center gap-2">
             <div className="relative flex-1 min-w-[160px]">
               <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <input type="text" placeholder="Buscar por nombre o correo..."
+              <input type="text" placeholder="Buscar por nombre, correo o CURP..."
                 value={search} onChange={e => setSearch(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-7 pr-3 py-1.5 text-[11px] text-gray-800 placeholder-gray-400 outline-none focus:border-indigo-400 focus:bg-white transition" />
             </div>
+            <select value={filtroPrograma} onChange={e => setFiltroPrograma(e.target.value)} aria-label="Filtrar por programa"
+              className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] text-gray-700 outline-none focus:border-indigo-400">
+              <option value="">Todos los programas</option>
+              {catalogos?.programas.map(p => <option key={p.clave} value={p.clave}>{p.clave === 'frijol_afb' ? 'Frijol' : p.clave === 'simac_maiz' ? 'Maíz' : p.nombre}</option>)}
+            </select>
+            <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} aria-label="Filtrar por tipo"
+              className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] text-gray-700 outline-none focus:border-indigo-400">
+              <option value="">Todos los tipos</option>
+              {catalogos?.tipos_tecnico.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
+            </select>
+            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} aria-label="Filtrar por estado"
+              className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] text-gray-700 outline-none focus:border-indigo-400">
+              <option value="">Todos los estados</option>
+              {catalogos?.estados.map(e => <option key={e.state_id} value={e.state_id}>{e.name}</option>)}
+            </select>
             <span className="text-[10.5px] text-gray-400 font-medium whitespace-nowrap">
               {tecnicos.length} resultado{tecnicos.length !== 1 ? 's' : ''}
             </span>
@@ -480,7 +478,7 @@ export default function TecnicosAdminPage() {
             <table className="w-full text-left border-collapse" style={{ fontSize: '11.5px' }}>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gray-50/90 border-b border-gray-100">
-                  {['Técnico', 'Estado', 'Productores', 'UPs', 'Último acceso', 'Acciones'].map(h => (
+                  {['Técnico', 'Tipo', 'Programas', 'Zona', 'Estado', 'Maíz', 'Frijol', 'Último acceso', 'Acciones'].map(h => (
                     <th key={h} className="py-2 px-3 text-[9.5px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap first:pl-4 last:pr-4 last:text-right">
                       {h}
                     </th>
@@ -494,6 +492,11 @@ export default function TecnicosAdminPage() {
                       <p className="font-bold text-gray-800 leading-tight whitespace-nowrap">{t.nombre_completo}</p>
                       <p className="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap">{t.email}</p>
                     </td>
+                    <td className="py-2 px-3 whitespace-nowrap text-gray-600">{t.tipo_tecnico_etiqueta || '—'}</td>
+                    <td className="py-2 px-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1 flex-wrap">{(t.programas || []).map(pr => <EtiquetaPrograma key={pr} clave={pr} />)}</div>
+                    </td>
+                    <td className="py-2 px-3 text-gray-500 max-w-[220px]"><span className="line-clamp-2" title={resumenZona(t.zona)}>{resumenZona(t.zona) || '—'}</span></td>
                     <td className="py-2 px-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${
@@ -509,7 +512,7 @@ export default function TecnicosAdminPage() {
                       </div>
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap font-semibold text-gray-700">{t.total_registros}</td>
-                    <td className="py-2 px-3 whitespace-nowrap font-semibold text-gray-700">{t.total_ups}</td>
+                    <td className="py-2 px-3 whitespace-nowrap font-semibold text-gray-700">{t.registros_frijol ?? 0}</td>
                     <td className="py-2 px-3 whitespace-nowrap text-gray-500">{fmtFecha(t.ultimo_login)}</td>
                     <td className="py-2 px-3 pr-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1">

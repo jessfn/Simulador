@@ -38,7 +38,8 @@ const VISTAS_PERMISOS: Record<string, string[]> = {
   senasica:           ['ver', 'crear', 'eliminar'],
   'avisos-privacidad':['ver', 'exportar'],
   chats_ayuda:        ['ver', 'responder'],
-  tecnicos:           ['ver', 'ver_detalle', 'editar', 'eliminar'],
+  tecnicos:           ['ver', 'ver_detalle', 'crear', 'editar', 'eliminar'],
+  frijol:             ['ver', 'exportar'],
   insumos:            ['ver', 'exportar'],
 };
 
