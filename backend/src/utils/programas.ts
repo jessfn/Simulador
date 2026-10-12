@@ -19,6 +19,15 @@ export function soloMaizDeUp(aliasUp: string): string {
   return `EXISTS (SELECT 1 FROM producer_programa _pm WHERE _pm.producer_id = ${aliasUp}.producer_id AND _pm.programa = '${PROGRAMA_MAIZ}')`;
 }
 
+/**
+ * Propiedad de un productor para un técnico de MAÍZ: es el responsable en el programa simac_maiz.
+ * (Un productor que llegó primero por frijol tiene como dueño de producer a otro técnico; maíz se rige por producer_programa.)
+ * `paramTecnico` es el parámetro SQL con el id del técnico, p. ej. '$2'.
+ */
+export function tecnicoDeMaiz(aliasProducer: string, paramTecnico: string): string {
+  return `EXISTS (SELECT 1 FROM producer_programa _tm WHERE _tm.producer_id = ${aliasProducer}.producer_id AND _tm.programa = '${PROGRAMA_MAIZ}' AND _tm.usuario_capturista_id = ${paramTecnico})`;
+}
+
 export interface ZonaTecnico { state_id: string; municipality_id: string | null; state_name?: string | null; municipality_name?: string | null }
 
 export interface PerfilProgramas {
