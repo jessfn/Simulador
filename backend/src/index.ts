@@ -201,8 +201,14 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📦 API disponible en http://localhost:${PORT}/api`);
   postgisDisponible(); // H4 (auditoría Fase 3): log del estado real de PostGIS al arrancar
-  scheduleBodegaDailyJobs();
-  schedulePreciosCron();
+  // Tareas programadas (precios, notificaciones diarias de bodegas). En el ambiente de pruebas se apagan
+  // con JOBS_ENABLED=false para que una copia de datos reales no genere avisos ni mueva datos.
+  if (process.env.JOBS_ENABLED === 'false') {
+    console.log('⏸️  Tareas programadas desactivadas (JOBS_ENABLED=false)');
+  } else {
+    scheduleBodegaDailyJobs();
+    schedulePreciosCron();
+  }
 });
 
 export default app;
