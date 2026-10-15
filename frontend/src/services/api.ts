@@ -320,6 +320,25 @@ export const api = {
     },
   },
   admin: {
+    frijol: {
+      resumen: () => request('/admin/frijol/resumen'),
+      filtros: () => request('/admin/frijol/filtros'),
+      registros: (f: Record<string, string | number | undefined>) => {
+        const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v !== undefined && v !== '') as [string, string][]).toString();
+        return request(`/admin/frijol/registros${qs ? `?${qs}` : ''}`);
+      },
+      mapa: (f: Record<string, string | undefined>) => {
+        const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();
+        return request(`/admin/frijol/mapa${qs ? `?${qs}` : ''}`);
+      },
+      productor: (id: number | string) => request(`/admin/frijol/productores/${id}`),
+      exportar: async (f: Record<string, string | undefined>): Promise<Blob> => {
+        const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();
+        const res = await apiFetch(`/admin/frijol/exportar${qs ? `?${qs}` : ''}`);
+        if (!res.ok) throw new Error(res.status === 403 ? 'No tienes permiso para exportar' : 'No se pudo generar el Excel');
+        return res.blob();
+      },
+    },
     tecnicos: {
       listar: (filtros?: string | { q?: string; programa?: string; tipo_tecnico?: string; state_id?: string }) => {
         const f = typeof filtros === 'string' ? { q: filtros } : (filtros || {});

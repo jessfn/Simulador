@@ -90,6 +90,7 @@ import CambiarPasswordPage from './pages/admin/CambiarPasswordPage';
 import MiPerfilAdminPage from './pages/admin/MiPerfilPage';
 import ParcelasAdminPage from './pages/admin/ParcelasAdminPage';
 import TecnicosAdminPage from './pages/admin/TecnicosAdminPage';
+import FrijolAdminPage from './pages/admin/frijol/FrijolAdminPage';
 import InsumosAdminPage from './pages/admin/InsumosAdminPage';
 
 // Técnicos ECA — Importaciones
@@ -256,7 +257,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 }
 
 /** Orden de vistas del panel admin — usado para hallar la primera disponible para un OREF. */
-const ORDEN_VISTAS = ['resumen', 'productores', 'parcelas', 'bodegas', 'tecnicos', 'alertas', 'precios', 'produccion', 'mercado', 'senasica', 'avisos-privacidad'];
+const ORDEN_VISTAS = ['resumen', 'productores', 'parcelas', 'bodegas', 'tecnicos', 'frijol', 'alertas', 'precios', 'produccion', 'mercado', 'senasica', 'avisos-privacidad'];
 
 function rutaDeVista(vista: string): string {
   return vista === 'resumen' ? '/maiz/admin' : `/maiz/admin/${vista}`;
@@ -513,6 +514,7 @@ export const router = createBrowserRouter([{
       { path: 'bodegas',        element: <RequireVista vista="bodegas"><BodegasAdminPage /></RequireVista> },
       { path: 'bodegas/:id',    element: <RequireVista vista="bodegas"><BodegaDetalleAdminPage /></RequireVista> },
       { path: 'tecnicos',       element: <RequireVista vista="tecnicos"><TecnicosAdminPage /></RequireVista> },
+      { path: 'frijol',         element: <RequireVista vista="frijol"><FrijolAdminPage /></RequireVista> },
       { path: 'insumos',        element: <RequireVista vista="insumos"><InsumosAdminPage /></RequireVista> },
       { path: 'alertas',        element: <RequireVista vista="alertas"><AlertasAdminPage /></RequireVista> },
       { path: 'chats',          element: <RequireVista vista="chats_ayuda"><ChatsAdminPage /></RequireVista> },
