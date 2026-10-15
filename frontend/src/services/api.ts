@@ -321,8 +321,11 @@ export const api = {
   },
   admin: {
     frijol: {
-      resumen: () => request('/admin/frijol/resumen'),
-      filtros: () => request('/admin/frijol/filtros'),
+      resumen: (f: Record<string, string | undefined> = {}) => {
+        const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();
+        return request(`/admin/frijol/resumen${qs ? `?${qs}` : ''}`);
+      },
+      filtros: (estado?: string) => request(`/admin/frijol/filtros${estado ? `?estado=${encodeURIComponent(estado)}` : ''}`),
       registros: (f: Record<string, string | number | undefined>) => {
         const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v !== undefined && v !== '') as [string, string][]).toString();
         return request(`/admin/frijol/registros${qs ? `?${qs}` : ''}`);

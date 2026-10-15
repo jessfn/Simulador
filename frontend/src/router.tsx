@@ -91,6 +91,7 @@ import MiPerfilAdminPage from './pages/admin/MiPerfilPage';
 import ParcelasAdminPage from './pages/admin/ParcelasAdminPage';
 import TecnicosAdminPage from './pages/admin/TecnicosAdminPage';
 import FrijolAdminPage from './pages/admin/frijol/FrijolAdminPage';
+import FrijolProductorAdminPage from './pages/admin/frijol/FrijolProductorAdminPage';
 import InsumosAdminPage from './pages/admin/InsumosAdminPage';
 
 // Técnicos ECA — Importaciones
@@ -515,6 +516,7 @@ export const router = createBrowserRouter([{
       { path: 'bodegas/:id',    element: <RequireVista vista="bodegas"><BodegaDetalleAdminPage /></RequireVista> },
       { path: 'tecnicos',       element: <RequireVista vista="tecnicos"><TecnicosAdminPage /></RequireVista> },
       { path: 'frijol',         element: <RequireVista vista="frijol"><FrijolAdminPage /></RequireVista> },
+      { path: 'frijol/productor/:id', element: <RequireVista vista="frijol"><FrijolProductorAdminPage /></RequireVista> },
       { path: 'insumos',        element: <RequireVista vista="insumos"><InsumosAdminPage /></RequireVista> },
       { path: 'alertas',        element: <RequireVista vista="alertas"><AlertasAdminPage /></RequireVista> },
       { path: 'chats',          element: <RequireVista vista="chats_ayuda"><ChatsAdminPage /></RequireVista> },
