@@ -80,7 +80,7 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
           <Tarjeta key={u.up_id}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[17px] font-bold text-slate-900 truncate">{u.up_name}</p>
+                <p className="text-[17px] font-bold text-slate-900 break-words">{u.up_name}</p>
                 <p className="text-[13.5px] text-slate-500 mt-0.5">
                   {u.numero_up ? `Parcela ${u.numero_up} · ` : ''}{(u.area_ha_real ?? u.area_ha_calc) ? `${Number(u.area_ha_real ?? u.area_ha_calc).toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha · ` : ''}{u.municipality_name}, {u.state_name}
                 </p>

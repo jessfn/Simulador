@@ -157,16 +157,16 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
         </div>
       )}
 
-      <div ref={topRef} className="px-4 pt-4 pb-2">
+      <div ref={topRef} className="px-4 pt-4 pb-4 bg-gradient-to-b from-[#1A5C38] to-[#14532d] text-white shadow-md">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[12.5px] font-bold text-[#1A5C38] uppercase tracking-[0.12em]">Paso {paso} de {TOTAL_PASOS}</p>
-            <h1 className="text-[22px] font-bold text-slate-900 leading-tight" style={{ fontFamily: 'Patria, Georgia, serif' }}>{NOMBRES_PASOS[paso - 1]}</h1>
+            <p className="text-[12.5px] font-bold text-emerald-200 uppercase tracking-[0.12em]">Paso {paso} de {TOTAL_PASOS}</p>
+            <h1 className="text-[22px] font-bold text-white leading-tight break-words" style={{ fontFamily: 'Patria, Georgia, serif' }}>{NOMBRES_PASOS[paso - 1]}</h1>
           </div>
           <button type="button" onClick={() => { guardarYa(); navigate('/frijol/tecnico'); }} aria-label="Salir (se guarda el borrador)"
-            className="w-11 h-11 rounded-2xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0"><X size={19} className="text-slate-500" /></button>
+            className="w-11 h-11 rounded-2xl bg-white/15 border border-white/30 flex items-center justify-center flex-shrink-0 active:bg-white/25"><X size={19} className="text-white" /></button>
         </div>
-        <div className="h-1.5 rounded-full bg-slate-200 mt-3 overflow-hidden" aria-hidden="true"><div className="h-full bg-[#1A5C38] transition-all duration-300" style={{ width: `${progreso}%` }} /></div>
+        <div className="h-2 rounded-full bg-emerald-950/45 mt-3 overflow-hidden" aria-hidden="true"><div className="h-full bg-emerald-300 transition-all duration-300" style={{ width: `${progreso}%` }} /></div>
       </div>
 
       <div className="flex-1 px-4 pt-3 pb-6 space-y-4">
@@ -184,13 +184,13 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
       {paso > 1 && (
         <div className="sticky bottom-0 z-20 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 flex gap-3" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
           <button type="button" onClick={atras} disabled={enviando}
-            className="min-h-[52px] px-5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 text-[15px] font-bold flex items-center gap-1.5 active:scale-[0.98]"><ArrowLeft size={17} /> Atrás</button>
+            className="min-h-[52px] px-5 rounded-2xl bg-white border-2 border-[#14532d] text-[#14532d] text-[15px] font-bold flex items-center gap-1.5 active:scale-[0.98]"><ArrowLeft size={17} /> Atrás</button>
           {paso < TOTAL_PASOS ? (
             <button type="button" onClick={siguiente}
-              className={`flex-1 min-h-[52px] rounded-2xl text-[16px] font-bold text-white active:scale-[0.98] transition ${Object.keys(errores).length > 0 ? 'bg-[#1A5C38]/50' : 'bg-[#1A5C38]'}`}>Siguiente</button>
+              className="flex-1 min-h-[52px] rounded-2xl text-[16px] font-bold text-white bg-[#14532d] shadow-md active:scale-[0.98] transition">Siguiente</button>
           ) : (
             <button type="button" onClick={enviar} disabled={enviando}
-              className="flex-1 min-h-[52px] rounded-2xl text-[16px] font-bold text-white bg-[#1A5C38] disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]">
+              className="flex-1 min-h-[52px] rounded-2xl text-[16px] font-bold text-white bg-[#14532d] shadow-md disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]">
               {enviando ? <><Loader2 size={18} className="animate-spin" /> Enviando…</> : b.estado === 'listo_para_enviar' || errorEnvio.includes('Reintentar') ? <><Send size={17} /> Reintentar</> : <><Send size={17} /> Enviar registro</>}
             </button>
           )}

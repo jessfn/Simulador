@@ -21,7 +21,7 @@ export function Campo({ etiqueta, error, ayuda, aviso, children, obligatorio = t
 }
 
 const baseInput = 'w-full min-h-[50px] bg-white border-2 rounded-2xl px-4 text-[16px] text-slate-900 placeholder-slate-300 outline-none transition-colors disabled:bg-slate-50 disabled:text-slate-500';
-export const claseInput = (error?: string) => `${baseInput} ${error ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-[#1A5C38]'}`;
+export const claseInput = (error?: string) => `${baseInput} ${error ? 'border-red-300 focus:border-red-500' : 'border-slate-300 focus:border-[#14532d]'}`;
 
 export function Texto({ valor, alCambiar, error, ...resto }: {
   valor: string; alCambiar: (v: string) => void; error?: string;
@@ -47,7 +47,7 @@ export function Selector({ valor, alCambiar, opciones, vacio, error, deshabilita
 export function SiNo({ valor, alCambiar, etiquetaSi = 'Sí', etiquetaNo = 'No' }: { valor: boolean | null; alCambiar: (v: boolean) => void; etiquetaSi?: string; etiquetaNo?: string }) {
   const b = (activo: boolean, texto: string, v: boolean) => (
     <button type="button" onClick={() => alCambiar(v)} aria-pressed={activo}
-      className={`flex-1 min-h-[52px] rounded-2xl text-[16px] font-bold border-2 transition active:scale-[0.98] ${activo ? 'bg-[#1A5C38] border-[#1A5C38] text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
+      className={`flex-1 min-h-[52px] rounded-2xl text-[16px] font-bold border-2 transition active:scale-[0.98] ${activo ? 'bg-[#14532d] border-[#14532d] text-white shadow-md' : 'bg-white border-slate-300 text-slate-800'}`}>
       {texto}
     </button>
   );
@@ -62,7 +62,7 @@ export function Opciones({ valor, alCambiar, opciones, columnas = 1 }: { valor: 
         const activo = valor === o.code;
         return (
           <button key={o.code} type="button" onClick={() => alCambiar(o.code)} aria-pressed={activo}
-            className={`w-full min-h-[52px] px-4 py-2.5 rounded-2xl text-[15px] font-semibold border-2 text-left transition active:scale-[0.99] ${activo ? 'bg-[#eef8f2] border-[#1A5C38] text-[#0f3f26]' : 'bg-white border-slate-200 text-slate-700'}`}>
+            className={`w-full min-h-[52px] px-4 py-2.5 rounded-2xl text-[15px] font-semibold border-2 text-left transition active:scale-[0.99] ${activo ? 'bg-[#14532d] border-[#14532d] text-white shadow-md' : 'bg-white border-slate-300 text-slate-800'}`}>
             {o.label}
           </button>
         );
@@ -80,9 +80,9 @@ export function Casillas({ valor, alCambiar, opciones }: { valor: string[]; alCa
         return (
           <button key={o.code} type="button" role="checkbox" aria-checked={activo}
             onClick={() => alCambiar(activo ? valor.filter(x => x !== o.code) : [...valor, o.code])}
-            className={`w-full min-h-[52px] px-4 py-2.5 rounded-2xl text-[15px] font-semibold border-2 text-left flex items-center gap-3 transition active:scale-[0.99] ${activo ? 'bg-[#eef8f2] border-[#1A5C38] text-[#0f3f26]' : 'bg-white border-slate-200 text-slate-700'}`}>
-            <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${activo ? 'bg-[#1A5C38] border-[#1A5C38]' : 'border-slate-300'}`}>
-              {activo && <svg viewBox="0 0 12 12" width="14" height="14" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5 5 9.5 10 3" /></svg>}
+            className={`w-full min-h-[52px] px-4 py-2.5 rounded-2xl text-[15px] font-semibold border-2 text-left flex items-center gap-3 transition active:scale-[0.99] ${activo ? 'bg-[#14532d] border-[#14532d] text-white shadow-md' : 'bg-white border-slate-300 text-slate-800'}`}>
+            <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${activo ? 'bg-white border-white' : 'border-slate-400'}`}>
+              {activo && <svg viewBox="0 0 12 12" width="14" height="14" fill="none" stroke="#14532d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5 5 9.5 10 3" /></svg>}
             </span>
             {o.label}
           </button>

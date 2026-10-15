@@ -119,7 +119,7 @@ export default function FrijolPerfilPage() {
             <section className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50">
               <div className="flex items-center justify-between px-5 py-3.5">
                 <span className="flex items-center gap-2.5 text-[13px] text-slate-500 font-medium"><Mail size={15} className="text-[#1A5C38]" /> Correo</span>
-                <span className="text-[13px] font-semibold text-slate-800 truncate max-w-[180px]">{perfil.email}</span>
+                <span className="text-[13px] font-semibold text-slate-800 break-all text-right">{perfil.email}</span>
               </div>
               <div className="px-5 py-3.5">
                 <div className="flex items-center justify-between">

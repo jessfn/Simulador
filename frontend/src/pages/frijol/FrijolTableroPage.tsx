@@ -41,7 +41,7 @@ export default function FrijolTableroPage() {
           <IconoFrijol className="h-10 w-10 flex-shrink-0" />
           <div className="min-w-0">
             <p className="text-[12px] font-semibold text-emerald-200/90 uppercase tracking-[0.12em]">Registro de Frijol{user?.tipo_tecnico_etiqueta ? ` · ${user.tipo_tecnico_etiqueta}` : ''}</p>
-            <h1 className="text-[22px] font-bold leading-tight truncate" style={{ fontFamily: 'Patria, Georgia, serif' }}>Hola, {nombre}</h1>
+            <h1 className="text-[22px] font-bold leading-tight break-words" style={{ fontFamily: 'Patria, Georgia, serif' }}>Hola, {nombre}</h1>
           </div>
         </div>
         <button onClick={() => navigate('/frijol/tecnico/nuevo')}
@@ -58,7 +58,7 @@ export default function FrijolTableroPage() {
               const quien = `${b.productor.nombres} ${b.productor.apellido_paterno}`.trim() || b.curp;
               return (
                 <li key={b.id} className="py-3">
-                  <p className="text-[15px] font-semibold text-slate-900 truncate">{quien}</p>
+                  <p className="text-[15px] font-semibold text-slate-900 break-words">{quien}</p>
                   <p className="text-[13px] text-slate-500">{b.estado === 'listo_para_enviar' ? 'Listo para enviar' : `Paso ${b.paso}: ${NOMBRES_PASOS[b.paso - 1]}`} · {fmt(b.actualizado)}</p>
                   <div className="flex gap-2.5 mt-2.5">
                     <button onClick={() => navigate(`/frijol/tecnico/nuevo/${b.id}`)} className="flex-1 min-h-[46px] rounded-2xl bg-[#1A5C38] text-white text-[14px] font-bold">{b.estado === 'listo_para_enviar' ? 'Revisar y enviar' : 'Continuar'}</button>

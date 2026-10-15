@@ -195,7 +195,7 @@ export default function DetalleProductorFrijolPage() {
           {validado && <p className="text-[13px] text-emerald-800 mt-3 flex items-center gap-1.5"><ShieldCheck size={15} /> Registro validado: ya no se puede corregir.</p>}
           <dl className="mt-4 space-y-2 text-[14.5px]">
             <div className="flex justify-between gap-4"><dt className="text-slate-500">Teléfono</dt><dd className="font-semibold">{d.datos.telefono || '—'}</dd></div>
-            {d.datos.correo && <div className="flex justify-between gap-4"><dt className="text-slate-500">Correo</dt><dd className="font-semibold truncate">{d.datos.correo}</dd></div>}
+            {d.datos.correo && <div className="flex justify-between gap-4"><dt className="text-slate-500">Correo</dt><dd className="font-semibold break-all text-right">{d.datos.correo}</dd></div>}
             <div className="flex justify-between gap-4"><dt className="text-slate-500">Nacimiento</dt><dd className="font-semibold">{d.datos.fecha_nacimiento || '—'}</dd></div>
           </dl>
           {!validado && <button onClick={() => abrir('datos')} className="mt-4 w-full min-h-[48px] rounded-2xl bg-slate-100 text-slate-700 font-bold flex items-center justify-center gap-2"><Pencil size={15} /> Corregir datos</button>}

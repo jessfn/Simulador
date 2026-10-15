@@ -33,7 +33,7 @@ function Barras({ titulo, filas, etiqueta, valor, unidad }: { titulo: string; fi
         <ul className="space-y-2.5">
           {filas.map((f, i) => (
             <li key={i}>
-              <div className="flex justify-between text-[12.5px] gap-3"><span className="text-slate-700 truncate">{f[etiqueta]}</span><span className="font-semibold text-slate-900 whitespace-nowrap">{fmtNum(f[valor])} {unidad}</span></div>
+              <div className="flex justify-between text-[12.5px] gap-3"><span className="text-slate-700 break-words min-w-0">{f[etiqueta]}</span><span className="font-semibold text-slate-900 whitespace-nowrap">{fmtNum(f[valor])} {unidad}</span></div>
               <div className="h-2 rounded-full bg-slate-100 mt-1 overflow-hidden"><div className="h-full rounded-full bg-[#1A5C38]" style={{ width: `${(Number(f[valor]) / max) * 100}%` }} /></div>
             </li>
           ))}

@@ -81,8 +81,8 @@ export default function RegistrosPage() {
                 <button onClick={() => navigate(`/frijol/tecnico/productor/${f.producer_id}`)}
                   className="w-full text-left bg-white rounded-3xl border border-slate-100 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[16px] font-bold text-slate-900 truncate">{[f.nombres, f.apellido_paterno, f.apellido_materno].filter(Boolean).join(' ')}</p>
-                    <p className="text-[13px] text-slate-500 mt-0.5 truncate">{f.municipio || '—'} · {f.parcelas_frijol} parcela{f.parcelas_frijol === 1 ? '' : 's'} · {Number(f.ha_frijol).toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha de frijol</p>
+                    <p className="text-[16px] font-bold text-slate-900 break-words">{[f.nombres, f.apellido_paterno, f.apellido_materno].filter(Boolean).join(' ')}</p>
+                    <p className="text-[13px] text-slate-500 mt-0.5 break-words">{f.municipio || '—'} · {f.parcelas_frijol} parcela{f.parcelas_frijol === 1 ? '' : 's'} · {Number(f.ha_frijol).toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha de frijol</p>
                     <div className="mt-2"><EtiquetaEstado fila={f} /></div>
                   </div>
                   <ChevronRight className="text-slate-300 flex-shrink-0" size={18} />
