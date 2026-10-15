@@ -56,6 +56,7 @@ async function request<T = any>(path: string, opts: RequestInit = {}): Promise<T
     const err = await res.json().catch(() => ({ error: res.statusText }));
     const e: any = new Error(err.error || `HTTP ${res.status}`);
     e.codigo = err.codigo;
+    e.campo = err.campo;
     e.status = res.status;
     throw e;
   }
@@ -295,6 +296,28 @@ export const api = {
       request(`/cycles/${cycleId}/crops`, { method: 'POST', body: JSON.stringify(data) }),
     eliminarCiclo: (cycleId: number | string) =>
       request(`/cycles/${cycleId}`, { method: 'DELETE' }),
+  },
+  // Módulo de Frijol (técnicos ECA)
+  frijol: {
+    catalogos: () => request('/frijol/catalogos'),
+    estados: () => request('/frijol/estados'),
+    municipios: (stateId: string) => request(`/frijol/municipios?state_id=${encodeURIComponent(stateId)}`),
+    consultarCurp: (curp: string) => request('/frijol/consultar-curp', { method: 'POST', body: JSON.stringify({ curp }) }),
+    registrar: (cuerpo: unknown, idempotencyKey: string, signal?: AbortSignal) =>
+      request('/frijol/registros', { method: 'POST', body: JSON.stringify(cuerpo), headers: { 'Idempotency-Key': idempotencyKey }, signal }),
+    misRegistros: (f?: { estatus?: string; verificacion?: string; q?: string }) => {
+      const qs = new URLSearchParams(Object.entries(f || {}).filter(([, v]) => v) as [string, string][]).toString();
+      return request(`/frijol/mis-registros${qs ? `?${qs}` : ''}`);
+    },
+    productor: (id: number | string) => request(`/frijol/productores/${id}`),
+    corregirProductor: (id: number | string, data: unknown) => request(`/frijol/productores/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    corregirCurp: (id: number | string, curp: string) => request(`/frijol/productores/${id}/curp`, { method: 'PATCH', body: JSON.stringify({ curp }) }),
+    corregirCultivo: (cycleCropId: number | string, cultivo: unknown) => request(`/frijol/cultivos/${cycleCropId}`, { method: 'PATCH', body: JSON.stringify({ cultivo }) }),
+    acuse: async (cycleCropId: number | string): Promise<Blob> => {
+      const res = await apiFetch(`/frijol/registros/${cycleCropId}/acuse`);
+      if (!res.ok) throw new Error('No se pudo descargar el acuse');
+      return res.blob();
+    },
   },
   admin: {
     tecnicos: {

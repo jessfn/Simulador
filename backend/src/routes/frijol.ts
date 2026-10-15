@@ -6,6 +6,7 @@ import { PROGRAMA_FRIJOL } from '../utils/programas';
 import { verificarIdentidad } from '../services/identidad';
 import { inferirCiclo, cicloFinal, Regimen } from '../services/cicloSIAP';
 import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo } from '../services/frijolRegistro';
+import { generarAcuseFrijol } from '../services/acuseFrijol';
 
 // Módulo de registro de Frijol (técnicos ECA). Todo /api/frijol/* requiere sesión de técnico con el programa frijol_afb.
 // Aquí viven solo las rutas de frijol; maíz no se toca.
@@ -215,6 +216,47 @@ router.post('/registros', async (req: AuthRequest, res: Response): Promise<void>
   } finally {
     client.release();
   }
+});
+
+// =============================================
+// GET /api/frijol/registros/:cycle_crop_id/acuse   — PDF del acuse (solo el técnico responsable)
+// =============================================
+router.get('/registros/:cycle_crop_id/acuse', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const r = await pool.query(
+      `SELECT cc.cycle_crop_id::int AS id, cc.area_sown_ha::float AS sembrada, cc.yield_expected::float AS rendimiento, cc.variety_other,
+              cv.label AS variedad, c.cycle_year, c.cycle_type, u.up_id::int AS up_id, u.up_name, u.state_name, u.municipality_name, u.localidad,
+              COALESCE(u.area_ha_real, u.area_ha_calc)::float AS area_parcela,
+              p.producer_id, p.curp, TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)) AS nombre, p.phone,
+              pp.verificacion_identidad, pp.usuario_capturista_id, t.nombre_completo AS tecnico, fc.created_at
+         FROM cycle_crop cc
+         JOIN cycle c ON c.cycle_id = cc.cycle_id AND c.crop = 'frijol'
+         JOIN up u ON u.up_id = c.up_id
+         JOIN producer p ON p.producer_id = u.producer_id
+         JOIN producer_programa pp ON pp.producer_id = p.producer_id AND pp.programa = $2
+         LEFT JOIN usuarios t ON t.id = pp.usuario_capturista_id
+         LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id
+         LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.crop = 'frijol'
+        WHERE cc.cycle_crop_id = $1`,
+      [req.params.cycle_crop_id, PROGRAMA_FRIJOL]
+    );
+    if (r.rows.length === 0) { res.status(404).json({ error: 'Registro no encontrado' }); return; }
+    const d = r.rows[0];
+    if (d.usuario_capturista_id !== req.user!.userId) { res.status(403).json({ error: 'Este registro lo hizo otro técnico' }); return; }
+    const etiqueta = d.cycle_type === 'OI' ? `OI ${d.cycle_year}-${String((d.cycle_year + 1) % 100).padStart(2, '0')}` : d.cycle_type === 'PV' ? `PV ${d.cycle_year}` : `Anual ${d.cycle_year}`;
+    const doc = generarAcuseFrijol({
+      cycleCropId: d.id, fechaRegistro: d.created_at || new Date(),
+      productor: { nombre: d.nombre, curp: d.curp, telefono: d.phone },
+      idParcela: d.up_id, parcela: d.up_name, ubicacion: [d.localidad, d.municipality_name, d.state_name].filter(Boolean).join(', '),
+      superficieParcelaHa: d.area_parcela, ciclo: etiqueta, variedad: d.variety_other || d.variedad || '—',
+      superficieSembradaHa: d.sembrada, produccionEstimadaTon: d.rendimiento ? d.sembrada * d.rendimiento : null,
+      tecnico: d.tecnico || '—', verificacionIdentidad: d.verificacion_identidad,
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="acuse-frijol-${d.id}.pdf"`);
+    doc.pipe(res);
+    doc.end();
+  } catch (error) { responderError(res, error, 'GET /frijol/registros/:id/acuse'); }
 });
 
 // =============================================

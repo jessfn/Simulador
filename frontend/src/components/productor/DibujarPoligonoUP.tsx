@@ -58,6 +58,10 @@ interface Props {
    *  el polígono NO se confirma (no se llama a onPoligonoCompleto) hasta
    *  que se corrija. */
   onKinkError?: () => void;
+  /** Vértices con los que arranca el trazado en curso (se pueden restaurar aunque sean menos de 3). */
+  verticesIniciales?: [number, number][];
+  /** Se dispara cada vez que cambia la lista de vértices (para guardar el avance, p. ej. en un borrador). */
+  onVerticesChange?: (vertices: [number, number][]) => void;
 }
 
 const GREEN = '#34d079';
@@ -72,7 +76,7 @@ const RED = '#ef4444';
 const RED_DARK = '#b91c1c';
 
 const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
-  ({ poligonoInicial, onPoligonoCompleto, onPoligonoEliminado, onModeChange, onPointCountChange, excluirUpIds, misUpIds, onOverlap, onKinkError }, ref) => {
+  ({ poligonoInicial, onPoligonoCompleto, onPoligonoEliminado, onModeChange, onPointCountChange, excluirUpIds, misUpIds, onOverlap, onKinkError, verticesIniciales, onVerticesChange }, ref) => {
     const map = useMap();
     const groupRef = useRef(new L.FeatureGroup());
     const verticesRef = useRef<[number, number][]>([]);
@@ -110,7 +114,8 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
 
     const emitCount = useCallback(() => {
       onPointCountChange?.(verticesRef.current.length);
-    }, [onPointCountChange]);
+      onVerticesChange?.(verticesRef.current.map(([la, ln]) => [la, ln] as [number, number]));
+    }, [onPointCountChange, onVerticesChange]);
 
     const computeAndEmit = useCallback(() => {
       const v = verticesRef.current;
@@ -246,6 +251,13 @@ const DibujarPoligonoUP = forwardRef<DibujarPoligonoHandle, Props>(
         map.fitBounds(b, { padding: [50, 50] });
         // Emitir el polígono precargado para que el padre tenga centroide/área lista
         computeAndEmit();
+      } else if (verticesIniciales && verticesIniciales.length > 0) {
+        // Trazado a medias (menos de 3 vértices o sin cerrar): se retoma donde se quedó
+        verticesRef.current = verticesIniciales.map(([la, ln]) => [la, ln] as [number, number]);
+        setMode('drawing');
+        fullRedraw();
+        map.fitBounds(L.latLngBounds(verticesRef.current as L.LatLngTuple[]), { padding: [60, 60], maxZoom: 18 });
+        emitCount();
       }
 
       return () => {
