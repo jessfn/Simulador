@@ -279,7 +279,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
         upId = await insertarUP(client, producerId, {
           nombre_up: pa.nombre, estado_up: est.rows[0].name, municipio_up: mun.rows[0].name, poligono: pa.poligono,
           area_real_ha: pa.area_real_ha ?? null, coincide_area: pa.area_real_ha ? false : null,
-        });
+        }, { traslapeEstricto: true });
       } catch (e: any) {
         if (e.code === 'UP_OVERLAP') throw new ErrorRegistro(409, 'UP_OVERLAP', `El polígono se encima con otra parcela de este productor ("${e.up_conflicto}"). Usa esa parcela en lugar de crear una nueva.`, 'parcela.poligono');
         if (e.code === 'UP_OVERLAP_CROSS') throw new ErrorRegistro(409, 'UP_OVERLAP_CROSS', 'El polígono se encima más del 10 % con la parcela de otro productor. Revisa el dibujo.', 'parcela.poligono');

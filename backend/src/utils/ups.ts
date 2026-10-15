@@ -30,8 +30,13 @@ export async function validarTraslape(
   db: any,
   producerIdPropietario: number,
   nuevaGeomGeoJSON: string,
-  excluirUpId?: number
+  excluirUpId?: number,
+  estricto = false
 ): Promise<ResultadoTraslape> {
+  // ST_Overlaps es falso cuando el polígono nuevo es idéntico a uno existente o lo contiene por completo,
+  // así que esos casos pasaban sin avisar. El modo estricto (lo usa Frijol) usa ST_Intersects; el porcentaje
+  // de traslape ya descarta los simples contactos de lindero. Maíz conserva su comportamiento original.
+  const predicado = estricto ? 'ST_Intersects' : 'ST_Overlaps';
   const result = await db.query(
     `SELECT traslape_producer_id, up_name, pct FROM (
        SELECT u.producer_id AS traslape_producer_id, u.up_name,
@@ -43,7 +48,7 @@ export async function validarTraslape(
          ) AS pct
        FROM up u
        WHERE u.producer_id != $1 AND u.geom IS NOT NULL
-         AND ST_Overlaps(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
+         AND ${predicado}(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
          AND ($3::bigint IS NULL OR u.up_id != $3)
      ) t WHERE t.pct > 0.02 ORDER BY t.pct DESC LIMIT 1`,
     [producerIdPropietario, nuevaGeomGeoJSON, excluirUpId ?? null]
@@ -71,7 +76,7 @@ export async function validarTraslape(
 // Lanza Error con .code='UP_OVERLAP' si el polígono se intersecta con otra
 // UP del mismo productor, o .code='UP_OVERLAP_CROSS' si se traslapa más de
 // 10% con la UP de otro productor.
-export async function insertarUP(client: any, producerId: number, up: any): Promise<number> {
+export async function insertarUP(client: any, producerId: number, up: any, opciones: { traslapeEstricto?: boolean } = {}): Promise<number> {
   const { lat, lng, poligono, area_calc_ha, area_real_ha, coincide_area } = up;
   const upName = (up.nombre_up && String(up.nombre_up).trim()) || 'Mi Parcela';
   let estadoFinal = up.estado_up;
@@ -132,7 +137,7 @@ export async function insertarUP(client: any, producerId: number, up: any): Prom
   // registrando pero queda marcado para revisión.
   let traslapeProducerId: number | null = null;
   if (hasPoligono && postgisActivo) {
-    const traslape = await validarTraslape(client, producerId, geojson!);
+    const traslape = await validarTraslape(client, producerId, geojson!, undefined, opciones.traslapeEstricto === true);
     if (traslape.bloqueado) {
       const e: any = new Error('overlap_cross');
       e.code = 'UP_OVERLAP_CROSS';
