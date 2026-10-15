@@ -64,7 +64,7 @@ export function LayoutTecnico({ children }: { children: ReactNode }) {
 
       {/* Main content */}
       <main className={`flex-1 overflow-y-auto w-full relative scroll-smooth ${esFrijol ? 'bg-[#e3f1e8]' : 'bg-[#eef8f2]'}`} style={{ overscrollBehaviorY: 'contain' }}>
-        <div className={`w-full max-w-2xl mx-auto ${esFrijol ? 'pb-24' : ''}`}>{children}</div>
+        <div className={`w-full max-w-2xl mx-auto ${esFrijol && !pathname.startsWith('/frijol/tecnico/nuevo') ? 'pb-24' : ''}`}>{children}</div>
       </main>
 
       {/* Bottom nav */}
