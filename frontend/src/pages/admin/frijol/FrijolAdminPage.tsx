@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -237,7 +238,7 @@ export default function FrijolAdminPage() {
         </div>
       )}
 
-      {ficha && (
+      {ficha && createPortal(
         <div className="fixed inset-0 z-[10000] flex justify-end" role="dialog" aria-modal="true" aria-label="Ficha del productor">
           <div className="absolute inset-0 bg-black/40" onClick={() => setFicha(null)} />
           <aside className="relative bg-white w-full max-w-xl h-full overflow-y-auto p-5 space-y-5">
@@ -285,7 +286,8 @@ export default function FrijolAdminPage() {
               </>
             )}
           </aside>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
