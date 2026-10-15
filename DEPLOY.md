@@ -24,6 +24,8 @@
 6. Aplicar migraciones de base: `npm run migrate:up` en `backend/` del servidor (ver abajo).
 7. Verificar: cifras del tablero de administración, un acceso de productor y uno de técnico.
 
+> **Salida del módulo de Frijol:** pasos, pruebas y plan de regreso específicos en `docs/T08_pruebas_y_salida_a_produccion.md`.
+
 ## Qué hace `deploy/deploy.sh`
 
 `git pull` de la rama → instala dependencias → compila el backend (`npx tsc`) → reinicia el proceso (`pm2 restart bodegas-api`)
