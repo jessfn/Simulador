@@ -8,20 +8,23 @@ import uuid, time
 t1 = login(EM('frijol1')); adm = login_admin()
 SRC = BACKEND / 'src'
 
-print('--- 9.3 · límite de consultas de CURP (por técnico)')
-tl = login(EM('limite')); t_otro = login(EM('frijol2'))
-codigos = []
-for i in range(1, 700):
-    st, r = http('/frijol/consultar-curp', tl, 'POST', {'curp': 'X'})      # CURP mal formada: el servidor responde al instante, pero la consulta cuenta
-    codigos.append(st)
-    if st == 429: break
-primer429 = codigos.index(429) + 1 if 429 in codigos else None
-ok('las primeras 10 consultas de un técnico no se ven afectadas (uso normal)', all(c == 400 for c in codigos[:10]), str(codigos[:10]))
-ok('pasado el límite responde 429', primer429 is not None, f'a la consulta {primer429}')
-ok('el límite no es ridículamente bajo (un técnico en campo no se bloquea)', primer429 is not None and primer429 > 25, f'bloqueo en la consulta {primer429}')
-ok('el mensaje es claro y trae código', (r or {}).get('error') == 'Hiciste muchas consultas en poco tiempo. Espera unos minutos.' and (r or {}).get('codigo') == 'DEMASIADAS_CONSULTAS', str(r))
-st, _ = http('/frijol/consultar-curp', t_otro, 'POST', {'curp': 'X'})
-ok('el límite es POR TÉCNICO: otro técnico sigue pudiendo consultar', st == 400, str(st))
+print('--- 9.3 · límite de consultas de CURP (por técnico), con un backend aparte y la configuración por defecto')
+proc, base = backend_aparte()
+try:
+    tl = http('/tecnico/auth/login', method='POST', body={'email': EM('limite'), 'password': PASS}, base=base)[1].get('token')
+    t_otro = http('/tecnico/auth/login', method='POST', body={'email': EM('frijol2'), 'password': PASS}, base=base)[1].get('token')
+    codigos = []; ultimo = None
+    for i in range(1, 60):
+        st, ultimo = http('/frijol/consultar-curp', tl, 'POST', {'curp': 'X'}, base=base)   # CURP mal formada: responde al instante, pero la consulta cuenta
+        codigos.append(st)
+        if st == 429: break
+    ok('el uso normal no se ve afectado: las primeras 40 consultas de un técnico pasan', codigos[:40] == [400] * 40, str(set(codigos[:40])))
+    ok('la consulta 41 en 15 minutos responde 429', len(codigos) == 41 and codigos[-1] == 429, f'bloqueo en la consulta {len(codigos)}')
+    ok('el mensaje es claro y trae código', (ultimo or {}).get('error') == 'Hiciste muchas consultas en poco tiempo. Espera unos minutos.' and (ultimo or {}).get('codigo') == 'DEMASIADAS_CONSULTAS', str(ultimo))
+    st, _ = http('/frijol/consultar-curp', t_otro, 'POST', {'curp': 'X'}, base=base)
+    ok('el límite es POR TÉCNICO: otro técnico sigue pudiendo consultar', st == 400, str(st))
+finally:
+    proc.terminate()
 
 print('--- 9.4 · clave de idempotencia')
 curp = curp_nueva('REN'); st, c = consultar(t1, curp)
@@ -36,6 +39,14 @@ st, r = http('/frijol/registros', t1, 'POST', b, {'Idempotency-Key': str(uuid.uu
 ok('una clave UUID normal funciona igual', st == 201, f'{st} {(r or {}).get("error", "")}')
 st, r2 = http('/frijol/registros', t1, 'POST', b, {'Idempotency-Key': 'k' * 60})
 ok('60 caracteres (el máximo) también funciona', st in (200, 201, 409), str(st))   # 409 = el productor ya existe con otra clave; lo importante es que NO sea 400/500
+
+print('--- 9.5 · el correo se escribe en las dos columnas de producer')
+curp_c = curp_nueva('REN'); st, c = consultar(t1, curp_c)
+st, reg_c = registrar(t1, cuerpo(curp_c, token=c.get('verificacion_token'), productor__correo='Prueba.Correo@Ejemplo.Test'))
+PC = (reg_c or {}).get('producer_id')
+ok('registro nuevo: correo y correo_electronico quedan iguales (y en minúsculas)', st == 201 and primera_fila(f"select correo, correo_electronico from producer where producer_id={PC}") == ['prueba.correo@ejemplo.test', 'prueba.correo@ejemplo.test'], f'{st}')
+st, r = http(f'/frijol/productores/{PC}', t1, 'PATCH', {'productor': {'correo': 'otro.correo@ejemplo.test'}})
+ok('corrección: ambas columnas cambian juntas', st == 200 and primera_fila(f"select correo, correo_electronico from producer where producer_id={PC}") == ['otro.correo@ejemplo.test', 'otro.correo@ejemplo.test'], f'{st}')
 
 print('--- 9.6 · orden estable: toda agregación con ORDER BY')
 import re as _re
@@ -63,7 +74,8 @@ ok('tiene mayúscula, minúscula y número (mismo generador que el alta)', all(a
 ok('dos reinicios dan contraseñas distintas', p1 != p2 and p1 and p2)
 st, l = http('/tecnico/auth/login', method='POST', body={'email': correo, 'password': p2})
 ok('el técnico entra con la última contraseña temporal', st == 200 and l.get('token'), str(st))
-ok('el generador inseguro ya no existe en el código', 'Math.random' not in (SRC / 'routes' / 'admin-tecnicos.ts').read_text(encoding='utf-8'))
+codigo_tecnicos = chr(10).join(l for l in (SRC / 'routes' / 'admin-tecnicos.ts').read_text(encoding='utf-8').splitlines() if not l.strip().startswith('//'))
+ok('el generador inseguro (Math.random) ya no se usa en el código', 'Math.random(' not in codigo_tecnicos)
 http(f'/admin/tecnicos/{tid}', adm, 'DELETE')
 
 print('--- 9.9 · fecha de nacimiento al corregir al productor')
@@ -85,10 +97,11 @@ bajada = mig.split('-- Down Migration')[1]
 # separar las instrucciones sencillas del bloque DO $$ ... $$ para ejecutarlas una por una
 bloque_do = _re.search(r'DO \$\$.*?END \$\$;', bajada, _re.S).group(0)
 resto = _re.sub(r'DO \$\$.*?END \$\$;', '', bajada, flags=_re.S)
-sueltas = [s.strip() for s in resto.split(';') if s.strip() and not s.strip().startswith('--')]
-sueltas = [_re.sub(r'(?m)^--.*$', '', s).strip() for s in sueltas]
+resto = _re.sub(r'(?m)^\s*--.*$', '', resto)          # los comentarios pueden llevar punto y coma
+sueltas = [x.strip() for x in resto.split(';') if x.strip()]
 pid = val("select producer_id from producer order by producer_id limit 1")
-prueba = ["update producer set programas_beneficiario = ARRAY['acopio_bienestar'] where producer_id=" + pid,
+prueba = ["update frijol_productor set programas_sader = '{}'", "update producer set programas_beneficiario = '{}'",      # se despeja todo uso (se revierte al final)
+          "update producer set programas_beneficiario = ARRAY['acopio_bienestar'] where producer_id=" + pid,
           *[s for s in sueltas if s], bloque_do.rstrip(';'),
           "select (select count(*) from cat_programas_gobierno where clave='acopio_bienestar') as en_uso, (select count(*) from cat_programas_gobierno where clave='otro_sader') as sin_uso"]
 res_b = [l.strip() for l in sql_revertido(prueba).splitlines() if l.strip()]

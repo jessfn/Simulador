@@ -243,6 +243,8 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
         const despues = nuevos[campo];
         if ((antes ?? null) !== (despues ?? null) && String(antes ?? '') !== String(despues ?? '')) {
           vals.push(despues ?? null); sets.push(`${columna} = $${vals.length}`);
+          // T09 §9.5: la exportación de maíz lee producer.correo_electronico y las demás pantallas producer.correo; se escriben iguales.
+          if (columna === 'correo') sets.push(`correo_electronico = $${vals.length}`);
           await client.query(
             `INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)`,
             [producerId, campo, antes == null ? null : String(antes), despues == null ? null : String(despues), tecnicoId, PROGRAMA_FRIJOL]
@@ -255,9 +257,9 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
       verificacion = leerVerificacion(p.verificacion_token, curp, tecnicoId) ? 'verificada' : 'pendiente';
       const r = await client.query(
         `INSERT INTO producer
-           (curp, nombres, apellido_paterno, apellido_materno, phone, correo, sexo, fecha_nacimiento,
+           (curp, nombres, apellido_paterno, apellido_materno, phone, correo, correo_electronico, sexo, fecha_nacimiento,
             state_id, municipality_id, localidad, usuario_capturista_id, estatus_registro, fecha_captura, fuente_registro)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
+         VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10,$11,$12,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
          RETURNING producer_id`,
         [curp, String(p.nombres).trim(), String(p.apellido_paterno).trim(), p.apellido_materno ? String(p.apellido_materno).trim() : null,
          telefono, correo, p.sexo, String(p.fecha_nacimiento).slice(0, 10), pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
