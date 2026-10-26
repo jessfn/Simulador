@@ -1077,7 +1077,7 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
     // parameter $1" (el error que reportaron los productores).
     const upRes = await pool.query(
       `SELECT up_id FROM up
-       WHERE producer_id = $2 AND ($1::bigint IS NULL OR up_id = $1)
+       WHERE producer_id = $2 AND ($1::bigint IS NULL OR up_id = $1) AND ${parcelaDeMaiz('up')}
        ORDER BY created_at ASC
        LIMIT 1`,
       [up_id ?? null, producerId]

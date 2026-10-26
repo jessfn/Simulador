@@ -105,10 +105,12 @@ ok('el productor solo de frijol NO está en el programa de maíz', val(f"select 
 print('--- 11.2 · el origen no se modifica por ninguna ruta de usuario')
 asignan = []
 for f in sorted(SRC.rglob('*.ts')):
-    for n, linea in enumerate(f.read_text(encoding='utf-8').splitlines(), 1):
-        if re.search(r'programa_origen\s*=\s*[\'"$]', linea) and 'WHERE' not in linea.upper().split('programa_origen')[0]:
-            asignan.append(f'{f.relative_to(BACKEND).as_posix()}:{n}')
-ok('solo el registro de frijol (parcela nueva) escribe programa_origen', asignan and all(a.startswith('src/services/frijolRegistro.ts') for a in asignan), ', '.join(asignan))
+    texto = f.read_text(encoding='utf-8')
+    for m in re.finditer(r'UPDATE\s+up\s+SET(.*?)(?:WHERE|`)', texto, re.S | re.I):      # la parte SET de cada UPDATE up
+        if 'programa_origen' in m.group(1):
+            asignan.append(f'{f.relative_to(BACKEND).as_posix()}:{texto.count(chr(10), 0, m.start()) + 1}')
+ok('solo el registro de frijol (parcela nueva) escribe programa_origen en un UPDATE de up', asignan and all(a.startswith('src/services/frijolRegistro.ts') for a in asignan), ', '.join(asignan))
+ok('ningún INSERT de parcelas nombra la columna (todos usan el DEFAULT de maíz)', not any('programa_origen' in m.group(0) for f in SRC.rglob('*.ts') for m in re.finditer(r'INSERT\s+INTO\s+up\s*\(.*?\)', f.read_text(encoding='utf-8'), re.S | re.I)))
 
 print('--- 11.3 · cifras de maíz (panel de administración)')
 ok('el panel de maíz muestra 2 parcelas del productor con 2 de maíz + 1 de frijol (no 3)', parcelas_en_panel(ap_a) == sorted(ups_a), str(parcelas_en_panel(ap_a)))
@@ -122,7 +124,7 @@ ok('las hectáreas sembradas de maíz de esa parcela salen solo del ciclo de ma�
 
 print('--- 11.3.4 · pantallas de maíz que listan las parcelas de un productor')
 st, l = http(f'/tecnico/productor/{A}/ups', tm)
-ok('técnico de maíz: ve 2 parcelas (la de frijol no se muestra)', st == 200 and sorted(u['up_id'] for u in l['ups']) == sorted(ups_a), str([u['up_id'] for u in (l or {}).get('ups', [])]))
+ok('técnico de maíz: ve 2 parcelas (la de frijol no se muestra)', st == 200 and sorted(int(u['up_id']) for u in l['ups']) == sorted(ups_a), str([int(u['up_id']) for u in (l or {}).get('ups', [])]))
 st, rr = http('/tecnico/mis-registros', tm)
 fila_a = [r for r in (rr or {}).get('registros', []) if r.get('producer_id') == A]
 ok('técnico de maíz, "mis registros": cuenta 2 parcelas del productor', st == 200 and fila_a and int(fila_a[0].get('total_ups', 0)) == 2, str(fila_a[0].get('total_ups') if fila_a else None))
@@ -132,10 +134,10 @@ st, _ = http('/productor/auth/activar-cuenta', None, 'POST', {'producer_id': b_[
 st, lg = http('/productor/auth/login-pin', None, 'POST', {'curp': curp_a, 'pin': '4821'})
 tp = lg.get('token')
 st, m = http('/productor/mis-ups-con-ciclos', tp)
-ids_m = sorted(u['up_id'] for u in (m if isinstance(m, list) else (m or {}).get('ups', [])))
+ids_m = sorted(int(u['up_id']) for u in (m if isinstance(m, list) else (m or {}).get('ups', [])))
 ok('productor de maíz con cuenta: ve sus 2 parcelas de maíz de siempre (no la de frijol)', st == 200 and ids_m == sorted(ups_a), str(ids_m))
 st, m2 = http('/mis-ups', tp)
-ids_m2 = sorted(u['up_id'] for u in (m2 or {}).get('ups', []))
+ids_m2 = sorted(int(u['up_id']) for u in (m2 or {}).get('ups', []))
 ok('su lista "mis parcelas" tampoco muestra la de frijol', st == 200 and ids_m2 == sorted(ups_a), str(ids_m2))
 
 print('--- 11.3.5 · una parcela de origen frijol a la que se le crea un ciclo de maíz pasa a contar en maíz')
@@ -144,7 +146,7 @@ ok('el técnico de maíz le crea un ciclo de maíz a la parcela de origen frijol
 ok('su origen NO cambia (sigue frijol_afb)', val(f"select programa_origen from up where up_id={UP_F}") == 'frijol_afb')
 ok('ahora el panel de maíz la cuenta (3 parcelas)', parcelas_en_panel(ap_a) == sorted(ups_a + [UP_F]), str(parcelas_en_panel(ap_a)))
 st, m = http('/productor/mis-ups-con-ciclos', tp)
-ids_m = sorted(u['up_id'] for u in (m if isinstance(m, list) else (m or {}).get('ups', [])))
+ids_m = sorted(int(u['up_id']) for u in (m if isinstance(m, list) else (m or {}).get('ups', [])))
 ok('y el productor con cuenta la ve en su app de maíz', ids_m == sorted(ups_a + [UP_F]), str(ids_m))
 ok('el tablero de maíz suma esa parcela (+4 en total)', total_ups_maiz() - ups_ini == 4, f'{ups_ini} -> {total_ups_maiz()}')
 
