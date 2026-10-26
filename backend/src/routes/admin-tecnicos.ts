@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import pool from '../config/database';
-import { soloMaiz, PROGRAMA_FRIJOL } from '../utils/programas';
+import { soloMaiz, parcelaDeMaiz, PROGRAMA_FRIJOL } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { checkPermiso } from './admin-permisos';
 import { enviarCredencialesTecnico } from '../utils/mailer';
@@ -235,7 +235,7 @@ router.get('/', authMiddleware, verTecnicos, async (req: AuthRequest, res: Respo
               ${CAMPOS_PROGRAMA}
        FROM usuarios u
        LEFT JOIN producer p ON p.usuario_capturista_id = u.id AND ${soloMaiz('p')}
-       LEFT JOIN up up ON up.producer_id = p.producer_id
+       LEFT JOIN up up ON up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
        ${where}
        GROUP BY u.id
        ORDER BY u.nombre_completo`,
@@ -272,7 +272,7 @@ router.get('/:id', authMiddleware, verDetalleTecnicos, async (req: AuthRequest, 
               p.phone AS telefono, p.state_id, p.municipality_id, p.estatus_registro, p.fecha_captura,
               COUNT(DISTINCT u.up_id) AS total_ups, COUNT(DISTINCT c.cycle_id) AS total_ciclos
        FROM producer p
-       LEFT JOIN up u ON u.producer_id = p.producer_id
+       LEFT JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
        WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}
        GROUP BY p.producer_id

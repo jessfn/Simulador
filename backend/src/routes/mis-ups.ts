@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { parcelaDeMaiz } from '../utils/programas';
 
 const router = Router();
 
@@ -43,7 +44,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
         ) AS ultimo_ciclo
        FROM up u
        JOIN producer p ON p.producer_id = u.producer_id
-       WHERE u.producer_id = ANY($1)
+       WHERE u.producer_id = ANY($1) AND ${parcelaDeMaiz('u')}
        ORDER BY u.created_at DESC`,
       [producerIds]
     );

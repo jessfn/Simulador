@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
-import { soloMaiz } from '../utils/programas';
+import { soloMaiz, parcelaDeMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -54,7 +54,7 @@ router.get('/productores', authMiddleware, async (req: AuthRequest, res: Respons
           ) ORDER BY u.up_id
         ) FILTER (WHERE u.up_id IS NOT NULL) as ups
       FROM producer p
-      LEFT JOIN up u ON u.producer_id = p.producer_id
+      LEFT JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
       ${whereClause}
       GROUP BY p.producer_id
       ORDER BY p.apellido_paterno, p.nombres

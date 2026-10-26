@@ -323,7 +323,8 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
       await client.query(
         `UPDATE up SET numero_up = $1, localidad = $2, documento_propiedad = $3, documento_propiedad_otro = $4,
                        state_id = COALESCE(state_id, $5), municipality_id = COALESCE(municipality_id, $6),
-                       motivo_diferencia_superficie = $7
+                       motivo_diferencia_superficie = $7,
+                       programa_origen = '${PROGRAMA_FRIJOL}'   -- T11 §11.2: solo las parcelas NUEVAS que crea frijol nacen con origen frijol
          WHERE up_id = $8`,
         [num(pa.numero_up), String(pa.localidad).trim(), pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null,
          pa.state_id, pa.municipality_id, pa.motivo_diferencia_superficie ? String(pa.motivo_diferencia_superficie).trim() : null, upId]

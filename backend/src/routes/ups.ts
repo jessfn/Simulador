@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import { parcelaDeMaiz } from '../utils/programas';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
  
@@ -172,7 +173,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
               u.created_at
        FROM up u
        JOIN producer p ON u.producer_id = p.producer_id
-       WHERE p.curp = $1
+       WHERE p.curp = $1 AND ${parcelaDeMaiz('u')}
        ORDER BY u.created_at DESC`,
       [String(curp).toUpperCase().trim()]
     );

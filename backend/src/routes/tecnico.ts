@@ -10,7 +10,7 @@ import { consultarCURPEnRENAPO } from '../services/renapoService';
 import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
 import { insertarUP } from '../utils/ups';
 import { requierePrograma } from '../middleware/programa';
-import { perfilProgramasDeTecnico, soloMaiz, tecnicoDeMaiz, PROGRAMA_MAIZ } from '../utils/programas';
+import { perfilProgramasDeTecnico, soloMaiz, tecnicoDeMaiz, parcelaDeMaiz, PROGRAMA_MAIZ } from '../utils/programas';
 import {
   EncuestaError, determinarContextoTerritorial, guardarEncuestaEnTransaccion,
   obtenerRespuestaProductor, obtenerEdicionVigente,
@@ -501,7 +501,7 @@ router.get('/mis-registros', authMiddleware, requiereCapturista, requiereProgram
                 WHERE er.producer_id = p.producer_id AND er.edicion_id = $2
               ) AS encuesta_respondida
        FROM producer p
-       LEFT JOIN up u ON u.producer_id = p.producer_id
+       LEFT JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
        WHERE ${tecnicoDeMaiz('p', '$1')}
        GROUP BY p.producer_id
@@ -600,7 +600,7 @@ router.get('/productor/:producer_id/ups', authMiddleware, requiereCapturista, re
               CASE WHEN geom IS NOT NULL THEN ST_AsGeoJSON(geom)::json ELSE NULL END AS geom_geojson,
               created_at
        FROM up
-       WHERE producer_id = $1
+       WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}
        ORDER BY created_at DESC`,
       [producer_id]
     );
@@ -724,7 +724,7 @@ router.get('/perfil', authMiddleware, requiereCapturista, async (req: AuthReques
               COUNT(DISTINCT u.up_id) AS total_ups,
               COUNT(DISTINCT c.cycle_id) AS total_ciclos
        FROM producer p
-       LEFT JOIN up u ON u.producer_id = p.producer_id
+       LEFT JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
        WHERE ${tecnicoDeMaiz('p', '$1')}`,
       [tecnicoId]

@@ -14,9 +14,19 @@ export function soloMaiz(aliasProducer: string): string {
   return `EXISTS (SELECT 1 FROM producer_programa _pm WHERE _pm.producer_id = ${aliasProducer}.producer_id AND _pm.programa = '${PROGRAMA_MAIZ}')`;
 }
 
-/** Igual que soloMaiz, pero a partir de una parcela (alias de la tabla up). */
+/**
+ * T11 §11.3 · LA regla de "esta parcela cuenta en maíz": su origen es maíz O tiene un ciclo de maíz.
+ * Una parcela que solo registró frijol (programa_origen = 'frijol_afb', sin ciclo de maíz) no cuenta: sus hectáreas y su cuenta no se suman a las cifras de maíz.
+ * Si luego se le crea un ciclo de maíz, pasa a contar sola. Úsala con el alias de la tabla up:  WHERE ... AND ${parcelaDeMaiz('u')}
+ * (No mira al productor: para eso está soloMaiz / soloMaizDeUp.)
+ */
+export function parcelaDeMaiz(aliasUp: string): string {
+  return `(${aliasUp}.programa_origen = '${PROGRAMA_MAIZ}' OR EXISTS (SELECT 1 FROM cycle _cm WHERE _cm.up_id = ${aliasUp}.up_id AND _cm.crop = 'maiz'))`;
+}
+
+/** Parcelas de SIMAC Maíz: el productor está en maíz Y la parcela cuenta en maíz (ver parcelaDeMaiz). Alias de la tabla up. */
 export function soloMaizDeUp(aliasUp: string): string {
-  return `EXISTS (SELECT 1 FROM producer_programa _pm WHERE _pm.producer_id = ${aliasUp}.producer_id AND _pm.programa = '${PROGRAMA_MAIZ}')`;
+  return `(EXISTS (SELECT 1 FROM producer_programa _pm WHERE _pm.producer_id = ${aliasUp}.producer_id AND _pm.programa = '${PROGRAMA_MAIZ}') AND ${parcelaDeMaiz(aliasUp)})`;
 }
 
 /**

@@ -21,6 +21,7 @@ import {
   obtenerCatalogoPublico, obtenerRespuestaProductor, buscarPorAlias,
 } from '../services/encuestaService';
 import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
+import { parcelaDeMaiz } from '../utils/programas';
 
 // Bloquea las APIs "operativas" del rol productor (dashboard, precios,
 // solicitudes de apoyo, encuesta de insumos) mientras falte ubicación o
@@ -803,7 +804,7 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
     const upRes = await pool.query(
       `SELECT state_name, municipality_name, location_confirmed, centroid_source,
               ST_Y(centroid::geometry) AS lat, ST_X(centroid::geometry) AS lng
-       FROM up WHERE producer_id = $1 LIMIT 1`,
+       FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`,
       [producerId]
     );
     const up = upRes.rows[0];
@@ -814,7 +815,7 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
               ST_Y(centroid::geometry) AS lat, ST_X(centroid::geometry) AS lng,
               CASE WHEN geom IS NOT NULL THEN ST_AsGeoJSON(geom)::json ELSE NULL END AS poligono,
               geom IS NOT NULL AS tiene_poligono
-       FROM up WHERE producer_id = $1 AND centroid IS NOT NULL`,
+       FROM up WHERE producer_id = $1 AND centroid IS NOT NULL AND ${parcelaDeMaiz('up')}`,
       [producerId]
     );
     const parcelas = parcelasRes.rows;
@@ -956,7 +957,7 @@ router.get('/precios', authMiddleware, requiereRegistroCompleto, async (req: Aut
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
     const upData = await pool.query(
-      `SELECT state_name FROM up WHERE producer_id = $1 LIMIT 1`, [producerId]
+      `SELECT state_name FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]
     );
     const estado = upData.rows[0]?.state_name;
 
@@ -1076,7 +1077,7 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
     // parameter $1" (el error que reportaron los productores).
     const upRes = await pool.query(
       `SELECT up_id FROM up
-       WHERE producer_id = $2 AND ($1::bigint IS NULL OR up_id = $1)
+       WHERE producer_id = $2 AND ($1::bigint IS NULL OR up_id = $1) AND ${parcelaDeMaiz('up')}
        ORDER BY created_at ASC
        LIMIT 1`,
       [up_id ?? null, producerId]
@@ -1219,7 +1220,7 @@ router.get('/mi-up', authMiddleware, async (req: AuthRequest, res: Response): Pr
                 area_ha_calc, area_ha_real, coincide_area,
                 ST_AsGeoJSON(geom)::json AS geom_geojson,
                 NULL AS geom_coordenadas
-         FROM up WHERE producer_id = $1
+         FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}
          LIMIT 1`,
         [producerId]
       );
@@ -1235,7 +1236,7 @@ router.get('/mi-up', authMiddleware, async (req: AuthRequest, res: Response): Pr
           `SELECT up_id, up_name, state_name, municipality_name,
                   location_confirmed, centroid_source,
                   area_ha_calc, area_ha_real, coincide_area
-           FROM up WHERE producer_id = $1 LIMIT 1`,
+           FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`,
           [producerId]
         );
         if (r2.rows.length > 0) {
@@ -1407,7 +1408,7 @@ router.patch('/perfil/ubicacion', authMiddleware, async (req: AuthRequest, res: 
            domicilio_actualizado_por = 'productor'
        WHERE up_id = (
          SELECT up_id FROM up
-         WHERE producer_id = $3
+         WHERE producer_id = $3 AND ${parcelaDeMaiz('up')}
          ORDER BY created_at DESC
          LIMIT 1
        )
@@ -1444,7 +1445,7 @@ router.get('/perfil', authMiddleware, async (req: AuthRequest, res: Response): P
               ST_Y(u.centroid::geometry) AS lat,
               ST_X(u.centroid::geometry) AS lng
        FROM producer p
-       LEFT JOIN up u ON u.producer_id = p.producer_id
+       LEFT JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
        WHERE p.producer_id = $1`,
       [producerId]
     );
@@ -1462,8 +1463,8 @@ router.get('/mi-ciclo', authMiddleware, async (req: AuthRequest, res: Response):
     const producerId = await getProducerId(userId);
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
-    // Obtener up_id
-    const upRes = await pool.query('SELECT up_id FROM up WHERE producer_id = $1 LIMIT 1', [producerId]);
+    // Obtener up_id (la primera parcela que cuenta en maíz: una parcela que solo registró frijol no se usa aquí)
+    const upRes = await pool.query(`SELECT up_id FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]);
     if (!upRes.rows[0]) { res.json(null); return; }
     const upId = upRes.rows[0].up_id;
 
@@ -1499,7 +1500,7 @@ router.post('/ciclo', authMiddleware, async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const upRes = await pool.query('SELECT up_id FROM up WHERE producer_id = $1 LIMIT 1', [producerId]);
+    const upRes = await pool.query(`SELECT up_id FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]);
     if (!upRes.rows[0]) { res.status(404).json({ error: 'UP no encontrada' }); return; }
     const upId = upRes.rows[0].up_id;
 
@@ -1744,7 +1745,7 @@ router.get('/mis-ups-con-ciclos', authMiddleware, async (req: AuthRequest, res: 
        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz' AND COALESCE(c.estado_ciclo, 'activo') = 'activo'
        LEFT JOIN cycle_crop cr ON cr.cycle_id = c.cycle_id
        LEFT JOIN cat_crop_variety cv ON cv.code = cr.variety_id AND cv.is_active = TRUE
-       WHERE p.usuario_id = $1
+       WHERE p.usuario_id = $1 AND ${parcelaDeMaiz('u')}
        GROUP BY u.up_id, u.up_name, u.municipality_name, u.state_name,
                 u.area_ha_calc, u.area_ha_real, u.location_confirmed, u.created_at
        ORDER BY u.created_at ASC`,
