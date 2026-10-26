@@ -80,7 +80,7 @@ ups_a = ups_de(A)
 ok('preparación: productor de maíz con 2 parcelas', len(ups_a) == 2, str(ups_a))
 ok('las parcelas que crea maíz nacen con origen maíz', all(val(f"select programa_origen from up where up_id={u}") == 'simac_maiz' for u in ups_a))
 st, ra = frijol_sobre_maiz(curp_a)             # frijol en una parcela NUEVA del mismo productor
-UP_F = ra.get('up_id')
+UP_F = int(ra.get('up_id') or 0)
 ok('el técnico de frijol le registra una parcela nueva de frijol', st == 201 and UP_F, f'{st} {(ra or {}).get("error", "")}')
 ok('la parcela nueva que crea frijol nace con origen frijol_afb', val(f"select programa_origen from up where up_id={UP_F}") == 'frijol_afb')
 ok('las parcelas de maíz del mismo productor NO cambian de origen', all(val(f"select programa_origen from up where up_id={u}") == 'simac_maiz' for u in ups_a))
@@ -97,7 +97,7 @@ ok('registrar frijol en una parcela existente NO le cambia el origen', val(f"sel
 ap_c = 'OrigenC' + suf
 curp_c = curp_nueva('REN'); stc, cc_ = consultar(t1, curp_c)
 st, rc = registrar(t1, cuerpo(curp_c, token=cc_.get('verificacion_token')))
-UP_C = rc.get('up_id'); C = rc.get('producer_id')
+UP_C = int(rc.get('up_id') or 0); C = rc.get('producer_id')
 http(f'/frijol/productores/{C}', t1, 'PATCH', {'productor': {'apellido_paterno': ap_c}})
 ok('productor solo de frijol: su parcela nace con origen frijol', st == 201 and val(f"select programa_origen from up where up_id={UP_C}") == 'frijol_afb')
 ok('el productor solo de frijol NO está en el programa de maíz', val(f"select count(*) from producer_programa where producer_id={C} and programa='simac_maiz'") == '0')
