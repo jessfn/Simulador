@@ -244,7 +244,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
         if ((antes ?? null) !== (despues ?? null) && String(antes ?? '') !== String(despues ?? '')) {
           vals.push(despues ?? null); sets.push(`${columna} = $${vals.length}`);
           // T09 §9.5: la exportación de maíz lee producer.correo_electronico y las demás pantallas producer.correo; se escriben iguales.
-          if (columna === 'correo') sets.push(`correo_electronico = $${vals.length}`);
+          if (columna === 'correo') sets.push(`correo_electronico = $${vals.length}::text`);
           await client.query(
             `INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)`,
             [producerId, campo, antes == null ? null : String(antes), despues == null ? null : String(despues), tecnicoId, PROGRAMA_FRIJOL]

@@ -379,7 +379,7 @@ router.patch('/productores/:producer_id', async (req: AuthRequest, res: Response
       const antes = col === 'fecha_nacimiento' ? actual.fn : actual[col];
       if (String(antes ?? '') === String(nuevo ?? '')) continue;
       // T09 §9.5: el correo se escribe en las dos columnas (producer.correo y producer.correo_electronico) para que maíz lo vea igual en todas partes
-      await client.query(`UPDATE producer SET ${col} = $1${col === 'correo' ? ', correo_electronico = $1' : ''} WHERE producer_id = $2`, [nuevo, id]);
+      await client.query(`UPDATE producer SET ${col} = ${col === 'correo' ? '$1::text' : '$1'}${col === 'correo' ? ', correo_electronico = $1::text' : ''} WHERE producer_id = $2`, [nuevo, id]);
       await client.query(
         'INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)',
         [id, campo, antes == null ? null : String(antes), nuevo == null ? null : String(nuevo), req.user!.userId, PROGRAMA_FRIJOL]
