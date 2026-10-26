@@ -28,7 +28,8 @@ export interface ResultadoSuperficie {
 
 const TOLERANCIA_HA = 0.01;
 const NOMBRE: Record<Cultivo, string> = { maiz: 'maíz', frijol: 'frijol' };
-const fmt = (n: number) => (Math.round(n * 100) / 100).toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+// Punto decimal (como se escribe en México), sin depender de los datos de idioma del servidor.
+const fmt = (n: number) => { const t = (Math.round(n * 100) / 100).toFixed(2); return t.endsWith('0') ? t.slice(0, -1) : t; };
 
 /**
  * Calcula, con los cultivos de ciclos NO cancelados de esa parcela, ese año y ese tipo de ciclo (PV con PV, OI con OI), la suma de lo sembrado

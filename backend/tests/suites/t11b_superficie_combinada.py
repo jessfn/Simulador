@@ -40,7 +40,7 @@ curp2, up2, cid2, _ = parcela_con_maiz(2.0)
 st, r = frijol_en(curp2, up2, 1.5)
 ok('2.0 maíz + 1.5 frijol = 3.5 > 3.0: se rechaza con 409', st == 409 and (r or {}).get('codigo') == 'SUPERFICIE_COMBINADA', f'{st} {r}')
 msg = (r or {}).get('error', '')
-ok('el mensaje trae los números (parcela, lo que ya tiene, lo que registra, total)', all(x in msg for x in ['3,0', '2,0', '1,5', '3,5']), msg)
+ok('el mensaje trae los números (parcela, lo que ya tiene, lo que registra, total)', all(x in msg for x in ['3.0', '2.0', '1.5', '3.5']), msg)
 ok('indica el campo y las cifras para pintarlo en el paso del cultivo', r.get('campo') == 'cultivo.area_sown_ha' and r.get('suma') == 3.5 and r.get('superficie_parcela') == 3.0, str(r))
 ok('no se creó ningún ciclo de frijol en la parcela rechazada', val(f"select count(*) from cycle where up_id={up2} and crop='frijol'") == '0')
 
