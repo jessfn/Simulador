@@ -259,10 +259,10 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
         `INSERT INTO producer
            (curp, nombres, apellido_paterno, apellido_materno, phone, correo, correo_electronico, sexo, fecha_nacimiento,
             state_id, municipality_id, localidad, usuario_capturista_id, estatus_registro, fecha_captura, fuente_registro)
-         VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10,$11,$12,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
          RETURNING producer_id`,
         [curp, String(p.nombres).trim(), String(p.apellido_paterno).trim(), p.apellido_materno ? String(p.apellido_materno).trim() : null,
-         telefono, correo, p.sexo, String(p.fecha_nacimiento).slice(0, 10), pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
+         telefono, correo, correo, p.sexo, String(p.fecha_nacimiento).slice(0, 10), pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
       );
       producerId = Number(r.rows[0].producer_id);
     }
