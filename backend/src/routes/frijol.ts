@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { authMiddleware, requiereCapturista, AuthRequest } from '../middleware/auth';
 import { requierePrograma } from '../middleware/programa';
 import { PROGRAMA_FRIJOL } from '../utils/programas';
+import { validarSuperficieCombinada } from '../utils/superficie';
 import { verificarIdentidad } from '../services/identidad';
 import { inferirCiclo, cicloFinal, Regimen } from '../services/cicloSIAP';
 import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo, validarCatalogosCultivo, validarCatalogosProductor, errorFechaNacimiento } from '../services/frijolRegistro';
@@ -485,6 +486,14 @@ router.patch('/cultivos/:cycle_crop_id', async (req: AuthRequest, res: Response)
     const nuevoCiclo = cicloFinal(cu.fecha_siembra, regimen, req.body?.cultivo?.cycle_type || d.cycle_type);
     if (!nuevoCiclo.ok) { res.status(400).json({ error: nuevoCiclo.error, campo: 'cultivo.cycle_type' }); return; }
     const c = nuevoCiclo.ciclo;
+
+    // T11-B: suma con el maíz de la misma parcela (sin contar este mismo ciclo dos veces)
+    const comb = await validarSuperficieCombinada(client, {
+      upId: d.up_id, cycleYear: c.cycle_year, cycleType: c.cycle_type,
+      cultivo: 'frijol', haNueva: Number(cu.area_sown_ha), asociadoNuevo: cu.tipo_siembra === 'asociada',
+      excluirCycleId: d.cycle_id, accion: 'corrigiendo',
+    });
+    if (!comb.ok) { res.status(409).json({ error: comb.mensaje, campo: 'cultivo.area_sown_ha', ...comb.detalle }); return; }
 
     await client.query('BEGIN');
     if (c.cycle_year !== d.cycle_year || c.cycle_type !== d.cycle_type) {

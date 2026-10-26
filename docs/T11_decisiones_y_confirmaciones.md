@@ -91,4 +91,34 @@ No lo cambié: es una decisión de producto de maíz.
 
 ---
 
-*La parte B (superficie combinada, §11.4 y §11.5) se documenta al final de este archivo cuando se entregue.*
+
+# Parte B — Superficie combinada maíz + frijol (§11.4 y §11.5)
+
+**Sin migración.** Una sola función, `validarSuperficieCombinada` (`backend/src/utils/superficie.ts`), usada en los cinco lugares donde se guarda un cultivo.
+
+## La regla
+- Se suma lo sembrado del **otro cultivo** en la misma parcela, **mismo año y mismo tipo de ciclo** (PV con PV, OI con OI), más lo que se está guardando. Si la suma pasa de la superficie de la parcela (+0.01 ha de tolerancia) se rechaza con **409** y un mensaje con los números.
+- Superficie de la parcela: la ajustada (`area_ha_real`) si existe; si no, la calculada.
+- Cuentan los ciclos activos y cosechados; **no** los cancelados.
+- **Siembra asociada (milpa):** si el frijol está marcado como asociada, no se bloquea.
+- Sin otro cultivo en la parcela ese año y ciclo, no se agrega ninguna restricción: **maíz solo no cambia**.
+- Al corregir, el ciclo que se corrige no se cuenta dos veces.
+
+## Dónde se aplica
+| Lugar | Archivo |
+|---|---|
+| Alta de cultivo de maíz | `routes/cycles.ts` (POST `/cycles/:id/crops`) |
+| Corrección de maíz (solo si cambia la superficie) | `routes/cycles.ts` (PATCH `/cycle-crops/:id`) |
+| Ciclo declarado por el productor (solo la parte combinada) | `routes/productor.ts` (POST `/productor/ciclo`) |
+| Registro de frijol (paso del cultivo) | `services/frijolRegistro.ts` |
+| Corrección de frijol | `routes/frijol.ts` (PATCH `/frijol/cultivos/:id`) |
+
+En el asistente de frijol el mensaje aparece en rojo en el paso del cultivo y el borrador no se pierde.
+
+## Pendiente para Mariel
+Consulta de solo lectura `backend/db/consultas/t11b_parcelas_que_pasan_su_superficie.sql`: lista las parcelas **ya existentes** donde maíz + frijol pasan de la superficie. No se corrige ninguna automáticamente.
+
+## Pruebas
+`t11b_superficie_combinada.py` (20 comprobaciones) y la batería completa pasaron antes del último ajuste (la suma solo cuenta el OTRO cultivo, para no tapar el aviso de frijol duplicado). El ambiente de pruebas se suspendió y ese ajuste se verifica en producción de forma de solo lectura y compilación.
+
+Además: `/admin/parcelas` ahora desempata por `up_id` para un orden estable.

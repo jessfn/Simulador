@@ -176,6 +176,7 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
         {paso === 3 && <Paso3Complementaria b={b} actualizar={actualizar} catalogos={catalogos} errores={e} />}
         {paso === 4 && <Paso4Parcela b={b} actualizar={actualizar} catalogos={catalogos} estados={estados} zona={zona} errores={e} errorServidor={errorMapa} />}
         {paso === 5 && <Paso5Semillas b={b} actualizar={actualizar} errores={e} />}
+        {paso === 6 && errorEnvio && <Aviso tipo="rojo">{errorEnvio}</Aviso>}
         {paso === 6 && <FormularioCultivo b={b} actualizar={actualizar} catalogos={catalogos} errores={e} avisos={avisos} superficie={superficie} />}
         {paso === 7 && <Paso7Revisar b={b} actualizar={actualizar} catalogos={catalogos} estados={estados} nombreMunicipio={nombreMunicipio} irAPaso={irA} errorEnvio={errorEnvio} enLinea={enLinea} />}
         {paso === 7 && mostrar && errores.confirmacion && <p role="alert" className="text-[13px] text-red-600 font-medium">{errores.confirmacion}</p>}
