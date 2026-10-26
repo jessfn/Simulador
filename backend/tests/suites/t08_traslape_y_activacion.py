@@ -1,0 +1,64 @@
+# -*- coding: utf-8 -*-
+"""T08 · Traslape con otro productor, activación de cuenta por el propio productor y "maíz no cambió"."""
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+from lib import *
+t1 = login(EM('frijol1')); t2 = login(EM('frijol2')); tm = login(EM('maiz1'))
+uid1 = val(f"select id from usuarios where email='{EM('frijol1')}'")
+
+
+print('--- Caso 8. Traslape con otro productor')
+cA = curp_nueva('REN'); stA, ca = consultar(t1, cA)
+bA = cuerpo(cA, token=ca.get('verificacion_token'), area=3.0)
+stA, rA = registrar(t1, bA)
+ok('productor A registrado con su parcela', stA == 201, f'{stA} {(rA or {}).get("error", "")}')
+poliA = bA['parcela']['poligono']
+cB = curp_nueva('REN'); stB, cb = consultar(t2, cB)
+for frac, esperado, nombre in [(0.0, 409, 'el mismo poligono'), (0.5, 409, 'se encima 50 %'), (0.85, 409, 'se encima 15 % (mas del 10 %)')]:
+    bB = cuerpo(cB, token=cb.get('verificacion_token')); bB['parcela']['poligono'] = shift_poligono(poliA, frac)
+    st, r = registrar(t2, bB)
+    ok(f'otro productor, {nombre} -> rechazado con mensaje', st == 409 and (r or {}).get('codigo') in ('UP_OVERLAP_CROSS', 'UP_OVERLAP') and (r or {}).get('campo') == 'parcela.poligono', f'{st} {(r or {}).get("codigo")} {(r or {}).get("error", "")[:60]}')
+ok('el rechazo no creo productor ni parcela', val(f"select count(*) from producer where curp='{cB}'") == '0')
+bB = cuerpo(cB, token=cb.get('verificacion_token')); bB['parcela']['poligono'] = shift_poligono(poliA, 0.97)
+st, r = registrar(t2, bB)
+ok('traslape menor al 10 % (3 %) si se acepta', st == 201, f'{st} {(r or {}).get("codigo")} {(r or {}).get("error", "")[:60]}')
+
+print('--- Caso 11. El productor que llego por frijol se activa despues en maiz POR SI MISMO')
+ok('A no tiene cuenta (llego por el tecnico de frijol)', val(f"select coalesce(usuario_id::text,'sin cuenta') from producer where curp='{cA}'") == 'sin cuenta')
+st, bc = http('/productor/auth/buscar-curp', None, 'POST', {'curp': cA})
+ok('buscar-curp lo encuentra y no tiene cuenta', st == 200 and bc.get('encontrado') and not bc.get('ya_tiene_cuenta'), str(bc))
+st, act = http('/productor/auth/activar-cuenta', None, 'POST', {'producer_id': bc['producer_id'], 'pin': '4821'})
+ok('activa su cuenta con NIP sin bloqueo', st == 200 and act.get('token'), f'{st} {(act or {}).get("error", "")}')
+st, lg = http('/productor/auth/login-pin', None, 'POST', {'curp': cA, 'pin': '4821'})
+ok('entra con CURP + NIP', st == 200 and lg.get('token'), str(st))
+tp = lg['token']
+st, ups = http('/productor/mis-ups-con-ciclos', tp)
+ok('ve su parcela', st == 200 and len(ups if isinstance(ups, list) else ups.get('ups', [])) >= 1, str(st))
+st, mc = http('/productor/mi-ciclo', tp)
+ok('su ciclo de MAIZ sigue vacio (el frijol no se cuela en la app de maiz)', st == 200 and mc is None, str(mc))
+st, cy = http('/productor/ciclo', tp, 'POST', {'cycle_year': 2026, 'cycle_type': 'PV', 'hectareas_sembradas': 1.0, 'fecha_siembra': '2026-07-01', 'variedad_nombre': 'SB-101'})
+ok('registra su ciclo de maiz en la misma parcela', st == 201, f'{st} {(cy or {}).get("error", "")}')
+ok('queda con su programa de frijol intacto y el de maiz asignado', val(f"select count(*) from producer_programa pp join producer p using(producer_id) where p.curp='{cA}' and programa='frijol_afb'") == '1')
+st, d = http(f'/frijol/productores/{bc["producer_id"]}', t1)
+ok('el tecnico de frijol sigue viendo su registro', st == 200 and d.get('cultivos'), str(st))
+
+print('--- 8.1 Maiz: un productor de prueba entra con CURP + NIP, ve sus parcelas y ciclos y registra un ciclo nuevo')
+curp_m = curp_nueva('REN')
+st, rmz = http('/tecnico/registro-alterno', tm, 'POST', {'curp': curp_m, 'nombres': 'Maicero', 'apellido_paterno': 'Solo Maiz', 'apellido_materno': 'Prueba', 'telefono': '6181111111',
+                                                      'state_id': '10', 'municipality_id': '10005', 'sexo': 'H', 'fecha_nac': '1985-03-03', 'estado_up': 'Durango', 'municipio_up': 'Durango', 'nombre_up': 'Parcela solo maiz'})
+ok('tecnico de maiz registra un productor nuevo de principio a fin', st in (200, 201) and rmz.get('producer_id') and rmz.get('up_id'), f'{st} {(rmz or {}).get("error", "")}')
+pm = rmz.get('producer_id')
+ok('queda en el programa de maiz con su tecnico', val(f"select count(*) from producer_programa where producer_id={pm} and programa='simac_maiz' and usuario_capturista_id is not null") == '1')
+ok('NO queda en frijol', val(f"select count(*) from producer_programa where producer_id={pm} and programa='frijol_afb'") == '0')
+st, act = http('/productor/auth/activar-cuenta', None, 'POST', {'producer_id': pm, 'pin': '7391'})
+st, lg = http('/productor/auth/login-pin', None, 'POST', {'curp': curp_m, 'pin': '7391'})
+ok('el productor de maiz entra con CURP + NIP', st == 200 and lg.get('token'))
+st, cy = http('/productor/ciclo', lg['token'], 'POST', {'cycle_year': 2026, 'cycle_type': 'PV', 'hectareas_sembradas': 2.0, 'fecha_siembra': '2026-07-05', 'variedad_nombre': 'SB-101'})
+ok('registra su ciclo nuevo de maiz', st == 201, f'{st} {(cy or {}).get("error", "")}')
+st, cy2 = http('/productor/ciclo', lg['token'], 'POST', {'cycle_year': 2026, 'cycle_type': 'PV', 'hectareas_sembradas': 2.0})
+ok('el mismo ciclo de maiz dos veces sigue rechazado (409)', st == 409)
+st, mc = http('/productor/mi-ciclo', lg['token'])
+ok('ve su ciclo de maiz', st == 200 and mc and mc.get('cycle_type') == 'PV')
+st, d = http('/frijol/consultar-curp', t1, 'POST', {'curp': curp_m})
+ok('el tecnico de frijol ve que es de SIMAC (EN_SIMAC) y su maiz no se toca', st == 200 and d.get('codigo') == 'EN_SIMAC')
+
+print('\nRESUMEN T08 (casos 8, 11 y 8.1):', sum(res), '/', len(res))

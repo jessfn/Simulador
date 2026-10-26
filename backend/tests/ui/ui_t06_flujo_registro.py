@@ -1,0 +1,135 @@
+# -*- coding: utf-8 -*-
+"""T06 · Flujo completo del registro de frijol en pantalla (celular): 7 pasos, mapa, borrador, sin señal, doble toque, mis registros y corrección."""
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+from uilib import *
+
+with sync_playwright() as p:
+    br = p.chromium.launch()
+    ctx = br.new_context(viewport={'width': 390, 'height': 844}, service_workers='block', permissions=['geolocation'],
+                         geolocation={'latitude': 24.5, 'longitude': -105.0, 'accuracy': 8}, accept_downloads=True)
+    pg = ctx.new_page(); errs = []
+    pg.on('pageerror', lambda e: errs.append(str(e)))
+    pg.on('console', lambda m: print('CONSOLE', m.type, m.text[:160]) if m.type == 'error' else None)
+    pg.on('requestfailed', lambda r: print('REQFAIL', r.url[-60:], r.failure))
+    entrar(pg)
+    ok('entra al tablero de frijol', pg.url.endswith('/frijol/tecnico'), pg.url)
+    shot(pg, 'tablero')
+
+    # ---------------- Registro completo (clics en el mapa) ----------------
+    pg.get_by_role('button', name='Nuevo registro').first.click(); pg.wait_for_timeout(1200)
+    ok('paso 1 de 7 visible', pg.get_by_text('Paso 1 de 7').count() == 1)
+    curp = curp_nueva('REN')
+    ok('paso 1: CURP valida -> Persona valida en RENAPO', paso1(pg, curp))
+    shot(pg, 'paso1')
+    pg.get_by_role('button', name='Continuar').click(); pg.wait_for_timeout(900)
+    ok('paso 2 de 7', pg.get_by_text('Paso 2 de 7').count() == 1)
+    paso2(pg); shot(pg, 'paso2')
+    ok('paso 3 de 7', pg.get_by_text('Paso 3 de 7').count() == 1)
+    pg.get_by_role('button', name='Siguiente').click(); pg.wait_for_timeout(500)
+    ok('paso 3: exige responder lo obligatorio', pg.get_by_text('Responde si participa en otros programas').count() == 1)
+    paso3(pg); shot(pg, 'paso3')
+    ok('paso 4 de 7', pg.get_by_text('Paso 4 de 7').count() == 1)
+    pg.get_by_role('button', name='Siguiente').click(); pg.wait_for_timeout(500)
+    ok('paso 4: sin parcela no deja avanzar', pg.get_by_text('Elige una parcela o agrega una nueva').count() >= 0 and pg.get_by_text('Paso 4 de 7').count() == 1)
+    ok('paso 4: parcela nueva con poligono dibujado en el mapa', paso4_nueva(pg))
+    shot(pg, 'paso4')
+    ok('paso 4: muestra la superficie calculada', pg.get_by_text('Superficie calculada').count() == 1)
+    pg.get_by_role('button', name='Siguiente').click(); pg.wait_for_timeout(700)
+    ok('paso 5 de 7', pg.get_by_text('Paso 5 de 7').count() == 1)
+    paso5(pg); shot(pg, 'paso5')
+    ok('paso 6 de 7', pg.get_by_text('Paso 6 de 7').count() == 1)
+    ciclo_ok = paso6(pg); shot(pg, 'paso6')
+    ok('paso 6: ciclo PV 2026 mostrado al elegir la fecha', ciclo_ok)
+    ok('paso 7 de 7', pg.get_by_text('Paso 7 de 7').count() == 1)
+    shot(pg, 'paso7')
+    pg.get_by_role('button', name='Enviar registro').click(); pg.wait_for_timeout(600)
+    ok('paso 7: exige confirmar que la informacion es del productor', pg.get_by_text('Confirma que la información fue proporcionada por el productor').count() >= 1 and pg.get_by_text('Registro enviado').count() == 0)
+    pg.get_by_role('checkbox', name=re.compile('Confirmo que la información')).click()
+    # doble toque rapido
+    boton = pg.get_by_role('button', name='Enviar registro')
+    boton.dblclick(); pg.wait_for_timeout(4000)
+    ok('registro enviado (resultado F8)', pg.get_by_text('Registro enviado').count() >= 1, pg.url)
+    id_parcela = pg.locator('[data-testid=id-parcela]').inner_text() if pg.locator('[data-testid=id-parcela]').count() else ''
+    ok('muestra el ID de parcela asignado', id_parcela.isdigit(), id_parcela)
+    shot(pg, 'resultado')
+    n = val(f"select count(*) from cycle_crop cc join cycle c using(cycle_id) join up u on u.up_id=c.up_id join producer p on p.producer_id=u.producer_id where p.curp='{curp}'")
+    ok('doble toque en Enviar: un solo registro en la base', n == '1', n)
+    ok('no se crea cuenta ni PIN para el productor', val(f"select coalesce(usuario_id::text,'sin cuenta') from producer where curp='{curp}'") == 'sin cuenta')
+    with pg.expect_download(timeout=20000) as d:
+        pg.get_by_role('button', name='Descargar acuse').click()
+    ruta = d.value.path()
+    pdf = open(ruta, 'rb').read(8)
+    ok('descarga el acuse en PDF', pdf.startswith(b'%PDF'), str(len(open(ruta, 'rb').read())) + ' bytes')
+
+    # ---------------- Tablero: contadores y sin borradores ----------------
+    pg.get_by_role('button', name='Ir al inicio').click(); pg.wait_for_timeout(1800)
+    ok('tras enviar no queda borrador', pg.get_by_text('sin enviar').count() == 0)
+
+    # ---------------- Borrador: cerrar a medias y continuar ----------------
+    pg.get_by_role('button', name='Nuevo registro').first.click(); pg.wait_for_timeout(1000)
+    curp2 = curp_nueva('REN'); paso1(pg, curp2); pg.get_by_role('button', name='Continuar').click(); pg.wait_for_timeout(700)
+    paso2(pg, vacio_primero=False)
+    paso3(pg)
+    pg.get_by_role('button', name='Agregar la parcela').click(); pg.wait_for_timeout(400)
+    pg.locator('input').nth(0).fill('Parcela a medias')
+    abrir_mapa_y_dibujar(pg, 23.0 + random.uniform(0, 1.5), -106.5 + random.uniform(0, 1.5), modo='clics')
+    pg.get_by_role('button', name='Cerrar el mapa').click(); pg.wait_for_timeout(500)
+    pg.wait_for_timeout(600)
+    pg.goto(WEB + '/frijol/tecnico'); pg.wait_for_timeout(1800)
+    ok('tablero avisa "Tienes 1 registro sin enviar"', pg.get_by_text('Tienes 1 registro sin enviar').count() == 1)
+    shot(pg, 'tablero_borrador')
+    pg.get_by_role('button', name='Continuar').first.click(); pg.wait_for_timeout(1500)
+    ok('continuar regresa al paso 4 con lo capturado', pg.get_by_text('Paso 4 de 7').count() == 1 and pg.locator('input').nth(0).input_value() == 'Parcela a medias')
+    pg.get_by_role('button', name='Continuar el dibujo').click(); pg.wait_for_timeout(1500)
+    ok('los puntos del mapa se conservaron (4 puntos)', pg.get_by_text('4 puntos marcados').count() == 1 or pg.get_by_text('Faltan 0 para cerrar').count() == 1)
+    pg.get_by_role('button', name='Cerrar el mapa').click(); pg.wait_for_timeout(400)
+
+    # ---------------- Sin conexion al enviar ----------------
+    pg.get_by_role('button', name='Continuar el dibujo').click(); pg.wait_for_timeout(1200)
+    ok('termina el poligono guardado', terminar_poligono(pg))
+    pg.locator('select').nth(0).select_option(label='Durango'); pg.wait_for_timeout(1200)
+    pg.locator('select').nth(1).select_option(label='Durango')
+    pg.locator('input').nth(1).fill('Ejido San Jose')
+    pg.get_by_role('button', name='Certificado parcelario').click()
+    pg.get_by_role('button', name='Temporal (lluvia)').click()
+    pg.get_by_role('button', name='Siguiente').click(); pg.wait_for_timeout(500)
+    paso5(pg); paso6(pg)
+    pg.get_by_role('checkbox', name=re.compile('Confirmo que la información')).click()
+    ctx.set_offline(True); pg.wait_for_timeout(600)
+    ok('modo avion: aparece la franja de sin conexion', pg.get_by_text('Sin conexión').count() >= 1)
+    pg.get_by_role('button', name='Enviar registro').click(); pg.wait_for_timeout(2500)
+    ok('sin senal: queda guardado y ofrece reintentar', pg.get_by_text('Tu registro quedó guardado en el teléfono').count() >= 1 and pg.get_by_role('button', name='Reintentar').count() == 1)
+    shot(pg, 'sin_conexion')
+    ctx.set_offline(False); pg.wait_for_timeout(1000)
+    pg.get_by_role('button', name='Reintentar').click()
+    try: pg.get_by_text('Registro enviado').first.wait_for(timeout=20000)
+    except Exception: print('TEXTO:', pg.inner_text('body')[:600]); shot(pg, 'reintento_falla')
+    ok('al recuperar senal el reintento lo envia', pg.get_by_text('Registro enviado').count() >= 1)
+    n2 = val(f"select count(*) from cycle_crop cc join cycle c using(cycle_id) join up u on u.up_id=c.up_id join producer p on p.producer_id=u.producer_id where p.curp='{curp2}'")
+    ok('el reintento no duplico el registro', n2 == '1', n2)
+    ok('hubo_desconexion quedo registrado', val(f"select fc.hubo_desconexion::text from frijol_cultivo fc join cycle_crop cc using(cycle_crop_id) join cycle c using(cycle_id) join up u on u.up_id=c.up_id join producer p on p.producer_id=u.producer_id where p.curp='{curp2}'") == 'true')
+
+    # ---------------- Mis registros y detalle ----------------
+    pg.goto(WEB + '/frijol/tecnico/registros'); pg.wait_for_timeout(2000)
+    ok('mis registros lista al productor recien enviado', pg.get_by_text('Ramon Garcia Soto').count() >= 1)
+    pg.get_by_placeholder('Buscar por nombre o CURP').fill(curp2[:10]); pg.wait_for_timeout(3000)
+    ok('el buscador filtra por CURP', pg.get_by_text('Ramon Garcia Soto').count() == 1)
+    shot(pg, 'registros')
+    pg.get_by_text('Ramon Garcia Soto').first.click(); pg.wait_for_timeout(1800)
+    ok('detalle del productor', pg.get_by_text('Corregir cultivo').count() >= 1 and pg.get_by_text('Frijol · PV 2026').count() >= 1)
+    shot(pg, 'detalle')
+    pg.get_by_role('button', name='Corregir cultivo').first.click(); pg.wait_for_timeout(1500)
+    campos = pg.locator('input[inputmode=decimal]')
+    campos.nth(2).fill('60')
+    pg.get_by_role('button', name='Guardar cambios').click(); pg.wait_for_timeout(2500)
+    ok('corregir cultivo guarda y regresa al detalle', pg.get_by_text('Cambios guardados').count() == 1)
+    ok('la correccion quedo en la base', val(f"select fc.densidad_kg_ha::int from frijol_cultivo fc join cycle_crop cc using(cycle_crop_id) join cycle c using(cycle_id) join up u on u.up_id=c.up_id join producer p on p.producer_id=u.producer_id where p.curp='{curp2}'") == '60')
+    ok('sin errores JS en toda la prueba', not errs, str(errs[:2]))
+    ctx.close(); br.close()
+print('\nRESUMEN FLUJO T06:', sum(res), '/', len(res))
+
+
+
+
+
+

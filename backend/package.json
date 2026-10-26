@@ -11,7 +11,12 @@
     "migrate:up": "node db/run.js up",
     "migrate:down": "node db/run.js down",
     "migrate:status": "node db/run.js status",
-    "migrate:fake-base": "node db/run.js fake-base"
+    "migrate:fake-base": "node db/run.js fake-base",
+    "test": "node tests/run.js",
+    "test:ui": "node tests/run.js --ui",
+    "test:seed": "node tests/seed.js",
+    "test:maiz:capturar": "python tests/maiz_no_cambio.py capturar",
+    "test:maiz:comparar": "python tests/maiz_no_cambio.py comparar"
   },
   "dependencies": {
     "@types/pdfkit": "^0.17.6",
