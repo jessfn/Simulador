@@ -14,7 +14,7 @@ Estado al **15 de octubre de 2026**, en el ambiente de pruebas (`simacqa`, rama 
 | T07 panel admin | Resumen, filtros, tabla, mapa, ficha, Excel, bitácora, permisos | 34 / 34 y 20 / 20 en pantalla |
 | T08 casos 8, 11 y 8.1 | Traslape, activación por sí mismo, maíz sin cambios | 23 / 23 y 5 / 5 en pantalla |
 
-Las pruebas viven fuera del repositorio (carpeta de trabajo de la sesión) porque contienen las credenciales de prueba.
+Las pruebas viven en el repositorio, en `backend/tests/`, y se corren con `npm test` desde `backend/` (pantalla: `npm run test:ui`). Usan datos ficticios y variables de entorno; ver `backend/tests/README.md`. La comparación de cifras de maíz es `npm run test:maiz:capturar` / `test:maiz:comparar`.
 
 ## 2. 8.1 · "Maíz no cambió"
 
