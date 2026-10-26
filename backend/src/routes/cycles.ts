@@ -220,9 +220,11 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
       return;
     }
 
-    const validCrops = ['maiz', 'frijol'];
-    if (!validCrops.includes(crop)) {
-      res.status(400).json({ error: 'crop debe ser maiz o frijol' });
+    // T09 §9.1 (auditoría M4): este endpoint es solo para maíz. El ON CONFLICT de más abajo permite "actualizar el cultivo del ciclo"
+    // (lo usan las pantallas de maíz) y, con un ciclo de frijol, pisaría variedad, superficie y fechas sin las validaciones de frijol.
+    // El frijol se registra y corrige únicamente por /api/frijol.
+    if (crop !== 'maiz') {
+      res.status(400).json({ error: 'Este endpoint es solo para maíz. El frijol se registra y corrige desde el módulo de frijol.' });
       return;
     }
 
