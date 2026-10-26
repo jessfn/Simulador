@@ -22,6 +22,7 @@ import {
 } from '../services/encuestaService';
 import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
 import { parcelaDeMaiz } from '../utils/programas';
+import { validarSuperficieCombinada } from '../utils/superficie';
 
 // Bloquea las APIs "operativas" del rol productor (dashboard, precios,
 // solicitudes de apoyo, encuesta de insumos) mientras falte ubicación o
@@ -1518,6 +1519,14 @@ router.post('/ciclo', authMiddleware, async (req: AuthRequest, res: Response): P
         error: `Ya tienes un ciclo ${cycle_type} ${cycle_year} activo en esta UP`,
       });
       return;
+    }
+
+    // T11-B: solo se bloquea si ya hay frijol en esta parcela ese año y tipo (maíz solo no cambia)
+    if (Number(hectareas_sembradas) > 0) {
+      const comb = await validarSuperficieCombinada(pool, {
+        upId, cycleYear: cycle_year, cycleType: cycle_type, cultivo: 'maiz', haNueva: Number(hectareas_sembradas), accion: 'declarando',
+      });
+      if (!comb.ok) { res.status(409).json({ error: comb.mensaje, ...comb.detalle }); return; }
     }
 
     const result = await pool.query(

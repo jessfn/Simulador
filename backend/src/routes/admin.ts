@@ -1390,7 +1390,7 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
         ORDER BY c.cycle_year DESC, c.cycle_id DESC LIMIT 1
       ) ciclo ON TRUE
       WHERE ${where}
-      ORDER BY u.state_name NULLS LAST, u.created_at DESC
+      ORDER BY u.state_name NULLS LAST, u.created_at DESC, u.up_id
     `, params);
 
     res.json({ parcelas: rows });

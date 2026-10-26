@@ -5,6 +5,7 @@ import { insertarUP } from '../utils/ups';
 import { cicloFinal, Regimen } from './cicloSIAP';
 import { huellaDe } from './encuestaService';
 import { PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from '../utils/programas';
+import { validarSuperficieCombinada } from '../utils/superficie';
 
 // ─── Errores ────────────────────────────────────────────────────────────────
 export class ErrorRegistro extends Error {
@@ -338,6 +339,14 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     }
     if (areaFinal > 0 && num(cu.area_sown_ha) > areaFinal + 1e-9) {
       falla('cultivo.area_sown_ha', `La superficie sembrada (${cu.area_sown_ha} ha) no puede ser mayor a la de la parcela (${areaFinal.toFixed(2)} ha)`);
+    }
+    // T11-B: si la parcela ya tiene maíz ese año y tipo de ciclo, la suma no puede pasar de la parcela (salvo siembra asociada)
+    if (ciclo.ok && upId) {
+      const comb = await validarSuperficieCombinada(client, {
+        upId, cycleYear: ciclo.ciclo.cycle_year, cycleType: ciclo.ciclo.cycle_type,
+        cultivo: 'frijol', haNueva: num(cu.area_sown_ha), asociadoNuevo: cu.tipo_siembra === 'asociada', accion: 'registrando',
+      });
+      if (!comb.ok) throw new ErrorRegistro(409, 'SUPERFICIE_COMBINADA', comb.mensaje!, 'cultivo.area_sown_ha', comb.detalle as any);
     }
 
     // ── 5. Semillas ──

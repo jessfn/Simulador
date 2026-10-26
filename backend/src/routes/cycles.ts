@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { tecnicoDeMaiz } from '../utils/programas';
+import { validarSuperficieCombinada } from '../utils/superficie';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -284,7 +285,7 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
     let cycleOwnershipParams: any[];
     if (req.user!.rol === 'capturista') {
       cycleOwnershipQuery = `
-        SELECT c.cycle_id, c.up_id, c.crop AS cycle_crop, u.up_name, u.area_ha_calc, u.area_ha_real
+        SELECT c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.crop AS cycle_crop, u.up_name, u.area_ha_calc, u.area_ha_real
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         JOIN producer p ON p.producer_id = u.producer_id
@@ -292,7 +293,7 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
       cycleOwnershipParams = [cycle_id, req.user!.userId];
     } else {
       cycleOwnershipQuery = `
-        SELECT c.cycle_id, c.up_id, c.crop AS cycle_crop, u.up_name, u.area_ha_calc, u.area_ha_real
+        SELECT c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.crop AS cycle_crop, u.up_name, u.area_ha_calc, u.area_ha_real
         FROM cycle c
         JOIN up u ON u.up_id = c.up_id
         JOIN producer p ON p.producer_id = u.producer_id
@@ -322,6 +323,16 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
         superficie_up: superficieUP,
         superficie_ingresada: Number(area_sown_ha),
       });
+      return;
+    }
+
+    // T11-B: maíz + frijol en la misma parcela, año y tipo de ciclo no pueden sumar más que la parcela (salvo siembra asociada)
+    const combinada = await validarSuperficieCombinada(pool, {
+      upId: upRow.up_id, cycleYear: upRow.cycle_year, cycleType: upRow.cycle_type,
+      cultivo: 'maiz', haNueva: Number(area_sown_ha), excluirCycleId: cycle_id, accion: 'registrando',
+    });
+    if (!combinada.ok) {
+      res.status(409).json({ error: combinada.mensaje, ...combinada.detalle });
       return;
     }
 
@@ -379,7 +390,7 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
     // capturó), y de paso trae area_sown_ha actual para validar
     // area_harvested_ha aunque no venga en este PATCH.
     const propio = await pool.query(
-      `SELECT cc.cycle_crop_id, cc.area_sown_ha
+      `SELECT cc.cycle_crop_id, cc.area_sown_ha, cy.up_id, cy.cycle_id, cy.cycle_year, cy.cycle_type
        FROM cycle_crop cc
        JOIN cycle cy ON cy.cycle_id = cc.cycle_id
        JOIN up u ON u.up_id = cy.up_id
@@ -428,6 +439,19 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
         new Date(estimated_harvest_date) <= new Date(planting_date)) {
       res.status(400).json({ error: 'La fecha estimada de cosecha debe ser posterior a la fecha de siembra.' });
       return;
+    }
+
+    // T11-B: solo si cambia la superficie sembrada
+    if (area_sown_ha !== undefined && Number(area_sown_ha) > 0) {
+      const f = propio.rows[0];
+      const combinada = await validarSuperficieCombinada(pool, {
+        upId: f.up_id, cycleYear: f.cycle_year, cycleType: f.cycle_type,
+        cultivo: 'maiz', haNueva: Number(area_sown_ha), excluirCycleId: f.cycle_id, accion: 'corrigiendo',
+      });
+      if (!combinada.ok) {
+        res.status(409).json({ error: combinada.mensaje, ...combinada.detalle });
+        return;
+      }
     }
 
     const sets: string[] = [];
