@@ -40,7 +40,8 @@ if [ "$AMBIENTE" = "produccion" ]; then
   [ "$R" = "si" ] || { echo "Cancelado."; exit 1; }
   # Tunel al EC2 via bastion (igual que el flujo manual anterior)
   pkill -f "ssh.*2223" 2>/dev/null || true
-  ssh -i "$HOME/.ssh/jesus.rios.pem" -L 2223:10.54.32.127:22 -N -f -o StrictHostKeyChecking=no jesus.rios@35.169.108.155
+  # Bastion: desde la red de la oficina es 10.54.24.10; desde internet sin VPN es 35.169.108.155 (SIMAC_BASTION=35.169.108.155 bash deploy/deploy.sh produccion)
+  ssh -i "$HOME/.ssh/jesus.rios.pem" -L 2223:10.54.32.127:22 -N -f -o StrictHostKeyChecking=no jesus.rios@"${SIMAC_BASTION:-10.54.24.10}"
   sleep 2
 fi
 

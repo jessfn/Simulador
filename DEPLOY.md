@@ -12,6 +12,10 @@
 
 `main` = exactamente lo que está en producción. Todo cambio entra primero a `staging`.
 
+> **Desde el 2026-10-26 el ambiente de pruebas (`simacqa`) está suspendido.** El flujo vigente es: trabajar en una rama, mezclar a `main`,
+> subir `main` a GitHub y desplegar a producción. Antes de cada despliegue con cambios de base de datos: respaldo (`pg_dump` y snapshot de RDS)
+> y etiqueta `prod-AAAA-MM-DD-antes-...`. Las pruebas que crean datos (por ejemplo, los registros de frijol) **no** se corren en producción.
+
 ## Flujo normal
 
 1. Trabajar en una rama por ticket: `ticket/TXX-descripcion` (arreglos urgentes de maíz: `fix/descripcion`, desde `main`).
