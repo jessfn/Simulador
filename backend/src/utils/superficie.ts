@@ -55,8 +55,9 @@ export async function validarSuperficieCombinada(db: { query: (texto: string, va
        LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id
       WHERE c.up_id = $1 AND c.cycle_year = $2 AND c.cycle_type = $3
         AND COALESCE(c.estado_ciclo, 'activo') <> 'cancelado'
-        AND ($4::bigint IS NULL OR c.cycle_id <> $4)`,
-    [e.upId, e.cycleYear, e.cycleType, e.excluirCycleId ?? null]
+        AND ($4::bigint IS NULL OR c.cycle_id <> $4)
+        AND cc.crop <> $5`,   // solo cuenta el OTRO cultivo: un duplicado del mismo cultivo lo atiende cada flujo con su propio mensaje
+    [e.upId, e.cycleYear, e.cycleType, e.excluirCycleId ?? null, e.cultivo]
   );
   if (otros.rows.length === 0) return { ok: true };                        // un solo cultivo: no hay suma que revisar
   if (e.asociadoNuevo || otros.rows.some(r => r.asociada)) return { ok: true };   // milpa
