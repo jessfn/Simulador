@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import { parcelaDeMaiz } from '../utils/programas';
 import pool from '../config/database';
 import { soloMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
@@ -58,7 +59,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
       const stateName: string | null = producerRow.rows[0].state_name;
 
       const [upsCount, segData, alertasCount, ciclosActivos, bodegasCount, recent] = await Promise.all([
-        pool.query(`SELECT COUNT(*)::int AS c FROM up WHERE producer_id = $1`, [producerId]),
+        pool.query(`SELECT COUNT(*)::int AS c FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}`, [producerId]),
         countSeguimiento('producer_id = $1', [producerId]),
         pool.query(
           `SELECT COUNT(*)::int AS c FROM alertas

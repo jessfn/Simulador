@@ -4,6 +4,7 @@
 // APIs operativas del rol productor.
 
 import pool from '../config/database';
+import { parcelaDeMaiz } from '../utils/programas';
 
 export interface EstadoRegistro {
   requiere_ubicacion: boolean;
@@ -12,7 +13,8 @@ export interface EstadoRegistro {
 }
 
 export async function evaluarEstadoRegistro(producerId: number): Promise<EstadoRegistro> {
-  const upRes = await pool.query('SELECT COUNT(*)::int AS n FROM up WHERE producer_id = $1', [producerId]);
+  // Solo cuentan las parcelas que son de maíz (T11): una parcela que únicamente registró frijol no cumple el paso "ubicación" de maíz
+  const upRes = await pool.query(`SELECT COUNT(*)::int AS n FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}`, [producerId]);
   const requiereUbicacion = (upRes.rows[0]?.n || 0) === 0;
 
   // Al menos un ciclo no cancelado, en cualquier UP propia, con cultivo de

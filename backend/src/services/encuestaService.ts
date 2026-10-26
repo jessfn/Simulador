@@ -4,6 +4,7 @@
 // capturista (tecnico.ts) y por el panel de administración.
 
 import { PoolClient } from 'pg';
+import { parcelaDeMaiz } from '../utils/programas';
 import crypto from 'crypto';
 import pool from '../config/database';
 
@@ -57,7 +58,7 @@ export async function determinarContextoTerritorial(
   const r = await client.query(
     // La encuesta de insumos es de SIMAC Maíz: solo aplica si el productor está en ese programa
     `SELECT up_id, state_id, municipality_id, municipality_name
-     FROM up WHERE producer_id = $1
+     FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}
        AND EXISTS (SELECT 1 FROM producer_programa pm WHERE pm.producer_id = $1 AND pm.programa = 'simac_maiz')`,
     [producerId]
   );

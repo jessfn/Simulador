@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import pool from '../config/database';
-import { soloMaiz, soloMaizDeUp } from '../utils/programas';
+import { soloMaiz, soloMaizDeUp, parcelaDeMaiz } from '../utils/programas';
 import { authMiddleware, requierePermisosTotales, AuthRequest } from '../middleware/auth';
 import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
 import { obtenerRespuestaProductor } from '../services/encuestaService';
@@ -167,7 +167,7 @@ router.get('/usuarios', authMiddleware, async (req: AuthRequest, res: Response):
       LEFT JOIN LATERAL (
         SELECT up_id, state_name, municipality_name, up_name, area_ha_calc
         FROM up
-        WHERE up.producer_id = p.producer_id
+        WHERE up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
         ORDER BY up.created_at ASC
         LIMIT 1
       ) first_up ON TRUE
@@ -190,7 +190,7 @@ router.get('/usuarios/estados-disponibles', authMiddleware, soloAdmin, async (re
     const result = await pool.query(`
       SELECT DISTINCT up.state_name AS estado
       FROM producer p
-      JOIN up ON up.producer_id = p.producer_id
+      JOIN up ON up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
       WHERE up.state_name IS NOT NULL
         AND up.state_name != ''
         AND ${soloMaiz('p')}
@@ -647,13 +647,13 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
             ) ORDER BY u.created_at ASC
           )
           FROM up u
-          WHERE u.producer_id = p.producer_id AND u.geom IS NOT NULL
+          WHERE u.producer_id = p.producer_id AND u.geom IS NOT NULL AND ${parcelaDeMaiz('u')}
         ) AS ups_geom
       FROM producer p
       LEFT JOIN LATERAL (
         SELECT up_id, state_name, municipality_name, up_name, area_ha_calc, centroid,
                posible_traslape_producer_id, traslape_revisado
-        FROM up WHERE up.producer_id = p.producer_id
+        FROM up WHERE up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
         ORDER BY created_at ASC LIMIT 1
       ) up ON TRUE
       LEFT JOIN LATERAL (
@@ -1333,7 +1333,7 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
   try {
     const { estado, municipio, q } = req.query as Record<string, string>;
     const params: any[] = [];
-    const conds: string[] = ['u.geom IS NOT NULL', soloMaiz('p')];
+    const conds: string[] = ['u.geom IS NOT NULL', soloMaiz('p'), parcelaDeMaiz('u')];
     let pi = 1;
 
     if (estado)    { conds.push(`u.state_name = $${pi++}`);                       params.push(estado); }

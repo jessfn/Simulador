@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
-import { soloMaiz } from '../utils/programas';
+import { soloMaiz, parcelaDeMaiz } from '../utils/programas';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -18,7 +18,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
        FROM supervisor_productores sp
        JOIN producer p ON p.producer_id = sp.producer_id
        LEFT JOIN usuarios u ON u.id = p.usuario_id
-       LEFT JOIN up ON up.producer_id = p.producer_id
+       LEFT JOIN up ON up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
        LEFT JOIN cycle c ON c.up_id = up.up_id AND c.crop = 'maiz'
        WHERE sp.supervisor_id = $1 AND ${soloMaiz('p')}
        GROUP BY p.producer_id, u.email, u.activo, p.apellido_paterno, p.nombres
@@ -135,7 +135,7 @@ router.get('/:producerId', authMiddleware, async (req: AuthRequest, res: Respons
            ST_X(ST_PointOnSurface(u.geom)) AS centroid_lng,
            ST_Y(ST_PointOnSurface(u.geom)) AS centroid_lat,
            (SELECT COUNT(*)::int FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz') AS total_ciclos
-         FROM up u WHERE u.producer_id = $1
+         FROM up u WHERE u.producer_id = $1 AND ${parcelaDeMaiz('u')}
          ORDER BY u.created_at DESC`,
         [producerId]
       ),
