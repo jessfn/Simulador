@@ -4,15 +4,24 @@
 # Uso: deploy/clonar-bd-a-pruebas.sh
 set -euo pipefail
 
-PROD=(-p 2223 -i "$HOME/.ssh/jesus.rios.pem" -o StrictHostKeyChecking=no jesus.rios@localhost)
-QA=(-i "$HOME/.ssh/simacqa" -o StrictHostKeyChecking=no qasimac@10.1.24.200)
+# Los datos de los servidores salen de deploy/deploy.env (copia deploy/deploy.env.example); no se versiona.
+CONFIG="$(dirname "$0")/deploy.env"
+[ -f "$CONFIG" ] || { echo "Falta deploy/deploy.env (ver deploy/deploy.env.example)."; exit 1; }
+# shellcheck disable=SC1090
+source "$CONFIG"
+for v in PRUEBAS_USUARIO PRUEBAS_SERVIDOR PRUEBAS_LLAVE PROD_BASTION_USUARIO PROD_BASTION PROD_SERVIDOR_INTERNO PROD_USUARIO PROD_LLAVE; do
+  [ -n "${!v:-}" ] || { echo "Falta $v en deploy/deploy.env"; exit 1; }
+done
+PUERTO="${PROD_PUERTO_TUNEL:-2223}"
+PROD=(-p "$PUERTO" -i "$(eval echo "$PROD_LLAVE")" -o StrictHostKeyChecking=accept-new -o HostKeyAlias=simac-produccion "${PROD_USUARIO}@localhost")
+QA=(-i "$(eval echo "$PRUEBAS_LLAVE")" -o StrictHostKeyChecking=accept-new "${PRUEBAS_USUARIO}@${PRUEBAS_SERVIDOR}")
 
 echo "ATENCION: la copia contiene datos personales reales (CURP, telefonos, correos)."
-echo "Destino: bodegas_qa en 10.1.24.200 (se BORRA y se reemplaza todo su contenido)."
+echo "Destino: bodegas_qa en el servidor de pruebas (se BORRA y se reemplaza todo su contenido)."
 read -r -p "Escribe 'si' para continuar: " R; [ "$R" = "si" ] || { echo Cancelado.; exit 1; }
 
-pkill -f "ssh.*2223" 2>/dev/null || true
-ssh -i "$HOME/.ssh/jesus.rios.pem" -L 2223:10.54.32.127:22 -N -f -o StrictHostKeyChecking=no jesus.rios@35.169.108.155
+pkill -f "ssh.*${PUERTO}:" 2>/dev/null || true
+ssh -i "$(eval echo "$PROD_LLAVE")" -L "${PUERTO}:${PROD_SERVIDOR_INTERNO}:22" -N -f -o StrictHostKeyChecking=accept-new "${PROD_BASTION_USUARIO}@${PROD_BASTION}"
 sleep 2
 
 echo ">> Volcando produccion y restaurando en pruebas (puede tardar)..."

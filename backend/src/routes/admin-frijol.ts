@@ -154,7 +154,7 @@ router.get('/mapa', authMiddleware, ver, async (req: AuthRequest, res: Response)
     const r = await pool.query(
       `SELECT u.up_id::int AS up_id, u.up_name, p.producer_id::int AS producer_id, concat_ws(' ', p.nombres, p.apellido_paterno) AS productor,
               u.state_name AS estado, u.municipality_name AS municipio, u.area_ha_calc::float AS ha,
-              string_agg(DISTINCT ${VARIEDAD}, ', ') AS variedad, SUM(cc.area_sown_ha)::float AS ha_sembradas,
+              string_agg(DISTINCT ${VARIEDAD}, ', ' ORDER BY ${VARIEDAD}) AS variedad, SUM(cc.area_sown_ha)::float AS ha_sembradas,
               MIN(pp.verificacion_identidad) AS verificacion_identidad, MIN(pp.estatus_registro) AS estatus_registro,
               ST_AsGeoJSON(ST_Simplify(u.geom, 0.00001))::json AS geom
          ${DESDE} WHERE ${where} AND u.geom IS NOT NULL GROUP BY u.up_id, p.producer_id LIMIT 5000`, params);
@@ -201,7 +201,7 @@ router.get('/productores/:id', authMiddleware, ver, async (req: AuthRequest, res
               to_char(cc.estimated_harvest_date, 'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.yield_expected::float AS rendimiento_esperado_t_ha,
               (cc.area_sown_ha * cc.yield_expected)::float AS produccion_estimada_t, ${etq('destino_frijol', 'cc.destination')} AS destino,
               ${etq('tipo_siembra_frijol', 'fc.tipo_siembra')} AS tipo_siembra, fc.densidad_kg_ha::float AS densidad_kg_ha, fc.usa_fertilizante,
-              (SELECT string_agg(label, ', ') FROM cat_catalog WHERE catalog = 'tipo_fertilizante' AND code = ANY(fc.tipos_fertilizante)) AS tipos_fertilizante,
+              (SELECT string_agg(label, ', ' ORDER BY sort_order, label) FROM cat_catalog WHERE catalog = 'tipo_fertilizante' AND code = ANY(fc.tipos_fertilizante)) AS tipos_fertilizante,
               ${etq('rotacion_cultivo', 'fc.rotacion')} AS rotacion, fc.observaciones, fc.hubo_desconexion, fc.capturado_en, cc.created_at
          FROM cycle_crop cc JOIN cycle c ON c.cycle_id = cc.cycle_id AND c.crop = 'frijol' JOIN up u ON u.up_id = c.up_id
          LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.crop = 'frijol'
@@ -235,7 +235,7 @@ router.get('/exportar', authMiddleware, exportar, async (req: AuthRequest, res: 
               to_char(cc.estimated_harvest_date, 'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.yield_expected::float AS rendimiento_esperado_t_ha,
               (cc.area_sown_ha * cc.yield_expected)::float AS produccion_estimada_t, ${etq('destino_frijol', 'cc.destination')} AS destino,
               ${etq('tipo_siembra_frijol', 'fc.tipo_siembra')} AS tipo_siembra, fc.densidad_kg_ha::float AS densidad_kg_ha, fc.usa_fertilizante,
-              (SELECT string_agg(label, ', ') FROM cat_catalog WHERE catalog = 'tipo_fertilizante' AND code = ANY(fc.tipos_fertilizante)) AS tipos_fertilizante,
+              (SELECT string_agg(label, ', ' ORDER BY sort_order, label) FROM cat_catalog WHERE catalog = 'tipo_fertilizante' AND code = ANY(fc.tipos_fertilizante)) AS tipos_fertilizante,
               ${etq('rotacion_cultivo', 'fc.rotacion')} AS rotacion, fc.observaciones,
               to_char(fc.capturado_en AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI') AS capturado_en,
               to_char(cc.created_at AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI') AS enviado_en, fc.hubo_desconexion

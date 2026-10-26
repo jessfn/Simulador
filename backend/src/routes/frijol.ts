@@ -5,8 +5,9 @@ import { requierePrograma } from '../middleware/programa';
 import { PROGRAMA_FRIJOL } from '../utils/programas';
 import { verificarIdentidad } from '../services/identidad';
 import { inferirCiclo, cicloFinal, Regimen } from '../services/cicloSIAP';
-import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo, validarCatalogosCultivo, validarCatalogosProductor } from '../services/frijolRegistro';
+import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo, validarCatalogosCultivo, validarCatalogosProductor, errorFechaNacimiento } from '../services/frijolRegistro';
 import { generarAcuseFrijol } from '../services/acuseFrijol';
+import { consultaCurpLimiter } from '../middleware/rateLimiters';
 
 // Módulo de registro de Frijol (técnicos ECA). Todo /api/frijol/* requiere sesión de técnico con el programa frijol_afb.
 // Aquí viven solo las rutas de frijol; maíz no se toca.
@@ -23,6 +24,9 @@ const CATALOGOS = [
 ] as const;
 
 // Programas SADER que se muestran en la pantalla de frijol (en este orden).
+/** Largo máximo de la clave de idempotencia que manda el cliente (ver POST /registros). */
+const CLAVE_IDEMPOTENCIA_MAX = 60;
+
 const PROGRAMAS_SADER = [
   'acopio_bienestar', 'fertilizantes_bienestar', 'produccion_bienestar', 'semillas_bienestar', 'otro_sader',
 ];
@@ -149,7 +153,7 @@ router.get('/inferir-ciclo', (req: AuthRequest, res: Response): void => {
 // POST /api/frijol/consultar-curp
 // Busca a la persona y dice qué hacer. NADA bloquea por tener cuenta en SIMAC ni por padrón inactivo ni por servicios caídos.
 // =============================================
-router.post('/consultar-curp', async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/consultar-curp', consultaCurpLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const curp = String(req.body?.curp || '').toUpperCase().trim();
     if (!CURP_RE.test(curp)) { res.status(400).json({ error: 'CURP inválida. Verifica el formato (18 caracteres).', codigo: 'CURP_FORMATO' }); return; }
@@ -206,7 +210,10 @@ router.post('/consultar-curp', async (req: AuthRequest, res: Response): Promise<
 // =============================================
 router.post('/registros', async (req: AuthRequest, res: Response): Promise<void> => {
   const clave = String(req.header('Idempotency-Key') || '').trim();
-  if (!clave || clave.length > 100) { res.status(400).json({ error: 'Falta el encabezado Idempotency-Key', codigo: 'SIN_IDEMPOTENCY_KEY' }); return; }
+  if (!clave) { res.status(400).json({ error: 'Falta el encabezado Idempotency-Key', codigo: 'SIN_IDEMPOTENCY_KEY' }); return; }
+  // T09 §9.4 (auditoría B1): la clave interna es "frijol:<id del técnico>:<clave>" y la columna admite 80 caracteres. Con un id de hasta
+  // 10 dígitos quedan 62 para la clave del cliente; se pone 60. Un UUID (36) cabe de sobra. Es preferible un 400 claro que un 500.
+  if (clave.length > CLAVE_IDEMPOTENCIA_MAX) { res.status(400).json({ error: `La clave del envío es demasiado larga (máximo ${CLAVE_IDEMPOTENCIA_MAX} caracteres).`, codigo: 'IDEMPOTENCY_KEY_LARGA' }); return; }
   const client = await pool.connect();
   try {
     const r = await guardarRegistro(client, req.user!.userId, req.body, `frijol:${req.user!.userId}:${clave}`);
@@ -343,6 +350,8 @@ router.patch('/productores/:producer_id', async (req: AuthRequest, res: Response
     if (p.nombres !== undefined && !String(p.nombres).trim()) { mal('productor.nombres', 'El nombre es obligatorio'); return; }
     if (p.apellido_paterno !== undefined && !String(p.apellido_paterno).trim()) { mal('productor.apellido_paterno', 'El apellido paterno es obligatorio'); return; }
     if (p.sexo !== undefined && p.sexo !== 'H' && p.sexo !== 'M') { mal('productor.sexo', 'El sexo debe ser H o M'); return; }
+    // T09 §9.9: misma regla de fecha de nacimiento que el registro nuevo (formato y edad de 15 a 100 años)
+    if (p.fecha_nacimiento !== undefined) { const errFecha = errorFechaNacimiento(p.fecha_nacimiento); if (errFecha) { mal('productor.fecha_nacimiento', errFecha); return; } }
     if (fp) {
       const progs: string[] = Array.isArray(fp.programas_sader) ? fp.programas_sader : [];
       if (!Number.isInteger(Number(fp.total_ups_declaradas)) || Number(fp.total_ups_declaradas) < 1) { mal('frijol_productor.total_ups_declaradas', 'Indica cuántas parcelas tiene en total (mínimo 1)'); return; }
@@ -369,7 +378,8 @@ router.patch('/productores/:producer_id', async (req: AuthRequest, res: Response
       if (nuevo === undefined) continue;
       const antes = col === 'fecha_nacimiento' ? actual.fn : actual[col];
       if (String(antes ?? '') === String(nuevo ?? '')) continue;
-      await client.query(`UPDATE producer SET ${col} = $1 WHERE producer_id = $2`, [nuevo, id]);
+      // T09 §9.5: el correo se escribe en las dos columnas (producer.correo y producer.correo_electronico) para que maíz lo vea igual en todas partes
+      await client.query(`UPDATE producer SET ${col} = ${col === 'correo' ? '$1::text' : '$1'}${col === 'correo' ? ', correo_electronico = $1::text' : ''} WHERE producer_id = $2`, [nuevo, id]);
       await client.query(
         'INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)',
         [id, campo, antes == null ? null : String(antes), nuevo == null ? null : String(nuevo), req.user!.userId, PROGRAMA_FRIJOL]

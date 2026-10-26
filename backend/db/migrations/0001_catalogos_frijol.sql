@@ -85,7 +85,21 @@ ON CONFLICT (clave) DO NOTHING;
 DELETE FROM cat_catalog WHERE catalog IN (
   'documento_propiedad','destino_frijol','tipo_siembra_frijol','rotacion_cultivo','tipo_fertilizante',
   'seguro_agricola','tipo_tecnico','estatus_registro_frijol','verificacion_identidad');
-DELETE FROM cat_programas_gobierno WHERE clave IN ('acopio_bienestar','semillas_bienestar','otro_sader');
+-- T09 §9.10: los programas de la Secretaría solo se borran si NINGÚN productor los usa (maíz: producer.programas_beneficiario; frijol:
+-- frijol_productor.programas_sader, si esa tabla aún existe). Los que estén en uso se conservan.
+DO $$
+DECLARE
+  en_uso text[];
+  en_uso_frijol text[];
+BEGIN
+  SELECT COALESCE(array_agg(DISTINCT c), '{}') INTO en_uso FROM (SELECT unnest(programas_beneficiario) AS c FROM producer) x;
+  IF to_regclass('public.frijol_productor') IS NOT NULL THEN
+    EXECUTE 'SELECT COALESCE(array_agg(DISTINCT c), ''{}'') FROM (SELECT unnest(programas_sader) AS c FROM frijol_productor) x' INTO en_uso_frijol;
+    en_uso := en_uso || en_uso_frijol;
+  END IF;
+  DELETE FROM cat_programas_gobierno
+   WHERE clave IN ('acopio_bienestar','semillas_bienestar','otro_sader') AND NOT (clave = ANY(en_uso));
+END $$;
 -- Las variedades de frijol no se borran (algun ciclo podria apuntar a ellas): solo se desactivan.
 UPDATE cat_crop_variety SET is_active = false WHERE crop = 'frijol';
 -- Los indices unicos se conservan: son una mejora y no estorban a maiz.

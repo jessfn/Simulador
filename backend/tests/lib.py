@@ -54,17 +54,19 @@ def estado_set(clave, valor):
 # ---------- API ----------
 _RUTAS_CON_LIMITE = ('/tecnico/auth/login', '/auth/login', '/auth/registro', '/productor/auth/')
 
-def http(path, token=None, method='GET', body=None, headers=None, raw=False, timeout=120, _intento=0):
-    # El sistema limita los intentos de acceso (20 cada 5 minutos por máquina). Si se topa con el límite, se espera y se reintenta.
-    st, datos = _http(path, token, method, body, headers, raw, timeout)
-    if st == 429 and path.startswith(_RUTAS_CON_LIMITE) and _intento < 20:
-        print('   (límite de intentos de acceso alcanzado; espero 20 s y reintento)'); sys.stdout.flush()
-        import time; time.sleep(20)
-        return http(path, token, method, body, headers, raw, timeout, _intento + 1)
+def http(path, token=None, method='GET', body=None, headers=None, raw=False, timeout=120, base=None, _intento=0):
+    # El sistema limita las peticiones: 20 intentos de acceso cada 5 minutos y 300 peticiones por minuto en total, por máquina.
+    # Si se topa con esos límites generales, se espera y se reintenta (el límite propio de una función, como el de consultar-curp, NO se reintenta).
+    st, datos = _http(path, token, method, body, headers, raw, timeout, base)
+    es_limite_general = st == 429 and (path.startswith(_RUTAS_CON_LIMITE) or 'Demasiadas solicitudes' in json.dumps(datos, ensure_ascii=False))
+    if es_limite_general and _intento < 12:
+        print('   (límite general de peticiones alcanzado; espero 15 s y reintento)'); sys.stdout.flush()
+        import time; time.sleep(15)
+        return http(path, token, method, body, headers, raw, timeout, base, _intento + 1)
     return st, datos
 
-def _http(path, token, method, body, headers, raw, timeout):
-    req = urllib.request.Request(B + path, method=method)
+def _http(path, token, method, body, headers, raw, timeout, base=None):
+    req = urllib.request.Request((base or B) + path, method=method)
     if token: req.add_header('Authorization', 'Bearer ' + token)
     for k, v in (headers or {}).items(): req.add_header(k, v)
     if body is not None:
@@ -198,3 +200,31 @@ def registrar(token, b, key=None):
 
 def consultar(token, curp):
     return http('/frijol/consultar-curp', token, 'POST', {'curp': curp})
+
+def sql_revertido(instrucciones):
+    """Ejecuta una lista de instrucciones SQL en una transacción que SIEMPRE se revierte; devuelve lo que imprime la última (formato como sql())."""
+    r = subprocess.run(['node', str(AQUI / 'sql-rollback.js'), json.dumps(instrucciones)], capture_output=True, text=True, encoding='utf-8', errors='replace')
+    return r.stdout
+
+def compilar_backend():
+    """Compila el backend (npx tsc) para las pruebas que usan código ya compilado. Se hace una sola vez por corrida."""
+    if estado_get('compilado'): return
+    subprocess.run('npx tsc', cwd=str(BACKEND), shell=True, capture_output=True)
+    estado_set('compilado', True)
+
+def backend_aparte(env_extra=None, puerto=3999):
+    """Levanta un backend NUEVO (otro proceso, otro puerto) contra la base de pruebas, con su propia memoria de límites.
+    Sirve para probar límites de uso sin gastar los del servidor de pruebas. Devuelve (proceso, dirección base del API)."""
+    import time, urllib.parse
+    compilar_backend()
+    u = urllib.parse.urlparse(os.environ['TEST_DATABASE_URL'])
+    env = {**os.environ, 'PORT': str(puerto), 'DB_HOST': u.hostname, 'DB_PORT': str(u.port or 5432), 'DB_USER': urllib.parse.unquote(u.username or ''),
+           'DB_PASSWORD': urllib.parse.unquote(u.password or ''), 'DB_NAME': u.path.lstrip('/'), 'JWT_SECRET': 'secreto-solo-para-pruebas-' + str(puerto),
+           'JOBS_ENABLED': 'false', 'IDENTIDAD_SIMULADA': 'true', 'NODE_ENV': 'test', **(env_extra or {})}
+    proc = subprocess.Popen(['node', 'dist/index.js'], cwd=str(BACKEND), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    base = f'http://127.0.0.1:{puerto}/api'
+    for _ in range(60):
+        time.sleep(0.5)
+        if proc.poll() is not None: break
+        if _http('/health', None, 'GET', None, None, False, 5, base)[0] == 200: return proc, base
+    proc.terminate(); raise RuntimeError('No pude levantar un backend aparte para la prueba (¿está compilado y libre el puerto %s?)' % puerto)

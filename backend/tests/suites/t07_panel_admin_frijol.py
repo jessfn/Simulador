@@ -49,7 +49,7 @@ def sql1(q):
 s, r = http('/admin/frijol/resumen', adm); t = r['totales']
 man = sql1("select count(distinct u.producer_id), count(distinct u.up_id), round(sum(cc.area_sown_ha)::numeric,1), round(sum(cc.area_sown_ha*cc.yield_expected)::numeric,1), count(*) from cycle_crop cc join cycle c using(cycle_id) join up u using(up_id) join producer_programa pp on pp.producer_id=u.producer_id and pp.programa='frijol_afb' where c.crop='frijol'").split('|')
 ok('tarjetas = conteo manual en la base (productores, parcelas, ha, produccion, cultivos)',
-   [str(t['productores']), str(t['parcelas']), str(round(t['hectareas'], 1)), str(round(t['produccion_estimada_t'], 1)), str(t['cultivos'])] == [man[0], man[1], str(float(man[2])), str(float(man[3])), man[4]], f"{man} vs {t}")
+   [t['productores'], t['parcelas'], t['cultivos']] == [int(man[0]), int(man[1]), int(man[4])] and abs(t['hectareas'] - float(man[2])) < 0.06 and abs(t['produccion_estimada_t'] - float(man[3])) < 0.06, f"{man} vs {t}")
 ok('hay tarjeta de pendientes > 14 dias', 'pendientes_14_dias' in t and 'produccion_estimada_t' in t)
 
 f = s_ = None

@@ -8,3 +8,6 @@ certificados/
 
 # Guia privada con credenciales (el repo es publico)
 DEPLOY_PRIVADO.md
+
+# Datos de los servidores (direcciones, usuarios, llaves): solo en tu equipo
+deploy/deploy.env

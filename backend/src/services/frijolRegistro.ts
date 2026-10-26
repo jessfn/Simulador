@@ -50,6 +50,18 @@ function fechaValida(s: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * T09 §9.9 (auditoría B6): UNA sola regla para la fecha de nacimiento (formato AAAA-MM-DD y edad de 15 a 100 años).
+ * La usan el registro nuevo y la corrección del productor; T10 la reutiliza. Devuelve el mensaje de error o null si es válida.
+ */
+export function errorFechaNacimiento(valor: unknown): string | null {
+  const fn = fechaValida(valor);
+  if (!fn) return 'La fecha de nacimiento es obligatoria';
+  const edad = (Date.now() - fn.getTime()) / (365.25 * DIA_MS);
+  if (edad < 15 || edad > 100) return 'La edad debe estar entre 15 y 100 años';
+  return null;
+}
+
 export function validarEstructura(b: any, esProductorNuevo: boolean): void {
   const p = b?.productor || {}, fp = b?.frijol_productor || {}, pa = b?.parcela || {}, se = b?.semillas || {}, cu = b?.cultivo || {};
 
@@ -62,10 +74,8 @@ export function validarEstructura(b: any, esProductorNuevo: boolean): void {
   if (p.correo && !EMAIL_RE.test(String(p.correo).trim())) falla('productor.correo', 'El correo no tiene un formato válido');
   if (esProductorNuevo) {
     if (p.sexo !== 'H' && p.sexo !== 'M') falla('productor.sexo', 'Indica el sexo (H o M)');
-    const fn = fechaValida(p.fecha_nacimiento);
-    if (!fn) falla('productor.fecha_nacimiento', 'La fecha de nacimiento es obligatoria');
-    const edad = (Date.now() - fn!.getTime()) / (365.25 * DIA_MS);
-    if (edad < 15 || edad > 100) falla('productor.fecha_nacimiento', 'La edad debe estar entre 15 y 100 años');
+    const errFecha = errorFechaNacimiento(p.fecha_nacimiento);
+    if (errFecha) falla('productor.fecha_nacimiento', errFecha);
   }
 
   // Información complementaria
@@ -233,6 +243,8 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
         const despues = nuevos[campo];
         if ((antes ?? null) !== (despues ?? null) && String(antes ?? '') !== String(despues ?? '')) {
           vals.push(despues ?? null); sets.push(`${columna} = $${vals.length}`);
+          // T09 §9.5: la exportación de maíz lee producer.correo_electronico y las demás pantallas producer.correo; se escriben iguales.
+          if (columna === 'correo') sets.push(`correo_electronico = $${vals.length}::text`);
           await client.query(
             `INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)`,
             [producerId, campo, antes == null ? null : String(antes), despues == null ? null : String(despues), tecnicoId, PROGRAMA_FRIJOL]
@@ -245,12 +257,12 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
       verificacion = leerVerificacion(p.verificacion_token, curp, tecnicoId) ? 'verificada' : 'pendiente';
       const r = await client.query(
         `INSERT INTO producer
-           (curp, nombres, apellido_paterno, apellido_materno, phone, correo, sexo, fecha_nacimiento,
+           (curp, nombres, apellido_paterno, apellido_materno, phone, correo, correo_electronico, sexo, fecha_nacimiento,
             state_id, municipality_id, localidad, usuario_capturista_id, estatus_registro, fecha_captura, fuente_registro)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
          RETURNING producer_id`,
         [curp, String(p.nombres).trim(), String(p.apellido_paterno).trim(), p.apellido_materno ? String(p.apellido_materno).trim() : null,
-         telefono, correo, p.sexo, String(p.fecha_nacimiento).slice(0, 10), pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
+         telefono, correo, correo, p.sexo, String(p.fecha_nacimiento).slice(0, 10), pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
       );
       producerId = Number(r.rows[0].producer_id);
     }

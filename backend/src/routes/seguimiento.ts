@@ -45,13 +45,13 @@ router.get('/productores', authMiddleware, async (req: AuthRequest, res: Respons
                     'cycle_crop_id', cc.cycle_crop_id,
                     'crop', cc.crop,
                     'variety_id', cc.variety_id
-                  )), '[]'::json)
+                  ) ORDER BY cc.cycle_crop_id), '[]'::json)
                   FROM cycle_crop cc WHERE cc.cycle_id = c.cycle_id
                 )
-              ))
+              ) ORDER BY c.cycle_id)
               FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz'
             )
-          )
+          ) ORDER BY u.up_id
         ) FILTER (WHERE u.up_id IS NOT NULL) as ups
       FROM producer p
       LEFT JOIN up u ON u.producer_id = p.producer_id

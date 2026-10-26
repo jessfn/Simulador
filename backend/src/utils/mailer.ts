@@ -1,5 +1,10 @@
 import nodemailer from 'nodemailer';
 
+/** T09 §9.12 (auditoría B10): todo dato dinámico que va dentro del HTML de un correo se escapa (evita que un nombre con "<" o comillas altere el mensaje). */
+export function escaparHtml(v: unknown): string {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
 function crearTransporter() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
@@ -78,10 +83,10 @@ export async function enviarCredencialesTecnico(
     subject: 'Tu acceso como técnico — SIMAC',
     html: `
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:0 auto;padding:24px;">
-        <h2 style="color:#1a202c;font-size:18px;">Hola, ${nombre}</h2>
+        <h2 style="color:#1a202c;font-size:18px;">Hola, ${escaparHtml(nombre)}</h2>
         <p style="color:#4a5568;font-size:15px;line-height:1.6;">Se creó tu cuenta de técnico. Entra con tu correo y esta contraseña temporal; el sistema te pedirá cambiarla en tu primer acceso.</p>
-        <p style="background:#f1f5f9;border-radius:10px;padding:12px 16px;font-size:16px;letter-spacing:.04em;"><b>${destinatario}</b><br>Contraseña temporal: <b>${passwordTemporal}</b></p>
-        ${urlEntrada ? `<p style="font-size:14px;"><a href="${urlEntrada}">Abrir SIMAC</a></p>` : ''}
+        <p style="background:#f1f5f9;border-radius:10px;padding:12px 16px;font-size:16px;letter-spacing:.04em;"><b>${escaparHtml(destinatario)}</b><br>Contraseña temporal: <b>${escaparHtml(passwordTemporal)}</b></p>
+        ${urlEntrada ? `<p style="font-size:14px;"><a href="${escaparHtml(urlEntrada)}">Abrir SIMAC</a></p>` : ''}
       </div>`,
   });
   return true;

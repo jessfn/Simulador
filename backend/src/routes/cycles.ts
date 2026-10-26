@@ -143,7 +143,7 @@ router.get('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: R
                   'destination', cc.destination,
                   'production_qty', cc.production_qty,
                   'production_unit', cc.production_unit
-                )
+                ) ORDER BY cc.cycle_crop_id
               ) FILTER (WHERE cc.cycle_crop_id IS NOT NULL), '[]') as crops
        FROM cycle c
        LEFT JOIN cycle_crop cc ON c.cycle_id = cc.cycle_id

@@ -19,6 +19,7 @@ const USUARIOS = [
   { email: `qa.frijol1@${D}`,       nombre: 'Tecnico Prueba Frijol Uno', curp: 'QAF1900101HDGRRS04', rol: 'capturista', tipo: 'eca_productivo', programas: ['frijol_afb'] },
   { email: `qa.frijol2@${D}`,       nombre: 'Tecnico Prueba Frijol Dos', curp: 'QAF2900101HDGRRS05', rol: 'capturista', programas: ['frijol_afb'] },
   { email: `qa.ambos@${D}`,         nombre: 'Tecnico Prueba Ambos',      curp: 'QAAM900101HDGRRS06', rol: 'capturista', tipo: 'eca_productivo', programas: ['frijol_afb', 'simac_maiz'] },
+  { email: `qa.limite@${D}`,          nombre: 'Tecnico Prueba Limite',       curp: 'QALM900101HDGRRS09', rol: 'capturista', programas: ['frijol_afb'] },   // solo para la prueba del límite de consultas de CURP
   { email: `qa.legacy@${D}`,        nombre: 'Tecnico Prueba Sin Programa', curp: 'QALG900101HDGRRS07', rol: 'capturista', tipo: 'eca_productivo', programas: [] },
   { email: `qa.sinpermisos@${D}`,   nombre: 'Panel Sin Permisos',        curp: 'QASP900101HDGRRS08', rol: 'user',       panel: true },
 ];
