@@ -198,3 +198,14 @@ def registrar(token, b, key=None):
 
 def consultar(token, curp):
     return http('/frijol/consultar-curp', token, 'POST', {'curp': curp})
+
+def sql_revertido(instrucciones):
+    """Ejecuta una lista de instrucciones SQL en una transacción que SIEMPRE se revierte; devuelve lo que imprime la última (formato como sql())."""
+    r = subprocess.run(['node', str(AQUI / 'sql-rollback.js'), json.dumps(instrucciones)], capture_output=True, text=True, encoding='utf-8', errors='replace')
+    return r.stdout
+
+def compilar_backend():
+    """Compila el backend (npx tsc) para las pruebas que usan código ya compilado. Se hace una sola vez por corrida."""
+    if estado_get('compilado'): return
+    subprocess.run('npx tsc', cwd=str(BACKEND), shell=True, capture_output=True)
+    estado_set('compilado', True)

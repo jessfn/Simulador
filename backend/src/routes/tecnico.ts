@@ -344,7 +344,7 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
         client.release();
         return;
       }
-      const { usuario_id: usuarioIdPropio, usuario_capturista_id: capturistaActual } = propietarioActual.rows[0];
+      const { usuario_id: usuarioIdPropio } = propietarioActual.rows[0];
       if (usuarioIdPropio) {
         await client.query('ROLLBACK');
         res.status(409).json({ error: 'Este productor ya tiene cuenta propia activa' });
@@ -364,9 +364,7 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
         client.release();
         return;
       }
-      if (progMaiz.rows.length === 0 && capturistaActual && capturistaActual !== tecnicoId) {
-        // No está en maíz y su capturista es de otro programa (frijol): se permite; se crea abajo su renglón de maíz.
-      }
+      // (Si no está en maíz y su capturista es de otro programa —frijol— se permite: abajo se crea su renglón de maíz.)
 
       producerId = producer_id_existente;
       const r = await client.query(

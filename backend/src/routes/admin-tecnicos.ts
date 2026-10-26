@@ -18,16 +18,9 @@ const eliminarTecnicos = checkPermiso('tecnicos', 'eliminar');
 const CURP_RE = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Misma generación de contraseña temporal que admin-permisos.ts (POST /usuarios), para el reset
-function generarPassTemporal(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
-  const bytes = new Uint8Array(20);
-  for (let i = 0; i < 20; i++) bytes[i] = Math.floor(Math.random() * 256);
-  return Array.from(bytes).map(b => chars[b % chars.length]).join('');
-}
-
-// Contraseña temporal de 12 caracteres para técnicos nuevos: criptográficamente aleatoria y con mayúscula, minúscula y número.
-function passTemporalTecnico(): string {
+// Contraseña temporal de 12 caracteres para técnicos (alta y reinicio): criptográficamente aleatoria (crypto) y con mayúscula, minúscula y número.
+// T09 §9.7: el reinicio usaba Math.random() (no es seguro); ahora usa este mismo generador y se quitó la función vieja.
+export function passTemporalTecnico(): string {
   const may = 'ABCDEFGHJKLMNPQRSTUVWXYZ', min = 'abcdefghjkmnpqrstuvwxyz', num = '23456789', todo = may + min + num;
   const pick = (s: string) => s[crypto.randomInt(s.length)];
   const chars = [pick(may), pick(min), pick(num)];
@@ -376,7 +369,7 @@ router.patch('/:id', authMiddleware, editarTecnicos, async (req: AuthRequest, re
 router.post('/:id/reset-password', authMiddleware, editarTecnicos, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const passTemporal = generarPassTemporal();
+    const passTemporal = passTemporalTecnico();
     const hash = await bcrypt.hash(passTemporal, 12);
 
     const result = await pool.query(

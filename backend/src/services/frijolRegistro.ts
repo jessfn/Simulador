@@ -50,6 +50,18 @@ function fechaValida(s: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * T09 §9.9 (auditoría B6): UNA sola regla para la fecha de nacimiento (formato AAAA-MM-DD y edad de 15 a 100 años).
+ * La usan el registro nuevo y la corrección del productor; T10 la reutiliza. Devuelve el mensaje de error o null si es válida.
+ */
+export function errorFechaNacimiento(valor: unknown): string | null {
+  const fn = fechaValida(valor);
+  if (!fn) return 'La fecha de nacimiento es obligatoria';
+  const edad = (Date.now() - fn.getTime()) / (365.25 * DIA_MS);
+  if (edad < 15 || edad > 100) return 'La edad debe estar entre 15 y 100 años';
+  return null;
+}
+
 export function validarEstructura(b: any, esProductorNuevo: boolean): void {
   const p = b?.productor || {}, fp = b?.frijol_productor || {}, pa = b?.parcela || {}, se = b?.semillas || {}, cu = b?.cultivo || {};
 
@@ -62,10 +74,8 @@ export function validarEstructura(b: any, esProductorNuevo: boolean): void {
   if (p.correo && !EMAIL_RE.test(String(p.correo).trim())) falla('productor.correo', 'El correo no tiene un formato válido');
   if (esProductorNuevo) {
     if (p.sexo !== 'H' && p.sexo !== 'M') falla('productor.sexo', 'Indica el sexo (H o M)');
-    const fn = fechaValida(p.fecha_nacimiento);
-    if (!fn) falla('productor.fecha_nacimiento', 'La fecha de nacimiento es obligatoria');
-    const edad = (Date.now() - fn!.getTime()) / (365.25 * DIA_MS);
-    if (edad < 15 || edad > 100) falla('productor.fecha_nacimiento', 'La edad debe estar entre 15 y 100 años');
+    const errFecha = errorFechaNacimiento(p.fecha_nacimiento);
+    if (errFecha) falla('productor.fecha_nacimiento', errFecha);
   }
 
   // Información complementaria

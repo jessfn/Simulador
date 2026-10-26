@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepara Ubuntu 22.04 (simacqa) desde cero. Ejecutar UNA vez en el servidor, como qasimac con sudo:
+# Prepara Ubuntu 22.04 (simacqa) desde cero. Ejecutar UNA vez en el servidor, como el usuario administrador, con sudo:
 #   bash setup-servidor-pruebas.sh https://github.com/jessfn/Simulador.git
 set -euo pipefail
 REPO="${1:?Falta la URL del repositorio}"
