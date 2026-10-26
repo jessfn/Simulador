@@ -20,7 +20,7 @@ export class ErrorRegistro extends Error {
 const CURP_RE = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ESTADOS_SEMILLAS = ['10', '18', '32'];          // Durango, Nayarit, Zacatecas
-const PROGRAMAS_SADER = ['acopio_bienestar', 'fertilizantes_bienestar', 'produccion_bienestar', 'semillas_bienestar', 'otro_sader'];
+export const PROGRAMAS_SADER = ['acopio_bienestar', 'fertilizantes_bienestar', 'produccion_bienestar', 'semillas_bienestar', 'otro_sader'];
 const DIA_MS = 24 * 60 * 60 * 1000;
 
 const falla = (campo: string, mensaje: string, status = 400): never => { throw new ErrorRegistro(status, 'VALIDACION', mensaje, campo); };
@@ -131,6 +131,34 @@ async function codigoValido(client: PoolClient, catalogo: string, code: unknown)
   return r.rows.length > 0;
 }
 
+/**
+ * T09 §9.2 (auditoría M2): UNA sola validación de los catálogos del cultivo, para el registro nuevo y para la corrección,
+ * de modo que no vuelvan a diferir. Lanza ErrorRegistro (400) con el campo que falló.
+ */
+export async function validarCatalogosCultivo(client: PoolClient, cu: any): Promise<void> {
+  const vr = await client.query(`SELECT 1 FROM cat_crop_variety WHERE crop = 'frijol' AND code = $1 AND is_active = true`, [cu.variety_id]);
+  if (vr.rows.length === 0) falla('cultivo.variety_id', 'La variedad seleccionada no es válida');
+  if (cu.destino && !(await codigoValido(client, 'destino_frijol', cu.destino))) falla('cultivo.destino', 'El destino de la producción no es válido');
+  if (cu.tipo_siembra && !(await codigoValido(client, 'tipo_siembra_frijol', cu.tipo_siembra))) falla('cultivo.tipo_siembra', 'El tipo de siembra no es válido');
+  if (!(await codigoValido(client, 'rotacion_cultivo', cu.rotacion))) falla('cultivo.rotacion', 'La rotación no es válida');
+  for (const t of cu.tipos_fertilizante || []) if (!(await codigoValido(client, 'tipo_fertilizante', t))) falla('cultivo.tipos_fertilizante', 'Algún tipo de fertilizante no es válido');
+}
+
+/**
+ * T09 §9.2.3: seguro agrícola y programas de la Secretaría se validan contra el catálogo de la base (que un programa se desactive allá basta
+ * para que deje de aceptarse), y no solo contra una lista fija. La lista PROGRAMAS_SADER sigue definiendo cuáles de todos los programas del
+ * catálogo se ofrecen en frijol (el catálogo trae también los de maíz). Usada por el registro nuevo y por la corrección del productor.
+ */
+export async function validarCatalogosProductor(client: PoolClient, fp: any): Promise<void> {
+  if (fp.seguro_agricola && !(await codigoValido(client, 'seguro_agricola', fp.seguro_agricola))) falla('frijol_productor.seguro_agricola', 'El seguro agrícola no es válido');
+  const progs: string[] = Array.isArray(fp.programas_sader) ? fp.programas_sader : [];
+  if (progs.length > 0) {
+    const r = await client.query('SELECT clave FROM cat_programas_gobierno WHERE clave = ANY($1::text[]) AND activo = true', [progs]);
+    const activos = new Set(r.rows.map((x: { clave: string }) => x.clave));
+    if (progs.some(x => !PROGRAMAS_SADER.includes(x) || !activos.has(x))) falla('frijol_productor.programas_sader', 'Alguno de los programas no es válido');
+  }
+}
+
 const CAMPOS_PERSONALES: Array<[string, string]> = [
   ['nombres', 'nombres'], ['apellido_paterno', 'apellido_paterno'], ['apellido_materno', 'apellido_materno'],
   ['sexo', 'sexo'], ['fecha_nacimiento', 'fecha_nacimiento'], ['telefono', 'phone'], ['correo', 'correo'],
@@ -166,14 +194,9 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     validarEstructura(body, !prod);
 
     // Catálogos
-    const vr = await client.query(`SELECT 1 FROM cat_crop_variety WHERE crop = 'frijol' AND code = $1 AND is_active = true`, [cu.variety_id]);
-    if (vr.rows.length === 0) falla('cultivo.variety_id', 'La variedad seleccionada no es válida');
+    await validarCatalogosCultivo(client, cu);
     if (!(await codigoValido(client, 'documento_propiedad', pa.documento_propiedad))) falla('parcela.documento_propiedad', 'El documento de propiedad no es válido');
-    if (fp.seguro_agricola && !(await codigoValido(client, 'seguro_agricola', fp.seguro_agricola))) falla('frijol_productor.seguro_agricola', 'El seguro agrícola no es válido');
-    if (cu.destino && !(await codigoValido(client, 'destino_frijol', cu.destino))) falla('cultivo.destino', 'El destino de la producción no es válido');
-    if (cu.tipo_siembra && !(await codigoValido(client, 'tipo_siembra_frijol', cu.tipo_siembra))) falla('cultivo.tipo_siembra', 'El tipo de siembra no es válido');
-    if (!(await codigoValido(client, 'rotacion_cultivo', cu.rotacion))) falla('cultivo.rotacion', 'La rotación no es válida');
-    for (const t of cu.tipos_fertilizante || []) if (!(await codigoValido(client, 'tipo_fertilizante', t))) falla('cultivo.tipos_fertilizante', 'Algún tipo de fertilizante no es válido');
+    await validarCatalogosProductor(client, fp);
 
     // Geografía
     const est = await client.query('SELECT name FROM geo_state WHERE state_id = $1', [pa.state_id]);

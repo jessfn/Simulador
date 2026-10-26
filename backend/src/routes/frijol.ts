@@ -5,7 +5,7 @@ import { requierePrograma } from '../middleware/programa';
 import { PROGRAMA_FRIJOL } from '../utils/programas';
 import { verificarIdentidad } from '../services/identidad';
 import { inferirCiclo, cicloFinal, Regimen } from '../services/cicloSIAP';
-import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo } from '../services/frijolRegistro';
+import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo, validarCatalogosCultivo, validarCatalogosProductor } from '../services/frijolRegistro';
 import { generarAcuseFrijol } from '../services/acuseFrijol';
 
 // Módulo de registro de Frijol (técnicos ECA). Todo /api/frijol/* requiere sesión de técnico con el programa frijol_afb.
@@ -351,6 +351,9 @@ router.patch('/productores/:producer_id', async (req: AuthRequest, res: Response
       if (fp.seguro_agricola === 'otro' && !String(fp.seguro_agricola_nombre || '').trim()) { mal('frijol_productor.seguro_agricola_nombre', 'Escribe el nombre del seguro o programa'); return; }
     }
 
+    // T09 §9.2.3: seguro agrícola y programas se validan contra el catálogo (igual que en el registro nuevo)
+    if (fp) await validarCatalogosProductor(client, { ...fp, programas_sader: fp.participa_programas_sader ? fp.programas_sader : [] });
+
     await client.query('BEGIN');
     const actual = (await client.query("SELECT *, to_char(fecha_nacimiento,'YYYY-MM-DD') AS fn FROM producer WHERE producer_id = $1", [id])).rows[0];
     const campos: Array<[string, string, unknown]> = [
@@ -460,8 +463,8 @@ router.patch('/cultivos/:cycle_crop_id', async (req: AuthRequest, res: Response)
     const cu = { ...act, ...(req.body?.cultivo || {}) };
     validarCultivo(cu);
 
-    const v = await client.query(`SELECT 1 FROM cat_crop_variety WHERE crop = 'frijol' AND code = $1 AND is_active = true`, [cu.variety_id]);
-    if (v.rows.length === 0) { res.status(400).json({ error: 'La variedad seleccionada no es válida', campo: 'cultivo.variety_id' }); return; }
+    // T09 §9.2: las mismas validaciones de catálogo que el registro nuevo (variedad, destino, tipo de siembra, rotación y fertilizantes)
+    await validarCatalogosCultivo(client, cu);
     const areaFinal = Number(d.area_ha_real || d.area_ha_calc || 0);
     if (areaFinal > 0 && Number(cu.area_sown_ha) > areaFinal + 1e-9) {
       res.status(400).json({ error: `La superficie sembrada no puede ser mayor a la de la parcela (${areaFinal.toFixed(2)} ha)`, campo: 'cultivo.area_sown_ha' }); return;
