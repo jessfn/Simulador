@@ -2,7 +2,8 @@
 // Uso:  node db/run.js up | down | status | create <nombre> | fake-base
 //   up / down      aplica o revierte migraciones pendientes (down revierte una)
 //   status         muestra lo que se aplicaria (--dry-run), sin tocar la base
-//   fake-base      marca la linea base (0000) como aplicada SIN ejecutarla (para bases que ya la tienen: produccion)
+//   fake-base      marca SOLO la linea base (0000) como aplicada, sin ejecutarla (para bases que ya la tienen: produccion).
+//                  (node-pg-migrate con --fake --count 1 marcaba TODAS las pendientes; por eso se inserta el registro directamente)
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { spawnSync } = require('child_process');
 const path = require('path');
@@ -26,8 +27,19 @@ const mapa = {
   down: ['down', ...dir, ...resto],
   status: ['up', '--dry-run', ...dir, ...resto],
   create: ['create', ...dir, '--migration-file-language', 'sql', ...resto],
-  'fake-base': ['up', ...dir, '--fake', '--count', '1'],
 };
+if (accion === 'fake-base') {
+  const { Client } = require('pg');
+  (async () => {
+    const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
+    await c.connect();
+    await c.query('CREATE TABLE IF NOT EXISTS public.pgmigrations (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, run_on TIMESTAMP NOT NULL)');
+    const r = await c.query("INSERT INTO public.pgmigrations (name, run_on) SELECT '0000_linea_base', NOW() WHERE NOT EXISTS (SELECT 1 FROM public.pgmigrations WHERE name = '0000_linea_base')");
+    console.log(r.rowCount ? 'Linea base 0000_linea_base marcada como aplicada (no se ejecuto nada).' : 'La linea base ya estaba marcada.');
+    await c.end();
+  })().catch(e => { console.error('fake-base fallo:', e.message); process.exit(1); });
+  return;
+}
 if (!mapa[accion]) {
   console.error('Accion desconocida:', accion, '\nUso: node db/run.js up|down|status|create <nombre>|fake-base');
   process.exit(1);
