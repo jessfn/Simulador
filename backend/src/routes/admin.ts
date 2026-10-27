@@ -938,11 +938,11 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
       SELECT
         COUNT(*)                                                          AS total,
         COUNT(*) FILTER (WHERE aviso_privacidad_foto_url IS NOT NULL)    AS con_foto,
-        COUNT(*) FILTER (WHERE aviso_privacidad_latitud IS NOT NULL)         AS con_gps,
+        COUNT(*) FILTER (WHERE aviso_privacidad_lat IS NOT NULL)         AS con_gps,
         ROUND(AVG(
           (CASE WHEN aviso_privacidad_aceptado   THEN 1 ELSE 0 END +
            CASE WHEN aviso_privacidad_fecha  IS NOT NULL THEN 1 ELSE 0 END +
-           CASE WHEN aviso_privacidad_latitud    IS NOT NULL THEN 1 ELSE 0 END +
+           CASE WHEN aviso_privacidad_lat    IS NOT NULL THEN 1 ELSE 0 END +
            CASE WHEN aviso_privacidad_foto_url IS NOT NULL THEN 1 ELSE 0 END)::numeric / 4 * 100
         ))                                                                AS completitud_media
       FROM (${unionAll}) t`;
