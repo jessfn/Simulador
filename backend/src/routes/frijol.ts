@@ -7,6 +7,7 @@ import { validarSuperficieCombinada } from '../utils/superficie';
 import { verificarIdentidad } from '../services/identidad';
 import { inferirCiclo, cicloFinal, Regimen } from '../services/cicloSIAP';
 import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo, validarCatalogosCultivo, validarCatalogosProductor, errorFechaNacimiento } from '../services/frijolRegistro';
+import { aplicarEdicionDirecta, ErrorEdicion, estadoDeCampos } from '../services/edicionUnica';
 import { generarAcuseFrijol } from '../services/acuseFrijol';
 import { consultaCurpLimiter } from '../middleware/rateLimiters';
 
@@ -33,6 +34,10 @@ const PROGRAMAS_SADER = [
 ];
 
 function responderError(res: Response, error: unknown, contexto: string): void {
+  if (error instanceof ErrorEdicion) {
+    res.status(error.status).json({ error: error.message, codigo: error.codigo, campo: error.campo, ...(error.extra || {}) });
+    return;
+  }
   if (error instanceof ErrorRegistro) {
     res.status(error.status).json({ error: error.message, codigo: error.codigo, campo: error.campo, ...(error.extra || {}) });
     return;
@@ -75,6 +80,8 @@ async function datosProductor(producerId: number) {
     datos: p.rows[0],
     frijol_productor: fp.rows[0] || null,
     parcelas: parcelas.rows.map((r: any) => ({ ...r, tiene_frijol: r.ciclos_frijol.length > 0 })),
+    // T10: qué datos personales se pueden editar directo (una vez) y cuáles ya solo se cambian con solicitud
+    campos: await estadoDeCampos(pool, producerId),
   };
 }
 
@@ -365,27 +372,14 @@ router.patch('/productores/:producer_id', async (req: AuthRequest, res: Response
     if (fp) await validarCatalogosProductor(client, { ...fp, programas_sader: fp.participa_programas_sader ? fp.programas_sader : [] });
 
     await client.query('BEGIN');
-    const actual = (await client.query("SELECT *, to_char(fecha_nacimiento,'YYYY-MM-DD') AS fn FROM producer WHERE producer_id = $1", [id])).rows[0];
-    const campos: Array<[string, string, unknown]> = [
-      ['nombres', 'nombres', p.nombres !== undefined ? String(p.nombres).trim() : undefined],
-      ['apellido_paterno', 'apellido_paterno', p.apellido_paterno !== undefined ? String(p.apellido_paterno).trim() : undefined],
-      ['apellido_materno', 'apellido_materno', p.apellido_materno !== undefined ? (String(p.apellido_materno).trim() || null) : undefined],
-      ['sexo', 'sexo', p.sexo],
-      ['fecha_nacimiento', 'fecha_nacimiento', p.fecha_nacimiento !== undefined ? String(p.fecha_nacimiento).slice(0, 10) : undefined],
-      ['telefono', 'phone', p.telefono !== undefined ? String(p.telefono) : undefined],
-      ['correo', 'correo', p.correo !== undefined ? (String(p.correo).trim().toLowerCase() || null) : undefined],
-    ];
-    for (const [campo, col, nuevo] of campos) {
-      if (nuevo === undefined) continue;
-      const antes = col === 'fecha_nacimiento' ? actual.fn : actual[col];
-      if (String(antes ?? '') === String(nuevo ?? '')) continue;
-      // T09 §9.5: el correo se escribe en las dos columnas (producer.correo y producer.correo_electronico) para que maíz lo vea igual en todas partes
-      await client.query(`UPDATE producer SET ${col} = ${col === 'correo' ? '$1::text' : '$1'}${col === 'correo' ? ', correo_electronico = $1::text' : ''} WHERE producer_id = $2`, [nuevo, id]);
-      await client.query(
-        'INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)',
-        [id, campo, antes == null ? null : String(antes), nuevo == null ? null : String(nuevo), req.user!.userId, PROGRAMA_FRIJOL]
-      );
-    }
+    // T10: la corrección de datos personales es la "edición única": cada dato se corrige directo una sola vez (con historial); después, por solicitud.
+    await aplicarEdicionDirecta(client, {
+      producerId: id, usuarioId: req.user!.userId, programa: PROGRAMA_FRIJOL,
+      cambios: {
+        nombres: p.nombres, apellido_paterno: p.apellido_paterno, apellido_materno: p.apellido_materno, sexo: p.sexo,
+        fecha_nacimiento: p.fecha_nacimiento, telefono: p.telefono, correo: p.correo,
+      },
+    });
     if (fp) {
       const progs: string[] = Array.isArray(fp.programas_sader) ? fp.programas_sader : [];
       await client.query(

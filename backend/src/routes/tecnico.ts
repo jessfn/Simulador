@@ -9,6 +9,7 @@ import { consultarPersonaPorCURP } from '../services/saderService';
 import { consultarCURPEnRENAPO } from '../services/renapoService';
 import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
 import { insertarUP } from '../utils/ups';
+import { aplicarEdicionDirecta, registrarCambioSinGastar, ErrorEdicion } from '../services/edicionUnica';
 import { requierePrograma } from '../middleware/programa';
 import { perfilProgramasDeTecnico, soloMaiz, tecnicoDeMaiz, parcelaDeMaiz, PROGRAMA_MAIZ } from '../utils/programas';
 import {
@@ -367,21 +368,29 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
       // (Si no está en maíz y su capturista es de otro programa —frijol— se permite: abajo se crea su renglón de maíz.)
 
       producerId = producer_id_existente;
+      // T10: teléfono, sexo y fecha de nacimiento de un productor que ya existía son datos personales: pasan por la edición única
+      // (solo cuentan si el valor realmente cambia) y dejan historial. Estado y municipio solo dejan historial.
+      const antes = (await client.query('SELECT state_id, municipality_id FROM producer WHERE producer_id = $1', [producerId])).rows[0];
+      await aplicarEdicionDirecta(client, {
+        producerId, usuarioId: tecnicoId, programa: PROGRAMA_MAIZ,
+        cambios: { ...(telefono ? { telefono } : {}), ...(sexo ? { sexo } : {}), ...(fechaNacValida ? { fecha_nacimiento: fechaNacValida } : {}) },
+        contexto: 'registro',
+      });
+      if (antes) {
+        if (state_id) await registrarCambioSinGastar(client, producerId, 'state_id', antes.state_id, state_id, tecnicoId, PROGRAMA_MAIZ);
+        if (municipality_id) await registrarCambioSinGastar(client, producerId, 'municipality_id', antes.municipality_id, municipality_id, tecnicoId, PROGRAMA_MAIZ);
+      }
       const r = await client.query(
         `UPDATE producer SET
-           phone = COALESCE($1, phone),
-           state_id = COALESCE($2, state_id),
-           municipality_id = COALESCE($3, municipality_id),
-           sexo = COALESCE($4, sexo),
-           fecha_nacimiento = COALESCE($5, fecha_nacimiento),
-           fuente_registro = COALESCE($6, fuente_registro),
-           usuario_capturista_id = COALESCE(usuario_capturista_id, $7),
+           state_id = COALESCE($1, state_id),
+           municipality_id = COALESCE($2, municipality_id),
+           fuente_registro = COALESCE($3, fuente_registro),
+           usuario_capturista_id = COALESCE(usuario_capturista_id, $4),
            estatus_registro = 'alterno',
            fecha_captura = COALESCE(fecha_captura, CURRENT_TIMESTAMP)
-         WHERE producer_id = $8
+         WHERE producer_id = $5
          RETURNING producer_id`,
-        [telefono || null, state_id || null, municipality_id || null,
-         sexo || null, fechaNacValida, fuente || null, tecnicoId, producerId]
+        [state_id || null, municipality_id || null, fuente || null, tecnicoId, producerId]
       );
       if (r.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -457,6 +466,10 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
     await client.query('ROLLBACK');
     if (e instanceof EncuestaError) {
       res.status(e.status).json({ error: e.message, codigo: e.codigo, campo: e.campo });
+      return;
+    }
+    if (e instanceof ErrorEdicion) {
+      res.status(e.status).json({ error: e.message, codigo: e.codigo, campo: e.campo, ...(e.extra || {}) });
       return;
     }
     if (e.code === 'UP_OVERLAP') {
@@ -661,44 +674,46 @@ router.post('/productor/:producer_id/ups', authMiddleware, requiereCapturista, r
 // PATCH /api/tecnico/productor/:producer_id
 // =============================================
 router.patch('/productor/:producer_id', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
+  const client = await pool.connect();
   try {
     const tecnicoId = req.user!.userId;
-    const { producer_id } = req.params;
-    const { nombres, apellido_paterno, apellido_materno, telefono, state_id, municipality_id } = req.body;
+    const producerId = Number(req.params.producer_id);
+    const { nombres, apellido_paterno, apellido_materno, telefono, state_id, municipality_id, sexo, fecha_nacimiento, correo } = req.body;
 
-    const updates: string[] = [];
-    const vals: any[] = [];
-    let idx = 1;
-
-    if (nombres !== undefined) { updates.push(`nombres = $${idx++}`); vals.push(nombres); }
-    if (apellido_paterno !== undefined) { updates.push(`apellido_paterno = $${idx++}`); vals.push(apellido_paterno); }
-    if (apellido_materno !== undefined) { updates.push(`apellido_materno = $${idx++}`); vals.push(apellido_materno); }
-    if (telefono !== undefined) { updates.push(`phone = $${idx++}`); vals.push(telefono); }
-    if (state_id !== undefined) { updates.push(`state_id = $${idx++}`); vals.push(state_id); }
-    if (municipality_id !== undefined) { updates.push(`municipality_id = $${idx++}`); vals.push(municipality_id); }
-
-    if (updates.length === 0) {
+    if ([nombres, apellido_paterno, apellido_materno, telefono, state_id, municipality_id, sexo, fecha_nacimiento, correo].every(x => x === undefined)) {
       res.status(400).json({ error: 'No hay campos para actualizar' });
       return;
     }
+    if (!Number.isInteger(producerId) || producerId <= 0) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
+    const propio = await client.query(`SELECT state_id, municipality_id FROM producer WHERE producer_id = $1 AND ${tecnicoDeMaiz('producer', '$2')}`, [producerId, tecnicoId]);
+    if (propio.rows.length === 0) { res.status(403).json({ error: 'Este productor no fue registrado por ti' }); return; }
 
-    vals.push(producer_id, tecnicoId);
-    const result = await pool.query(
-      `UPDATE producer SET ${updates.join(', ')}
-       WHERE producer_id = $${idx++} AND ${tecnicoDeMaiz('producer', `$${idx}`)}
-       RETURNING producer_id, curp, nombres, apellido_paterno, apellido_materno, phone AS telefono, state_id, municipality_id`,
-      vals
-    );
-
-    if (result.rows.length === 0) {
-      res.status(403).json({ error: 'Este productor no fue registrado por ti' });
-      return;
-    }
-
+    // T10: nombres, apellidos y teléfono entran en la edición única (una vez, con historial; teléfono con cuenta solo por solicitud al administrador).
+    // Estado y municipio no entran en la regla (los fija la parcela, no identifican a la persona ni sirven para recuperar el NIP): solo dejan historial.
+    await client.query('BEGIN');
+    await aplicarEdicionDirecta(client, {
+      producerId, usuarioId: tecnicoId, programa: PROGRAMA_MAIZ,
+      cambios: { nombres, apellido_paterno, apellido_materno, telefono, sexo, fecha_nacimiento, correo },
+    });
+    const ub: string[] = [];
+    const uv: unknown[] = [];
+    if (state_id !== undefined) { uv.push(state_id); ub.push(`state_id = $${uv.length}`); await registrarCambioSinGastar(client, producerId, 'state_id', propio.rows[0].state_id, state_id, tecnicoId, PROGRAMA_MAIZ); }
+    if (municipality_id !== undefined) { uv.push(municipality_id); ub.push(`municipality_id = $${uv.length}`); await registrarCambioSinGastar(client, producerId, 'municipality_id', propio.rows[0].municipality_id, municipality_id, tecnicoId, PROGRAMA_MAIZ); }
+    if (ub.length > 0) { uv.push(producerId); await client.query(`UPDATE producer SET ${ub.join(', ')} WHERE producer_id = $${uv.length}`, uv); }
+    const result = await client.query(
+      `SELECT producer_id, curp, nombres, apellido_paterno, apellido_materno, phone AS telefono, state_id, municipality_id FROM producer WHERE producer_id = $1`, [producerId]);
+    await client.query('COMMIT');
     res.json({ productor: result.rows[0] });
   } catch (error) {
-    console.error('Error al editar productor (técnico):', error);
+    await client.query('ROLLBACK').catch(() => {});
+    if (error instanceof ErrorEdicion) {
+      res.status(error.status).json({ error: error.message, codigo: error.codigo, campo: error.campo, ...(error.extra || {}) });
+      return;
+    }
+    console.error('Error al editar productor (técnico):', (error as Error)?.message);
     res.status(500).json({ error: 'Error interno del servidor' });
+  } finally {
+    client.release();
   }
 });
 

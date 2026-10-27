@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users, MapPinned, ChevronRight, UserPlus, Sprout } from 'lucide-react';
 import { api } from '../../services/api';
 import { PageHeaderTecnico } from '../../components/LayoutTecnico';
+import { ResumenSolicitudes } from '../../components/solicitudes/SolicitudesCambio';
 
 interface Registro {
   producer_id: number;
@@ -46,6 +47,7 @@ export default function DashboardTecnicoPage() {
       <PageHeaderTecnico title="Inicio" subtitle="Panel del técnico ECA" />
 
       <div className="p-4 space-y-5">
+        <ResumenSolicitudes ruta="/maiz/tecnico/solicitudes" />
         {/* KPIs */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-2xl border border-slate-100 p-4">

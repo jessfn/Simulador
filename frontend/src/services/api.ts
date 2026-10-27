@@ -58,6 +58,7 @@ async function request<T = any>(path: string, opts: RequestInit = {}): Promise<T
     e.codigo = err.codigo;
     e.campo = err.campo;
     e.status = res.status;
+    e.datos = err;   // cuerpo completo (algunos errores traen más datos, p. ej. el valor actual en una solicitud)
     throw e;
   }
   return res.json();
@@ -319,7 +320,30 @@ export const api = {
       return res.blob();
     },
   },
+  // T10 · Solicitudes de cambio de datos personales (técnicos de maíz y frijol)
+  solicitudes: {
+    resumen: () => request('/solicitudes-cambio/resumen'),
+    porResolver: () => request('/solicitudes-cambio/por-resolver'),
+    mias: (programa?: string) => request(`/solicitudes-cambio/mias${programa ? `?programa=${programa}` : ''}`),
+    marcarVistas: () => request('/solicitudes-cambio/marcar-vistas', { method: 'POST', body: '{}' }),
+    campos: (producerId: number | string, programa: string) => request(`/solicitudes-cambio/campos/${producerId}?programa=${programa}`),
+    crear: (data: { producer_id: number; programa: string; campo: string; valor_nuevo: string; motivo: string }) =>
+      request('/solicitudes-cambio', { method: 'POST', body: JSON.stringify(data) }),
+    aprobar: (id: number, confirmar = false) => request(`/solicitudes-cambio/${id}/aprobar`, { method: 'POST', body: JSON.stringify({ confirmar }) }),
+    rechazar: (id: number, motivo: string) => request(`/solicitudes-cambio/${id}/rechazar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    cancelar: (id: number) => request(`/solicitudes-cambio/${id}/cancelar`, { method: 'POST', body: '{}' }),
+  },
   admin: {
+    solicitudes: {
+      lista: (f: Record<string, string | number | undefined> = {}) => {
+        const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v !== undefined && v !== '') as [string, string][]).toString();
+        return request(`/admin/solicitudes-cambio${qs ? `?${qs}` : ''}`);
+      },
+      tecnicos: () => request('/admin/solicitudes-cambio/tecnicos'),
+      detalle: (id: number) => request(`/admin/solicitudes-cambio/${id}`),
+      aprobar: (id: number, confirmar = false) => request(`/admin/solicitudes-cambio/${id}/aprobar`, { method: 'POST', body: JSON.stringify({ confirmar }) }),
+      rechazar: (id: number, motivo: string) => request(`/admin/solicitudes-cambio/${id}/rechazar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    },
     frijol: {
       resumen: (f: Record<string, string | undefined> = {}) => {
         const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();

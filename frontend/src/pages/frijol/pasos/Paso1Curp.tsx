@@ -64,6 +64,7 @@ export default function Paso1Curp({ b, actualizar, enLinea, alAvanzar, curpInici
       consulta: {
         codigo: r.codigo as never, producer_id: r.producer_id, token_verificacion: r.token_verificacion,
         parcelas: r.parcelas || [], tiene_cuenta: !!(d.tiene_cuenta as unknown as boolean), telefono_original: (d.telefono as string) || '',
+        bloqueados: ((r as unknown as { campos?: { campo: string; editable: boolean }[] }).campos || []).filter(c => !c.editable).map(c => c.campo),
       },
       productor: {
         nombres: d.nombres || d.nombres === '' ? (d.nombres as string) : prev.productor.nombres,

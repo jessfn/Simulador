@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/auth';
 import IconoFrijol from '../../components/IconoFrijol';
 import { borrarBorrador, listarBorradores } from './almacen';
 import { useConexion } from './useConexion';
+import { ResumenSolicitudes } from '../../components/solicitudes/SolicitudesCambio';
 import { NOMBRES_PASOS } from './tipos';
 import type { Borrador } from './tipos';
 
@@ -49,6 +50,8 @@ export default function FrijolTableroPage() {
           <Plus size={21} /> Nuevo registro
         </button>
       </section>
+
+      <ResumenSolicitudes ruta="/frijol/tecnico/solicitudes" />
 
       {borradores.length > 0 && (
         <section className="rounded-3xl bg-white border border-amber-200 p-4" aria-label="Registros sin enviar">

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, Sprout, MapPin, Phone, CalendarPlus, CalendarCheck } from 'lucide-react';
 import { api } from '../../services/api';
 import { PageHeaderTecnico } from '../../components/LayoutTecnico';
+import { FichaDatosPersonales } from '../../components/solicitudes/SolicitudesCambio';
 
 interface UP {
   up_id: number;
@@ -116,6 +117,11 @@ export default function DetalleProductorTecnicoPage() {
               </div>
             )}
           </div>
+        )}
+
+        {productor && (
+          <FichaDatosPersonales producerId={Number(id)} programa="simac_maiz"
+            onEditar={async (campo, valor) => { await api.tecnico.editarProductor(id!, { [campo]: valor }); }} />
         )}
 
         {productor?.encuesta_estado && productor.encuesta_estado !== 'no_aplica' && (
