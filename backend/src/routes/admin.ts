@@ -783,7 +783,7 @@ router.get('/actividad-reciente', authMiddleware, async (req: AuthRequest, res: 
     const alertasR = pool.query(`
       SELECT
         'alerta' AS tipo,
-        COALESCE(a.descripcion, a.tipo_alerta) AS descripcion,
+        COALESCE(a.observaciones, a.tipo_alerta) AS descripcion,
         'Sistema' AS actor,
         a.fecha_alerta AS fecha,
         '/admin/alertas' AS link
@@ -822,14 +822,14 @@ router.get('/ventanillas/resumen', authMiddleware, async (req: AuthRequest, res:
         b.estado AS bodega_estado,
         v.tipo,
         v.nombre_enlace_agricultura,
-        v.telefono_enlace,
-        v.correo_enlace,
+        v.telefono_responsable AS telefono_enlace,
+        v.correo_responsable AS correo_enlace,
         COUNT(sa.id) AS apoyos_solicitados,
         COUNT(sa.id) FILTER (WHERE sa.estado IN ('canalizada', 'cerrada')) AS apoyos_atendidos
       FROM ventanillas v
       JOIN bodegas b ON v.bodega_id = b.id
       LEFT JOIN solicitudes_apoyo sa ON sa.ventanilla_id = v.id
-      GROUP BY v.id, b.nombre, b.estado, v.tipo, v.nombre_enlace_agricultura, v.telefono_enlace, v.correo_enlace
+      GROUP BY v.id, b.nombre, b.estado, v.tipo, v.nombre_enlace_agricultura, v.telefono_responsable, v.correo_responsable
       ORDER BY b.estado, b.nombre
     `);
     res.json({ ventanillas: result.rows, total: result.rows.length });
@@ -1218,7 +1218,7 @@ router.get('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: AuthRe
         b.estado AS bodega_estado, b.municipio AS bodega_municipio,
         b.localidad AS bodega_localidad, b.direccion AS bodega_direccion,
         b.capacidad_ton, b.estatus AS bodega_estatus,
-        b.telefono AS bodega_telefono
+        b.telefono_contacto AS bodega_telefono
       FROM usuarios u
       LEFT JOIN bodeguero_bodegas bb ON bb.usuario_id = u.id
       LEFT JOIN bodegas b ON b.id = bb.bodega_id

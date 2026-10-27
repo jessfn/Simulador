@@ -851,13 +851,12 @@ router.post('/fira/upload-csv', authMiddleware, upload.single('file'), async (re
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
     
     const colEstado = headers.indexOf('estado');
-    const colMunicipio = headers.indexOf('municipio');
-    const colCiclo = headers.indexOf('ciclo');
+        const colCiclo = headers.indexOf('ciclo');
     const colModalidad = headers.indexOf('modalidad');
-    const colCosto = headers.indexOf('costo_por_ton');
+    const colCosto = headers.indexOf('costo_por_ha');
 
     if (colEstado === -1 || colCiclo === -1 || colModalidad === -1 || colCosto === -1) {
-      res.status(400).json({ error: 'El CSV debe contener las columnas: estado, ciclo, modalidad, costo_por_ton' });
+      res.status(400).json({ error: 'El CSV debe contener las columnas: estado, ciclo, modalidad, costo_por_ha' });
       return;
     }
 
@@ -880,7 +879,6 @@ router.post('/fira/upload-csv', authMiddleware, upload.single('file'), async (re
         }
 
         const estado = row[colEstado];
-        const municipio = colMunicipio !== -1 ? (row[colMunicipio] || null) : null;
         const ciclo = row[colCiclo];
         const modalidad = row[colModalidad];
         const costoVal = parseFloat(row[colCosto]);
@@ -903,15 +901,14 @@ router.post('/fira/upload-csv', authMiddleware, upload.single('file'), async (re
         }
 
         // Buscar si existe para hacer INSERT o UPDATE
-        const queryFind = municipio 
-          ? await client.query('SELECT id FROM costos_fira WHERE estado = $1 AND municipio = $2 AND ciclo = $3 AND modalidad = $4', [estado, municipio, cicloClean, modClean])
-          : await client.query('SELECT id FROM costos_fira WHERE estado = $1 AND (municipio IS NULL OR municipio = \'\') AND ciclo = $2 AND modalidad = $3', [estado, cicloClean, modClean]);
+        // costos_fira es por estado, ciclo y modalidad (no por municipio)
+        const queryFind = await client.query('SELECT id FROM costos_fira WHERE estado = $1 AND ciclo = $2 AND modalidad = $3', [estado, cicloClean, modClean]);
 
         if (queryFind.rows.length > 0) {
-          await client.query('UPDATE costos_fira SET costo_por_ton = $1, actualizado_en = NOW() WHERE id = $2', [costoVal, queryFind.rows[0].id]);
+          await client.query('UPDATE costos_fira SET costo_por_ha = $1, actualizado_en = NOW() WHERE id = $2', [costoVal, queryFind.rows[0].id]);
           actualizados++;
         } else {
-          await client.query('INSERT INTO costos_fira (estado, municipio, ciclo, modalidad, costo_por_ton, creado_en, actualizado_en) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())', [estado, municipio, cicloClean, modClean, costoVal]);
+          await client.query('INSERT INTO costos_fira (estado, ciclo, modalidad, costo_por_ha, actualizado_en) VALUES ($1, $2, $3, $4, NOW())', [estado, cicloClean, modClean, costoVal]);
           insertados++;
         }
       }

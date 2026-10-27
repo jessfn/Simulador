@@ -45,7 +45,7 @@ router.get('/resumen', authMiddleware, async (req: AuthRequest, res: Response): 
       pool.query(`SELECT COUNT(*)::int AS total FROM productor p WHERE p.estado_validacion = 'pendiente' AND ${soloMaiz('p')} ${wP.sql}`, wP.params),
       pool.query(`SELECT COUNT(*)::int AS total FROM bodegas b WHERE b.estatus = 'aprobada' ${wB.sql}`, wB.params),
       pool.query(`SELECT COUNT(*)::int AS total FROM bodegas b WHERE b.estatus = 'pendiente' ${wB.sql}`, wB.params),
-      pool.query(`SELECT COALESCE(SUM(COALESCE(volumen_estimado_ton, volumen_ton, 0)), 0)::numeric(12,2) AS total_ton FROM disponibilidad_productor WHERE COALESCE(activa, activo, true) = true`).catch(() => ({ rows: [{ total_ton: 0 }] })),
+      pool.query(`SELECT COALESCE(SUM(COALESCE(volumen_estimado_ton, 0)), 0)::numeric(12,2) AS total_ton FROM disponibilidad_productor WHERE COALESCE(activa, true) = true`).catch(() => ({ rows: [{ total_ton: 0 }] })),
       pool.query(`SELECT COALESCE(SUM(volumen_ton), 0)::numeric(12,2) AS total_ton FROM senales_compra WHERE activa = true`).catch(() => ({ rows: [{ total_ton: 0 }] })),
       pool.query(`SELECT COUNT(*)::int AS total FROM transacciones WHERE creado_en >= NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ total: 0 }] })),
     ]);
