@@ -2,7 +2,7 @@
 require('dotenv').config({ path: '/var/www/Simulador/backend/.env' });
 const jwt = require('jsonwebtoken');
 const { Client } = require('pg');
-const rutas = require('./rutas.json');
+const rutas = require('./rutas.json').map(x => ({ ...x, r: x.r.replace('/api', '') }));
 const SECRETO = 'ensayo_local_secreto_no_produccion_0123456789';
 const BASE = 'http://127.0.0.1:3999/api';
 const fallas = []; let total = 0, enVentana = 0, ventanaIni = Date.now();

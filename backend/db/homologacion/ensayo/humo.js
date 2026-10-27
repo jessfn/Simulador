@@ -1,6 +1,6 @@
 // Ensayo de la homologación: recorre la API real (instancia aislada en el esquema "ensayo") y reporta toda respuesta 5xx o error de SQL.
 // Corre en el servidor contra http://127.0.0.1:3999/api. No toca el esquema público.
-const rutas = require('./rutas.json');
+const rutas = require('./rutas.json').map(x => ({ ...x, r: x.r.replace('/api', '') }));
 const BASE = 'http://127.0.0.1:3999/api';
 const CLAVE = 'Ensayo#2026x';
 const fallas = [];
@@ -28,7 +28,7 @@ async function entrar(ruta, email) {
 
   // 1) Todos los GET sin parámetros, con cada rol
   if (!process.env.SOLO_FLUJOS) for (const r of rutas.filter(x => x.m === 'get' && !x.r.includes(':'))) {
-    if (/\/stream|\/descargar|\/exportar/.test(r.r) && false) continue;
+    if (/\/stream/.test(r.r)) continue;
     for (const [nombre, tk] of [['admin', admin], ['maiz', maiz], ['frijol', frijol]]) await llamar('get', r.r, tk);
   }
 
@@ -112,7 +112,7 @@ async function entrar(ruta, email) {
 
   // 4) Rutas con parámetros: se prueban con ids existentes y falsos (no deben dar 5xx)
   const ids = { ':producer_id': pid || 1, ':up_id': 1, ':cycle_id': 1, ':id': 1, ':crop_id': 1, ':curp': curp, ':cycle_crop_id': 1, ':bodega_id': 1, ':ciclo_id': 1 };
-  if (!process.env.SOLO_FLUJOS) for (const r of rutas.filter(x => x.m === 'get' && x.r.includes(':'))) {
+  if (!process.env.SOLO_FLUJOS) for (const r of rutas.filter(x => x.m === 'get' && x.r.includes(':') && !/stream/.test(x.r))) {
     let ruta = r.r; for (const [k, v] of Object.entries(ids)) ruta = ruta.split(k).join(v); ruta = ruta.replace(/:[a-z_]+/g, '1');
     for (const tk of [admin, maiz, frijol]) await llamar('get', ruta, tk);
   }
