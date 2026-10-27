@@ -123,3 +123,11 @@ Se renombraron además 31 restricciones, 21 índices y 7 secuencias (lista exact
 - Migración **generada** por `backend/db/homologacion/generar-migracion.js` desde `mapa.js` (única fuente). Solo cambia nombres; no toca datos. Se ensayó en una copia desechable del esquema de producción (subida, bajada y subida otra vez, idéntica).
 - El código SQL del backend se convirtió con `convertir-consultas.js` (solo texto SQL; no variables ni claves JSON) y se validó consulta por consulta con `PREPARE` y comparando, para cada consulta, los nombres de columna que devuelve el código viejo contra el nuevo (0 diferencias).
 - **Reversa:** `npm run migrate:down` (restaura todos los nombres) y volver al commit anterior.
+
+## Integridad de identificadores (migración 0009)
+
+Antes de esta migración, 36 tablas no tenían llave primaria y 11 tenían identificadores repetidos (colisiones antiguas de las cargas de abril a julio de 2026). La migración `0009_integridad_de_identificadores`:
+- corrigió los ids repetidos (21 ciclos y 8 tablas más; el registro más cercano a sus datos relacionados conserva el id y el otro recibe uno nuevo de la secuencia) y reasignó sus registros hijos con el mismo criterio;
+- dejó el rastro de cada cambio en la tabla `correcciones_identificadores` (219 renglones);
+- agregó la llave primaria a todas las tablas que no la tenían.
+No se borró ningún registro. Respaldo previo: `~/respaldos/simac-pre-integridad-2026-10-27-1335.dump`; etiqueta `prod-2026-10-27-antes-integridad`. La bajada solo quita las llaves; los ids corregidos no se revierten (es una corrección de datos).
