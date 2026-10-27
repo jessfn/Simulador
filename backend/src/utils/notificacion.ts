@@ -39,10 +39,10 @@ export async function notificar(opts: OptsNotif): Promise<void> {
   // Push nativa: buscar credenciales del usuario
   try {
     const { rows } = await pool.query(
-      `SELECT push_endpoint, push_p256dh, push_auth
+      `SELECT push_url, push_llave_p256dh, push_llave_auth
        FROM usuarios
        WHERE id = $1 AND push_activo = TRUE
-         AND push_endpoint IS NOT NULL`,
+         AND push_url IS NOT NULL`,
       [opts.usuarioId]
     );
     if (!rows.length) return;

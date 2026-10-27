@@ -11,21 +11,21 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
   try {
     const { tipo_maiz } = req.query;
     const catalogs = await pool.query(
-      `SELECT catalog, code, label FROM cat_catalog WHERE is_active = true ORDER BY catalog, sort_order, label`
+      `SELECT catalogo, codigo, etiqueta FROM cat_catalogo WHERE activo = true ORDER BY catalogo, orden, etiqueta`
     );
 
-    let varQuery = `SELECT crop, code, label FROM cat_crop_variety WHERE is_active = true`;
+    let varQuery = `SELECT cultivo, codigo, etiqueta FROM cat_variedad_cultivo WHERE activo = true`;
     const varParams: any[] = [];
     if (tipo_maiz) {
-      varQuery += ` AND (crop != 'maiz' OR tipo_maiz = $1)`;
+      varQuery += ` AND (cultivo != 'maiz' OR tipo_maiz = $1)`;
       varParams.push(tipo_maiz);
     }
-    varQuery += ` ORDER BY crop, CASE WHEN LOWER(label) = 'no sabe' THEN 1 ELSE 0 END, sort_order, label`;
+    varQuery += ` ORDER BY cultivo, CASE WHEN LOWER(etiqueta) = 'no sabe' THEN 1 ELSE 0 END, orden, etiqueta`;
     
     const varieties = await pool.query(varQuery, varParams);
 
     const states = await pool.query(
-      `SELECT state_id, name FROM geo_state ORDER BY name`
+      `SELECT estado_id, nombre FROM geo_estado ORDER BY nombre`
     );
 
     // Group catalogs by type
@@ -66,7 +66,7 @@ router.get('/municipalities', authMiddleware, async (req: AuthRequest, res: Resp
     }
 
     const result = await pool.query(
-      `SELECT municipality_id, name FROM geo_municipality WHERE state_id = $1 ORDER BY name`,
+      `SELECT municipio_id, nombre FROM geo_municipio WHERE estado_id = $1 ORDER BY nombre`,
       [state_id]
     );
 

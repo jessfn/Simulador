@@ -28,7 +28,7 @@ async function anotarDiscrepancias(producerId: number, p: Record<string, unknown
     if (!oficial) continue; // la fuente no trae ese dato
     if (quitaAcentos(capturado) !== quitaAcentos(oficial)) {
       await pool.query(
-        `INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,NULL,$5)`,
+        `INSERT INTO productor_cambios (productor_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,NULL,$5)`,
         [producerId, `discrepancia_renapo_${campo}`, capturado == null ? null : String(capturado), String(oficial), PROGRAMA_FRIJOL]
       );
     }
@@ -37,8 +37,8 @@ async function anotarDiscrepancias(producerId: number, p: Record<string, unknown
 
 export async function verificarPendientes(): Promise<ResumenVerificacion> {
   const lote = await pool.query(
-    `SELECT pp.producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo, to_char(p.fecha_nacimiento,'YYYY-MM-DD') AS fn
-       FROM producer_programa pp JOIN producer p ON p.producer_id = pp.producer_id
+    `SELECT pp.productor_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo, to_char(p.fecha_nacimiento,'YYYY-MM-DD') AS fn
+       FROM productor_programa pp JOIN productor p ON p.productor_id = pp.productor_id
       WHERE pp.programa = $1 AND pp.verificacion_identidad = 'pendiente'
       ORDER BY COALESCE(pp.verificacion_ultimo_intento, 'epoch'::timestamptz), pp.fecha_alta
       LIMIT $2`,
@@ -52,20 +52,20 @@ export async function verificarPendientes(): Promise<ResumenVerificacion> {
       const ident = await verificarIdentidad(fila.curp);
       if (ident.tipo === 'PADRON_SADER' || ident.tipo === 'RENAPO') {
         await pool.query(
-          `UPDATE producer_programa SET verificacion_identidad = 'verificada', verificacion_ultimo_intento = NOW(), updated_at = NOW()
-            WHERE producer_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
+          `UPDATE productor_programa SET verificacion_identidad = 'verificada', verificacion_ultimo_intento = NOW(), actualizado_en = NOW()
+            WHERE productor_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
         await anotarDiscrepancias(fila.producer_id, fila, ident.datos);
         r.verificados++;
       } else if (ident.tipo === 'CURP_NO_VALIDA' || ident.tipo === 'CURP_FALLECIDO') {
         await pool.query(
-          `UPDATE producer_programa SET verificacion_identidad = 'no_valida', estatus_registro = 'requiere_correccion',
-                  verificacion_ultimo_intento = NOW(), updated_at = NOW()
-            WHERE producer_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
+          `UPDATE productor_programa SET verificacion_identidad = 'no_valida', estatus_registro = 'requiere_correccion',
+                  verificacion_ultimo_intento = NOW(), actualizado_en = NOW()
+            WHERE productor_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
         r.no_validos++;
       } else {
         await pool.query(
-          `UPDATE producer_programa SET verificacion_intentos = verificacion_intentos + 1, verificacion_ultimo_intento = NOW()
-            WHERE producer_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
+          `UPDATE productor_programa SET verificacion_intentos = verificacion_intentos + 1, verificacion_ultimo_intento = NOW()
+            WHERE productor_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
         r.siguen_pendientes++;
       }
     } catch (error) {

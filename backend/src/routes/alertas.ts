@@ -18,7 +18,7 @@ async function insertNotif(alerta_id: number, usuario_id: number) {
 async function notificarSupervisores(alerta_id: number, producer_id: number | null) {
   if (!producer_id) return;
   const sups = await pool.query(
-    'SELECT supervisor_id FROM supervisor_productores WHERE producer_id = $1',
+    'SELECT supervisor_id FROM supervisor_productores WHERE productor_id = $1',
     [producer_id]
   );
   for (const s of sups.rows) {
@@ -35,17 +35,17 @@ router.get('/notificaciones/mis', authMiddleware, async (req: AuthRequest, res: 
   try {
     const result = await pool.query(`
       SELECT
-        n.id, n.leida, n.created_at,
+        n.id, n.leida, n.creado_en,
         n.titulo, n.mensaje, n.tipo, n.referencia_id, n.referencia_tipo, n.datos_extra,
         a.id as alerta_id, a.tipo_alerta, a.nivel_alerta, a.estado_alerta, a.fecha_alerta,
         p.nombres, p.apellido_paterno,
-        u.up_name
+        u.nombre_up
       FROM notificaciones n
       LEFT JOIN alertas a ON n.alerta_id = a.id
-      LEFT JOIN producer p ON a.producer_id = p.producer_id
+      LEFT JOIN productor p ON a.productor_id = p.productor_id
       LEFT JOIN up u ON a.up_id = u.up_id
       WHERE n.usuario_id = $1 AND n.tipo != 'chat_ayuda'
-      ORDER BY n.created_at DESC
+      ORDER BY n.creado_en DESC
       LIMIT 50
     `, [req.user!.userId]);
 
@@ -107,12 +107,12 @@ router.post('/automatica', authMiddleware, async (req: AuthRequest, res: Respons
     }
 
     // Obtener producer_id desde la UP
-    const upRow = await pool.query('SELECT producer_id FROM up WHERE up_id = $1', [up_id]);
+    const upRow = await pool.query('SELECT productor_id FROM up WHERE up_id = $1', [up_id]);
     const producer_id = upRow.rows[0]?.producer_id ?? null;
 
     const result = await pool.query(`
       INSERT INTO alertas
-        (producer_id, up_id, ciclo_id, tipo_alerta, origen_alerta, fecha_alerta,
+        (productor_id, up_id, ciclo_id, tipo_alerta, origen_alerta, fecha_alerta,
          nivel_alerta, estado_alerta, observaciones, usuario_registro)
       VALUES ($1,$2,$3,$4,'automatica',$5,$6,'pendiente',$7,$8)
       RETURNING *
@@ -122,7 +122,7 @@ router.post('/automatica', authMiddleware, async (req: AuthRequest, res: Respons
 
     // Notificar al productor (si tiene cuenta)
     if (producer_id) {
-      const prodUser = await pool.query('SELECT usuario_id FROM producer WHERE producer_id = $1', [producer_id]);
+      const prodUser = await pool.query('SELECT usuario_id FROM productor WHERE productor_id = $1', [producer_id]);
       if (prodUser.rows[0]?.usuario_id) {
         await insertNotif(alerta.id, prodUser.rows[0].usuario_id);
       }
@@ -153,13 +153,13 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
     if (rol === 'productor') {
       conditions.push(`a.up_id IN (
         SELECT u.up_id FROM up u
-        JOIN producer p ON p.producer_id = u.producer_id
+        JOIN productor p ON p.productor_id = u.productor_id
         WHERE p.usuario_id = $${idx++}
       )`);
       params.push(userId);
     } else if (rol === 'supervisor') {
-      conditions.push(`a.producer_id IN (
-        SELECT producer_id FROM supervisor_productores WHERE supervisor_id = $${idx++}
+      conditions.push(`a.productor_id IN (
+        SELECT productor_id FROM supervisor_productores WHERE supervisor_id = $${idx++}
       )`);
       params.push(userId);
     }
@@ -176,16 +176,16 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
       SELECT
         a.*,
         p.nombres, p.apellido_paterno, p.apellido_materno,
-        u.up_name,
-        c.cycle_year, c.cycle_type,
+        u.nombre_up,
+        c.anio_ciclo, c.tipo_ciclo,
         usr.nombre_completo as usuario_nombre
       FROM alertas a
-      LEFT JOIN producer p ON a.producer_id = p.producer_id
+      LEFT JOIN productor p ON a.productor_id = p.productor_id
       LEFT JOIN up u ON a.up_id = u.up_id
-      LEFT JOIN cycle c ON a.ciclo_id = c.cycle_id
+      LEFT JOIN ciclo c ON a.ciclo_id = c.ciclo_id
       LEFT JOIN usuarios usr ON a.usuario_registro = usr.id
       ${where}
-      ORDER BY a.fecha_alerta DESC, a.created_at DESC
+      ORDER BY a.fecha_alerta DESC, a.creado_en DESC
     `, params);
 
     res.json({ alertas: result.rows });
@@ -204,13 +204,13 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
       SELECT
         a.*,
         p.nombres, p.apellido_paterno, p.apellido_materno, p.curp,
-        u.up_name, u.area_ha_calc,
-        c.cycle_year, c.cycle_type,
+        u.nombre_up, u.superficie_ha_calculada,
+        c.anio_ciclo, c.tipo_ciclo,
         usr.nombre_completo as usuario_nombre
       FROM alertas a
-      LEFT JOIN producer p ON a.producer_id = p.producer_id
+      LEFT JOIN productor p ON a.productor_id = p.productor_id
       LEFT JOIN up u ON a.up_id = u.up_id
-      LEFT JOIN cycle c ON a.ciclo_id = c.cycle_id
+      LEFT JOIN ciclo c ON a.ciclo_id = c.ciclo_id
       LEFT JOIN usuarios usr ON a.usuario_registro = usr.id
       WHERE a.id = $1
     `, [req.params.id]);
@@ -239,12 +239,12 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     }
 
     // Obtener producer_id desde la UP (no confiar en el cliente)
-    const upRow = await pool.query('SELECT producer_id FROM up WHERE up_id = $1', [up_id]);
+    const upRow = await pool.query('SELECT productor_id FROM up WHERE up_id = $1', [up_id]);
     const producer_id = upRow.rows[0]?.producer_id ?? null;
 
     const result = await pool.query(`
       INSERT INTO alertas
-        (producer_id, up_id, ciclo_id, cycle_crop_id, tipo_alerta, origen_alerta, fecha_alerta,
+        (productor_id, up_id, ciclo_id, ciclo_cultivo_id, tipo_alerta, origen_alerta, fecha_alerta,
          nivel_alerta, estado_alerta, observaciones, usuario_registro)
       VALUES ($1,$2,$3,$4,$5,'manual',$6,$7,'pendiente',$8,$9)
       RETURNING *
@@ -282,7 +282,7 @@ router.patch('/:id/estado', authMiddleware, async (req: AuthRequest, res: Respon
       UPDATE alertas
       SET estado_alerta = $1,
           observaciones = COALESCE($2, observaciones),
-          updated_at = CURRENT_TIMESTAMP
+          actualizado_en = CURRENT_TIMESTAMP
       WHERE id = $3
       RETURNING *
     `, [estado_alerta, observaciones || null, req.params.id]);
@@ -321,7 +321,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
           fecha_alerta = COALESCE($2, fecha_alerta),
           nivel_alerta = COALESCE($3, nivel_alerta),
           observaciones = COALESCE($4, observaciones),
-          updated_at = CURRENT_TIMESTAMP
+          actualizado_en = CURRENT_TIMESTAMP
       WHERE id = $5
       RETURNING *
     `, [tipo_alerta, fecha_alerta, nivel_alerta, observaciones, req.params.id]);

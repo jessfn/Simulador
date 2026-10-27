@@ -5,7 +5,7 @@ from lib import *
 
 adm = login_admin()
 # usuario del panel SIN permisos (lo siembra tests/seed.js)
-sql("update usuarios set es_panel_usuario=true where email='qa.sinpermisos@ejemplo.test'")
+sql("update usuarios set es_panel_usuario=true where correo_electronico='qa.sinpermisos@ejemplo.test'")
 _, d = http('/auth/login', method='POST', body={'email': 'qa.sinpermisos@ejemplo.test', 'password': PASS})
 sinperm = d.get('token')
 
@@ -49,7 +49,7 @@ casos = [({'curp': 'ABC'}, 'CURP formato'), ({'telefono': '123'}, 'telefono'), (
 for cambios, nombre in casos:
     st, r = http('/admin/tecnicos', adm, 'POST', {**cuerpo, 'curp': 'XXXX900101HDGRRN9' + '9', 'email': f'v{sufijo}@ejemplo.test', **cambios})
     ok(f'validacion: {nombre} -> 400', st == 400, (r or {}).get('error', ''))
-n = sql(f"select count(*) from usuarios where email like 'v{sufijo}%'").split('\n')[2].strip()
+n = sql(f"select count(*) from usuarios where correo_electronico like 'v{sufijo}%'").split('\n')[2].strip()
 ok('las altas invalidas no crearon nada', n == '0', n)
 
 # permisos
@@ -72,11 +72,11 @@ st, lst = http('/admin/tecnicos?q=' + curp, adm)
 ok('busqueda por CURP', [t['id'] for t in lst['tecnicos']] == [tid])
 
 # editar: programas y zona reemplazan; quitar un programa no borra registros
-sql(f"insert into producer_programa (producer_id, programa, usuario_capturista_id) select producer_id, 'frijol_afb', {tid} from producer where curp='FRTS900101HDGXXX01' on conflict (producer_id, programa) do update set usuario_capturista_id={tid}")
-sql(f"update producer set usuario_capturista_id={tid} where curp='FRTS900101HDGXXX01'")
+sql(f"insert into productor_programa (productor_id, programa, usuario_capturista_id) select productor_id, 'frijol_afb', {tid} from productor where curp='FRTS900101HDGXXX01' on conflict (productor_id, programa) do update set usuario_capturista_id={tid}")
+sql(f"update productor set usuario_capturista_id={tid} where curp='FRTS900101HDGXXX01'")
 st, r = http(f'/admin/tecnicos/{tid}', adm, 'PATCH', {'programas': ['simac_maiz'], 'zona': [{'state_id': '25', 'municipality_id': None}], 'telefono': '6187654321'})
 ok('editar programas, zona y telefono', st == 200 and r['tecnico']['programas'] == ['simac_maiz'] and len(r['tecnico']['zona']) == 1 and r['tecnico']['telefono'] == '6187654321', f'{st} {(r or {}).get("error", "")}')
-n = sql(f"select count(*) from producer_programa where usuario_capturista_id={tid} and programa='frijol_afb'").split('\n')[2].strip()
+n = sql(f"select count(*) from productor_programa where usuario_capturista_id={tid} and programa='frijol_afb'").split('\n')[2].strip()
 ok('quitarle frijol NO borra sus registros de frijol', n == '1', n)
 st, r = http(f'/admin/tecnicos/{tid}', adm, 'PATCH', {'programas': ['simac_maiz', 'frijol_afb']})
 ok('con ambos programas queda con los dos', st == 200 and sorted(r['tecnico']['programas']) == ['frijol_afb', 'simac_maiz'])
@@ -92,8 +92,8 @@ st, l = http('/tecnico/auth/login', method='POST', body={'email': email, 'passwo
 ok('un tecnico desactivado ya no entra', st == 401, str(st))
 
 # limpieza: devolver el productor sintetico a su tecnico original y borrar el tecnico de prueba
-sql("update producer_programa set usuario_capturista_id=(select id from usuarios where email='qa.frijol1@ejemplo.test') where producer_id=(select producer_id from producer where curp='FRTS900101HDGXXX01') and programa='frijol_afb'")
-sql("update producer set usuario_capturista_id=(select id from usuarios where email='qa.frijol1@ejemplo.test') where curp='FRTS900101HDGXXX01'")
+sql("update productor_programa set usuario_capturista_id=(select id from usuarios where correo_electronico='qa.frijol1@ejemplo.test') where productor_id=(select productor_id from productor where curp='FRTS900101HDGXXX01') and programa='frijol_afb'")
+sql("update productor set usuario_capturista_id=(select id from usuarios where correo_electronico='qa.frijol1@ejemplo.test') where curp='FRTS900101HDGXXX01'")
 st, r = http(f'/admin/tecnicos/{tid}', adm, 'DELETE')
 ok('sin registros a su cargo el tecnico si se puede eliminar', st == 200, (r or {}).get('mensaje', (r or {}).get('error', '')))
 print('\nRESUMEN T04:', sum(res), '/', len(res))

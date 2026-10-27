@@ -44,9 +44,9 @@ print('--- 9.5 · el correo se escribe en las dos columnas de producer')
 curp_c = curp_nueva('REN'); st, c = consultar(t1, curp_c)
 st, reg_c = registrar(t1, cuerpo(curp_c, token=c.get('verificacion_token'), productor__correo='Prueba.Correo@Ejemplo.Test'))
 PC = (reg_c or {}).get('producer_id')
-ok('registro nuevo: correo y correo_electronico quedan iguales (y en minúsculas)', st == 201 and primera_fila(f"select correo, correo_electronico from producer where producer_id={PC}") == ['prueba.correo@ejemplo.test', 'prueba.correo@ejemplo.test'], f'{st}')
+ok('registro nuevo: correo y correo_electronico quedan iguales (y en minúsculas)', st == 201 and primera_fila(f"select correo, correo_electronico from productor where productor_id={PC}") == ['prueba.correo@ejemplo.test', 'prueba.correo@ejemplo.test'], f'{st}')
 st, r = http(f'/frijol/productores/{PC}', t1, 'PATCH', {'productor': {'correo': 'otro.correo@ejemplo.test'}})
-ok('corrección: ambas columnas cambian juntas', st == 200 and primera_fila(f"select correo, correo_electronico from producer where producer_id={PC}") == ['otro.correo@ejemplo.test', 'otro.correo@ejemplo.test'], f'{st}')
+ok('corrección: ambas columnas cambian juntas', st == 200 and primera_fila(f"select correo, correo_electronico from productor where productor_id={PC}") == ['otro.correo@ejemplo.test', 'otro.correo@ejemplo.test'], f'{st}')
 
 print('--- 9.6 · orden estable: toda agregación con ORDER BY')
 import re as _re
@@ -86,7 +86,7 @@ for f, nombre in [('no-es-fecha', 'texto'), ('2020-01-01', 'edad de 6 años'), (
     st, r = corregir_fecha(f)
     ok(f'fecha {nombre} -> 400 con campo productor.fecha_nacimiento', st == 400 and (r or {}).get('campo') == 'productor.fecha_nacimiento', f'{st} {(r or {}).get("campo")}')
 st, r = corregir_fecha('1981-03-04')
-ok('fecha válida se acepta y deja historial', st == 200 and val(f"select count(*) from producer_cambios where producer_id={PF} and campo='fecha_nacimiento'") == '1', f'{st} {(r or {}).get("error", "")}')
+ok('fecha válida se acepta y deja historial', st == 200 and val(f"select count(*) from productor_cambios where productor_id={PF} and campo='fecha_nacimiento'") == '1', f'{st} {(r or {}).get("error", "")}')
 curp_n = curp_nueva('REN'); st, c = consultar(t1, curp_n)
 st, r = registrar(t1, cuerpo(curp_n, token=c.get('verificacion_token'), productor__fecha_nacimiento='2020-01-01'))
 ok('el registro nuevo usa la misma regla (edad 6 -> 400)', st == 400 and r.get('campo') == 'productor.fecha_nacimiento', f'{st}')
@@ -99,9 +99,9 @@ bloque_do = _re.search(r'DO \$\$.*?END \$\$;', bajada, _re.S).group(0)
 resto = _re.sub(r'DO \$\$.*?END \$\$;', '', bajada, flags=_re.S)
 resto = _re.sub(r'(?m)^\s*--.*$', '', resto)          # los comentarios pueden llevar punto y coma
 sueltas = [x.strip() for x in resto.split(';') if x.strip()]
-pid = val("select producer_id from producer order by producer_id limit 1")
-prueba = ["update frijol_productor set programas_sader = '{}'", "update producer set programas_beneficiario = '{}'",      # se despeja todo uso (se revierte al final)
-          "update producer set programas_beneficiario = ARRAY['acopio_bienestar'] where producer_id=" + pid,
+pid = val("select productor_id from productor order by productor_id limit 1")
+prueba = ["update frijol_productor set programas_sader = '{}'", "update productor set programas_beneficiario = '{}'",      # se despeja todo uso (se revierte al final)
+          "update productor set programas_beneficiario = ARRAY['acopio_bienestar'] where productor_id=" + pid,
           *[s for s in sueltas if s], bloque_do.rstrip(';'),
           "select (select count(*) from cat_programas_gobierno where clave='acopio_bienestar') as en_uso, (select count(*) from cat_programas_gobierno where clave='otro_sader') as sin_uso"]
 res_b = [l.strip() for l in sql_revertido(prueba).splitlines() if l.strip()]

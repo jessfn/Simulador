@@ -110,7 +110,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
           )
           FROM senales_compra sc
           WHERE sc.bodega_id = b.id AND sc.activa = true
-          ORDER BY sc.created_at DESC
+          ORDER BY sc.creado_en DESC
           LIMIT 1
         ) as senal_activa,
         (
@@ -118,7 +118,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
           FROM precios pr
           WHERE pr.bodega_id = b.id
             AND pr.tipo_precio = 'bodega'
-          ORDER BY pr.fecha DESC, pr.created_at DESC
+          ORDER BY pr.fecha DESC, pr.creado_en DESC
           LIMIT 1
         ) AS precio_compra_hoy,
         (
@@ -290,8 +290,8 @@ router.patch('/:id/semaforo', authMiddleware, async (req: AuthRequest, res: Resp
   try {
     const result = await pool.query(
       `UPDATE bodegas
-       SET semaforo_compra = $1, semaforo_updated_at = NOW(), semaforo_usuario_id = $2
-       WHERE id = $3 RETURNING id, nombre, semaforo_compra, semaforo_updated_at`,
+       SET semaforo_compra = $1, semaforo_actualizado_en = NOW(), semaforo_usuario_id = $2
+       WHERE id = $3 RETURNING id, nombre, semaforo_compra, semaforo_actualizado_en`,
       [semaforo, req.user?.userId, req.params.id]
     );
     if (result.rows.length === 0) { res.status(404).json({ error: 'Bodega no encontrada' }); return; }
@@ -330,12 +330,12 @@ router.get('/:id/tarifario-publico', authMiddleware, async (req: AuthRequest, re
   try {
     const result = await pool.query(
       `SELECT c.nombre AS concepto, ts.precio, c.unidad_default AS unidad,
-              ts.updated_at AS ultima_actualizacion
+              ts.actualizado_en AS ultima_actualizacion
        FROM tarifario_servicios ts
        JOIN cat_conceptos_servicio c ON c.id = ts.concepto_id
        WHERE ts.bodega_id = $1
          AND ts.activo = TRUE
-         AND ts.updated_at >= NOW() - INTERVAL '90 days'
+         AND ts.actualizado_en >= NOW() - INTERVAL '90 days'
        ORDER BY c.nombre ASC`,
       [req.params.id]
     );

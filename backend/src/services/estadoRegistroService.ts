@@ -14,7 +14,7 @@ export interface EstadoRegistro {
 
 export async function evaluarEstadoRegistro(producerId: number): Promise<EstadoRegistro> {
   // Solo cuentan las parcelas que son de maíz (T11): una parcela que únicamente registró frijol no cumple el paso "ubicación" de maíz
-  const upRes = await pool.query(`SELECT COUNT(*)::int AS n FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}`, [producerId]);
+  const upRes = await pool.query(`SELECT COUNT(*)::int AS n FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')}`, [producerId]);
   const requiereUbicacion = (upRes.rows[0]?.n || 0) === 0;
 
   // Al menos un ciclo no cancelado, en cualquier UP propia, con cultivo de
@@ -22,18 +22,18 @@ export async function evaluarEstadoRegistro(producerId: number): Promise<EstadoR
   // cabecera `cycle` vacía; variedad "Otra"/"Criollo" exige texto).
   const cicloRes = await pool.query(
     `SELECT EXISTS (
-       SELECT 1 FROM cycle c
-       JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
+       SELECT 1 FROM ciclo c
+       JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
        JOIN up u ON u.up_id = c.up_id
-       WHERE u.producer_id = $1
+       WHERE u.productor_id = $1
          AND COALESCE(c.estado_ciclo, 'activo') != 'cancelado'
-         AND c.cycle_year IS NOT NULL AND c.cycle_type IS NOT NULL
+         AND c.anio_ciclo IS NOT NULL AND c.tipo_ciclo IS NOT NULL
          AND COALESCE(c.tipo_riego, 'temporal') IN ('temporal', 'riego')
-         AND cc.crop = 'maiz'
-         AND cc.variety_id IS NOT NULL
-         AND (cc.variety_id NOT IN ('OTRA', 'CRIOLLO_LOCAL') OR cc.variety_other IS NOT NULL)
-         AND cc.area_sown_ha IS NOT NULL AND cc.area_sown_ha > 0
-         AND cc.planting_date IS NOT NULL
+         AND cc.cultivo = 'maiz'
+         AND cc.variedad_id IS NOT NULL
+         AND (cc.variedad_id NOT IN ('OTRA', 'CRIOLLO_LOCAL') OR cc.variedad_otra IS NOT NULL)
+         AND cc.superficie_sembrada_ha IS NOT NULL AND cc.superficie_sembrada_ha > 0
+         AND cc.fecha_siembra IS NOT NULL
      ) AS completo`,
     [producerId]
   );

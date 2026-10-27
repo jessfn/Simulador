@@ -36,18 +36,18 @@ router.get('/resumen', authMiddleware, async (req: AuthRequest, res: Response): 
   if (!esPanelAdmin(req, res)) return;
   try {
     const estado = getEstado(req);
-    const wP = estadoWhere(estado, 'p.state_name', 1);
+    const wP = estadoWhere(estado, 'p.nombre_estado', 1);
     const wB = estadoWhere(estado, 'b.estado', 1);
 
     const [productoresActivos, productoresPendientes, bodegasActivas, bodegasPendientes,
            disponibilidades, requerimientos, transacciones7d] = await Promise.all([
-      pool.query(`SELECT COUNT(*)::int AS total FROM producer p WHERE p.estado_validacion = 'activo' AND ${soloMaiz('p')} ${wP.sql}`, wP.params),
-      pool.query(`SELECT COUNT(*)::int AS total FROM producer p WHERE p.estado_validacion = 'pendiente' AND ${soloMaiz('p')} ${wP.sql}`, wP.params),
+      pool.query(`SELECT COUNT(*)::int AS total FROM productor p WHERE p.estado_validacion = 'activo' AND ${soloMaiz('p')} ${wP.sql}`, wP.params),
+      pool.query(`SELECT COUNT(*)::int AS total FROM productor p WHERE p.estado_validacion = 'pendiente' AND ${soloMaiz('p')} ${wP.sql}`, wP.params),
       pool.query(`SELECT COUNT(*)::int AS total FROM bodegas b WHERE b.estatus = 'aprobada' ${wB.sql}`, wB.params),
       pool.query(`SELECT COUNT(*)::int AS total FROM bodegas b WHERE b.estatus = 'pendiente' ${wB.sql}`, wB.params),
       pool.query(`SELECT COALESCE(SUM(COALESCE(volumen_estimado_ton, volumen_ton, 0)), 0)::numeric(12,2) AS total_ton FROM disponibilidad_productor WHERE COALESCE(activa, activo, true) = true`).catch(() => ({ rows: [{ total_ton: 0 }] })),
       pool.query(`SELECT COALESCE(SUM(volumen_ton), 0)::numeric(12,2) AS total_ton FROM senales_compra WHERE activa = true`).catch(() => ({ rows: [{ total_ton: 0 }] })),
-      pool.query(`SELECT COUNT(*)::int AS total FROM transacciones WHERE created_at >= NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ total: 0 }] })),
+      pool.query(`SELECT COUNT(*)::int AS total FROM transacciones WHERE creado_en >= NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ total: 0 }] })),
     ]);
 
     res.json({
@@ -70,69 +70,69 @@ router.get('/produccion', authMiddleware, async (req: AuthRequest, res: Response
   if (!esPanelAdmin(req, res)) return;
   try {
     const estado = getEstado(req);
-    const wU = estadoWhere(estado, 'u.state_name', 1);
+    const wU = estadoWhere(estado, 'u.nombre_estado', 1);
     const [porEstado, porCiclo, porAnio, sinCiclo, totalesGlobales] = await Promise.all([
       pool.query(`
         SELECT
-          u.state_name AS estado,
+          u.nombre_estado AS estado,
           COUNT(DISTINCT u.up_id)::int AS ups,
-          COUNT(DISTINCT cc.cycle_crop_id)::int AS cultivos,
-          COALESCE(SUM(cc.area_sown_ha), 0)::numeric(10,2) AS area_ha,
+          COUNT(DISTINCT cc.ciclo_cultivo_id)::int AS cultivos,
+          COALESCE(SUM(cc.superficie_sembrada_ha), 0)::numeric(10,2) AS area_ha,
           COALESCE(SUM(ec.produccion_estimada_ton), 0)::numeric(10,2) AS produccion_ton
         FROM up u
-        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
-        LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        LEFT JOIN estimacion_cosecha ec ON ec.up_id = u.up_id AND ec.ciclo_id = c.cycle_id
-        WHERE u.state_name IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
-        GROUP BY u.state_name
+        LEFT JOIN ciclo c ON c.up_id = u.up_id AND c.cultivo = 'maiz'
+        LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
+        LEFT JOIN estimacion_cosecha ec ON ec.up_id = u.up_id AND ec.ciclo_id = c.ciclo_id
+        WHERE u.nombre_estado IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
+        GROUP BY u.nombre_estado
         ORDER BY area_ha DESC
         LIMIT 20
       `, wU.params),
       pool.query(`
         SELECT
-          c.cycle_type,
-          c.cycle_year,
-          COUNT(DISTINCT c.cycle_id)::int AS ciclos,
-          COUNT(DISTINCT cc.cycle_crop_id)::int AS cultivos,
-          COALESCE(SUM(cc.area_sown_ha), 0)::numeric(10,2) AS area_ha
-        FROM cycle c
+          c.tipo_ciclo,
+          c.anio_ciclo,
+          COUNT(DISTINCT c.ciclo_id)::int AS ciclos,
+          COUNT(DISTINCT cc.ciclo_cultivo_id)::int AS cultivos,
+          COALESCE(SUM(cc.superficie_sembrada_ha), 0)::numeric(10,2) AS area_ha
+        FROM ciclo c
         JOIN up u ON u.up_id = c.up_id
-        LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        WHERE c.crop = 'maiz' AND ${soloMaizDeUp('u')} ${wU.sql}
-        GROUP BY c.cycle_type, c.cycle_year
-        ORDER BY c.cycle_year DESC, c.cycle_type
+        LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
+        WHERE c.cultivo = 'maiz' AND ${soloMaizDeUp('u')} ${wU.sql}
+        GROUP BY c.tipo_ciclo, c.anio_ciclo
+        ORDER BY c.anio_ciclo DESC, c.tipo_ciclo
         LIMIT 20
       `, wU.params),
       pool.query(`
         SELECT
-          c.cycle_year,
-          COUNT(DISTINCT c.cycle_id)::int AS ciclos,
+          c.anio_ciclo,
+          COUNT(DISTINCT c.ciclo_id)::int AS ciclos,
           COUNT(DISTINCT u.up_id)::int AS ups,
-          COALESCE(SUM(cc.area_sown_ha), 0)::numeric(10,2) AS area_ha
-        FROM cycle c
+          COALESCE(SUM(cc.superficie_sembrada_ha), 0)::numeric(10,2) AS area_ha
+        FROM ciclo c
         JOIN up u ON u.up_id = c.up_id
-        LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        WHERE c.crop = 'maiz' AND ${soloMaizDeUp('u')} ${wU.sql}
-        GROUP BY c.cycle_year
-        ORDER BY c.cycle_year DESC
+        LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
+        WHERE c.cultivo = 'maiz' AND ${soloMaizDeUp('u')} ${wU.sql}
+        GROUP BY c.anio_ciclo
+        ORDER BY c.anio_ciclo DESC
         LIMIT 6
       `, wU.params),
       pool.query(`
         SELECT COUNT(*)::int AS ups_sin_ciclo
         FROM up u
-        WHERE NOT EXISTS (SELECT 1 FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz')
+        WHERE NOT EXISTS (SELECT 1 FROM ciclo c WHERE c.up_id = u.up_id AND c.cultivo = 'maiz')
         AND ${soloMaizDeUp('u')}
         ${wU.sql}
       `, wU.params),
       pool.query(`
         SELECT
-          COALESCE(SUM(u.area_ha_calc), 0)::numeric(12,2) AS superficie_total_ha,
-          COALESCE(SUM(cc.area_sown_ha), 0)::numeric(12,2) AS superficie_sembrada_ha,
-          COALESCE(SUM(cc.area_sown_ha * COALESCE(cc.yield_expected, 0)), 0)::numeric(12,2) AS produccion_esperada_ton,
-          COUNT(DISTINCT cc.cycle_crop_id)::int AS productores_con_ciclo
+          COALESCE(SUM(u.superficie_ha_calculada), 0)::numeric(12,2) AS superficie_total_ha,
+          COALESCE(SUM(cc.superficie_sembrada_ha), 0)::numeric(12,2) AS superficie_sembrada_ha,
+          COALESCE(SUM(cc.superficie_sembrada_ha * COALESCE(cc.rendimiento_esperado, 0)), 0)::numeric(12,2) AS produccion_esperada_ton,
+          COUNT(DISTINCT cc.ciclo_cultivo_id)::int AS productores_con_ciclo
         FROM up u
-        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
-        LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
+        LEFT JOIN ciclo c ON c.up_id = u.up_id AND c.cultivo = 'maiz'
+        LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
         WHERE ${soloMaizDeUp('u')} ${wU.sql}
       `, wU.params),
     ]);
@@ -295,7 +295,7 @@ router.get('/alertas', authMiddleware, async (req: AuthRequest, res: Response): 
     const estado = getEstado(req);
     const ep = estado ? [estado] : [];
     // Join con up para filtrar por estado cuando el usuario es OREF
-    const joinUp = estado ? `JOIN up u2 ON u2.up_id = a.up_id AND u2.state_name = $1` : `LEFT JOIN up u2 ON u2.up_id = a.up_id`;
+    const joinUp = estado ? `JOIN up u2 ON u2.up_id = a.up_id AND u2.nombre_estado = $1` : `LEFT JOIN up u2 ON u2.up_id = a.up_id`;
 
     const [porNivel, porEstado, porTipo, recientes, tendencia] = await Promise.all([
       pool.query(`
@@ -325,11 +325,11 @@ router.get('/alertas', authMiddleware, async (req: AuthRequest, res: Response): 
         SELECT
           a.id, a.tipo_alerta, a.nivel_alerta, a.estado_alerta, a.fecha_alerta,
           p.nombres, p.apellido_paterno,
-          u.up_name, u.state_name
+          u.nombre_up, u.nombre_estado
         FROM alertas a
-        LEFT JOIN producer p ON p.producer_id = a.producer_id
+        LEFT JOIN productor p ON p.productor_id = a.productor_id
         LEFT JOIN up u ON u.up_id = a.up_id
-        ${estado ? `WHERE a.estado_alerta = 'pendiente' AND u.state_name = $1` : `WHERE a.estado_alerta = 'pendiente'`}
+        ${estado ? `WHERE a.estado_alerta = 'pendiente' AND u.nombre_estado = $1` : `WHERE a.estado_alerta = 'pendiente'`}
         ORDER BY
           CASE a.nivel_alerta WHEN 'critico' THEN 1 WHEN 'alto' THEN 2 WHEN 'medio' THEN 3 ELSE 4 END,
           a.fecha_alerta DESC
@@ -375,25 +375,25 @@ router.get('/operacion', authMiddleware, async (req: AuthRequest, res: Response)
         SELECT
           u.id AS supervisor_id,
           u.nombre_completo,
-          u.email,
-          COUNT(DISTINCT sp.producer_id)::int AS productores_asignados,
+          u.correo_electronico,
+          COUNT(DISTINCT sp.productor_id)::int AS productores_asignados,
           COUNT(DISTINCT sv.id)::int AS visitas_mes
         FROM usuarios u
         LEFT JOIN supervisor_productores sp ON sp.supervisor_id = u.id
         LEFT JOIN seguimiento_visitas sv ON sv.usuario_captura = u.id
           AND sv.fecha_visita >= NOW() - INTERVAL '30 days'
         WHERE u.rol = 'supervisor' AND u.activo = true
-        GROUP BY u.id, u.nombre_completo, u.email
+        GROUP BY u.id, u.nombre_completo, u.correo_electronico
         ORDER BY productores_asignados DESC
         LIMIT 20
       `),
       pool.query(`
         SELECT
           COUNT(*)::int AS total_ups,
-          COUNT(CASE WHEN u.up_name IS NOT NULL THEN 1 END)::int AS con_nombre,
-          COUNT(CASE WHEN u.area_ha_calc > 0 THEN 1 END)::int AS con_area,
-          COUNT(CASE WHEN EXISTS(SELECT 1 FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz') THEN 1 END)::int AS con_ciclo,
-          COUNT(CASE WHEN EXISTS(SELECT 1 FROM cycle_crop cc JOIN cycle c ON c.cycle_id = cc.cycle_id WHERE c.up_id = u.up_id AND c.crop = 'maiz') THEN 1 END)::int AS con_cultivo
+          COUNT(CASE WHEN u.nombre_up IS NOT NULL THEN 1 END)::int AS con_nombre,
+          COUNT(CASE WHEN u.superficie_ha_calculada > 0 THEN 1 END)::int AS con_area,
+          COUNT(CASE WHEN EXISTS(SELECT 1 FROM ciclo c WHERE c.up_id = u.up_id AND c.cultivo = 'maiz') THEN 1 END)::int AS con_ciclo,
+          COUNT(CASE WHEN EXISTS(SELECT 1 FROM ciclo_cultivo cc JOIN ciclo c ON c.ciclo_id = cc.ciclo_id WHERE c.up_id = u.up_id AND c.cultivo = 'maiz') THEN 1 END)::int AS con_cultivo
         FROM up u
         WHERE ${soloMaizDeUp('u')}
       `),
@@ -401,11 +401,11 @@ router.get('/operacion', authMiddleware, async (req: AuthRequest, res: Response)
         SELECT
           sv.id, sv.fecha_visita, sv.etapa_cultivo AS tipo_visita,
           p.nombres, p.apellido_paterno,
-          u.up_name,
+          u.nombre_up,
           usu.nombre_completo AS tecnico
         FROM seguimiento_visitas sv
         JOIN up u ON u.up_id = sv.up_id
-        JOIN producer p ON p.producer_id = sv.producer_id AND ${soloMaiz('p')}
+        JOIN productor p ON p.productor_id = sv.productor_id AND ${soloMaiz('p')}
         LEFT JOIN usuarios usu ON usu.id = sv.usuario_captura
         ORDER BY sv.fecha_visita DESC
         LIMIT 10
@@ -419,10 +419,10 @@ router.get('/operacion', authMiddleware, async (req: AuthRequest, res: Response)
       `),
       pool.query(`
         SELECT
-          DATE_TRUNC('day', created_at)::date AS dia,
+          DATE_TRUNC('day', creado_en)::date AS dia,
           COUNT(*)::int AS nuevos_productores
-        FROM producer p
-        WHERE created_at >= NOW() - INTERVAL '30 days' AND ${soloMaiz('p')}
+        FROM productor p
+        WHERE creado_en >= NOW() - INTERVAL '30 days' AND ${soloMaiz('p')}
         GROUP BY dia
         ORDER BY dia
       `),
@@ -456,20 +456,20 @@ router.get('/mapa', authMiddleware, async (req: AuthRequest, res: Response): Pro
   if (!esPanelAdmin(req, res)) return;
   try {
     const estado = getEstado(req);
-    const wU = estadoWhere(estado, 'u.state_name', 1);
+    const wU = estadoWhere(estado, 'u.nombre_estado', 1);
     const wB = estadoWhere(estado, 'b.estado', 1);
     const [upsGeo, bodegasGeo, porEstado, alertasGeo] = await Promise.all([
       pool.query(`
         SELECT
-          u.up_id, u.up_name, u.state_name, u.municipality_name,
-          u.area_ha_calc AS area_ha,
-          ST_X(u.centroid) AS lng, ST_Y(u.centroid) AS lat,
+          u.up_id, u.nombre_up, u.nombre_estado, u.nombre_municipio,
+          u.superficie_ha_calculada AS area_ha,
+          ST_X(u.centroide) AS lng, ST_Y(u.centroide) AS lat,
           COUNT(a.id)::int AS alertas,
           COUNT(CASE WHEN a.nivel_alerta IN ('critico','alto') THEN 1 END)::int AS alertas_criticas
         FROM up u
         LEFT JOIN alertas a ON a.up_id = u.up_id AND a.estado_alerta = 'pendiente'
-        WHERE u.centroid IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
-        GROUP BY u.up_id, u.up_name, u.state_name, u.municipality_name, u.area_ha_calc, u.centroid
+        WHERE u.centroide IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
+        GROUP BY u.up_id, u.nombre_up, u.nombre_estado, u.nombre_municipio, u.superficie_ha_calculada, u.centroide
         LIMIT 2000
       `, wU.params),
       pool.query(`
@@ -493,26 +493,26 @@ router.get('/mapa', authMiddleware, async (req: AuthRequest, res: Response): Pro
       `, wB.params),
       pool.query(`
         SELECT
-          u.state_name AS estado,
+          u.nombre_estado AS estado,
           COUNT(DISTINCT u.up_id)::int AS ups,
-          COUNT(DISTINCT p.producer_id)::int AS productores,
-          COALESCE(SUM(u.area_ha_calc), 0)::numeric(10,2) AS superficie_ha,
+          COUNT(DISTINCT p.productor_id)::int AS productores,
+          COALESCE(SUM(u.superficie_ha_calculada), 0)::numeric(10,2) AS superficie_ha,
           COALESCE(SUM(ec.produccion_estimada_ton), 0)::numeric(10,2) AS produccion_ton
         FROM up u
-        JOIN producer p ON p.producer_id = u.producer_id
-        LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
-        LEFT JOIN estimacion_cosecha ec ON ec.up_id = u.up_id AND ec.ciclo_id = c.cycle_id
-        WHERE u.state_name IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
-        GROUP BY u.state_name
+        JOIN productor p ON p.productor_id = u.productor_id
+        LEFT JOIN ciclo c ON c.up_id = u.up_id AND c.cultivo = 'maiz'
+        LEFT JOIN estimacion_cosecha ec ON ec.up_id = u.up_id AND ec.ciclo_id = c.ciclo_id
+        WHERE u.nombre_estado IS NOT NULL AND ${soloMaizDeUp('u')} ${wU.sql}
+        GROUP BY u.nombre_estado
         ORDER BY produccion_ton DESC
       `, wU.params),
       pool.query(`
         SELECT
           a.id, a.tipo_alerta, a.nivel_alerta, a.estado_alerta,
-          u.up_name, u.state_name, u.municipality_name,
-          ST_X(u.centroid) AS lng, ST_Y(u.centroid) AS lat
+          u.nombre_up, u.nombre_estado, u.nombre_municipio,
+          ST_X(u.centroide) AS lng, ST_Y(u.centroide) AS lat
         FROM alertas a
-        JOIN up u ON u.up_id = a.up_id AND u.centroid IS NOT NULL
+        JOIN up u ON u.up_id = a.up_id AND u.centroide IS NOT NULL
         WHERE a.estado_alerta = 'pendiente' ${wU.sql}
         ORDER BY CASE a.nivel_alerta WHEN 'critico' THEN 1 WHEN 'alto' THEN 2 WHEN 'medio' THEN 3 ELSE 4 END
         LIMIT 300

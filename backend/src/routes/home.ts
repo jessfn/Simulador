@@ -32,9 +32,9 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
     // ── PRODUCTOR ──────────────────────────────────────────────
     if (role === 'productor') {
       const producerRow = await pool.query(
-        `SELECT p.producer_id, gs.name AS state_name
-         FROM producer p
-         LEFT JOIN geo_state gs ON gs.state_id = p.state_id
+        `SELECT p.productor_id, gs.nombre AS state_name
+         FROM productor p
+         LEFT JOIN geo_estado gs ON gs.estado_id = p.estado_id
          WHERE p.usuario_id = $1`,
         [userId]
       );
@@ -59,17 +59,17 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
       const stateName: string | null = producerRow.rows[0].state_name;
 
       const [upsCount, segData, alertasCount, ciclosActivos, bodegasCount, recent] = await Promise.all([
-        pool.query(`SELECT COUNT(*)::int AS c FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}`, [producerId]),
-        countSeguimiento('producer_id = $1', [producerId]),
+        pool.query(`SELECT COUNT(*)::int AS c FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')}`, [producerId]),
+        countSeguimiento('productor_id = $1', [producerId]),
         pool.query(
           `SELECT COUNT(*)::int AS c FROM alertas
-           WHERE producer_id = $1 AND estado_alerta IN ('pendiente','confirmada')`,
+           WHERE productor_id = $1 AND estado_alerta IN ('pendiente','confirmada')`,
           [producerId]
         ),
         pool.query(
-          `SELECT COUNT(*)::int AS c FROM cycle c
+          `SELECT COUNT(*)::int AS c FROM ciclo c
            JOIN up u ON u.up_id = c.up_id
-           WHERE u.producer_id = $1 AND c.crop = 'maiz'`,
+           WHERE u.productor_id = $1 AND c.cultivo = 'maiz'`,
           [producerId]
         ),
         // Bodegas en el mismo estado (cercanas) — fallback to total if state not set
@@ -83,7 +83,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
           `SELECT a.id, a.tipo_alerta AS titulo, a.nivel_alerta AS nivel, a.fecha_alerta AS fecha,
                   a.estado_alerta AS estado
            FROM alertas a
-           WHERE a.producer_id = $1
+           WHERE a.productor_id = $1
            ORDER BY a.fecha_alerta DESC LIMIT 5`,
           [producerId]
         ),
@@ -108,7 +108,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
     // ── SUPERVISOR ──────────────────────────────────────────────
     if (role === 'supervisor') {
       const linked = await pool.query(
-        `SELECT producer_id FROM supervisor_productores WHERE supervisor_id = $1`,
+        `SELECT productor_id FROM supervisor_productores WHERE supervisor_id = $1`,
         [userId]
       );
       const producerIds = linked.rows.map((r) => r.producer_id);
@@ -129,10 +129,10 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
       }
 
       const [segData, alertasRow, bodegasRow, recientes] = await Promise.all([
-        countSeguimiento('producer_id = ANY($1::bigint[])', [producerIds]),
+        countSeguimiento('productor_id = ANY($1::bigint[])', [producerIds]),
         pool.query(
           `SELECT COUNT(*)::int AS c FROM alertas
-           WHERE producer_id = ANY($1::bigint[])
+           WHERE productor_id = ANY($1::bigint[])
              AND estado_alerta IN ('pendiente','confirmada')`,
           [producerIds]
         ),
@@ -141,7 +141,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
           `SELECT a.id, a.tipo_alerta AS titulo, a.nivel_alerta AS nivel,
                   a.fecha_alerta AS fecha, a.estado_alerta AS estado
            FROM alertas a
-           WHERE a.producer_id = ANY($1::bigint[])
+           WHERE a.productor_id = ANY($1::bigint[])
            ORDER BY a.fecha_alerta DESC LIMIT 5`,
           [producerIds]
         ),
@@ -218,7 +218,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
             COUNT(DISTINCT pr.bodega_id)::int AS bodegas_en_calculo
           FROM precios pr
           JOIN bodegas b ON b.id = pr.bodega_id
-          WHERE pr.created_at >= CURRENT_DATE - INTERVAL '7 days'
+          WHERE pr.creado_en >= CURRENT_DATE - INTERVAL '7 days'
             AND pr.tipo_precio = 'bodega'
             AND b.estado ILIKE (
               SELECT b2.estado FROM bodegas b2
@@ -248,7 +248,7 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
           try {
             pcR = await pool.query(`
               SELECT
-                COUNT(DISTINCT dp.producer_id)::int AS cnt,
+                COUNT(DISTINCT dp.productor_id)::int AS cnt,
                 COALESCE(SUM(dp.volumen_estimado_ton), 0)::float AS ton
               FROM disponibilidad_productor dp
               JOIN up u ON u.up_id = dp.up_id
@@ -274,12 +274,12 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
             // Fallback: count by same state as bodega
             const stR = await pool.query(`
               SELECT
-                COUNT(DISTINCT dp.producer_id)::int AS cnt,
+                COUNT(DISTINCT dp.productor_id)::int AS cnt,
                 COALESCE(SUM(dp.volumen_estimado_ton), 0)::float AS ton
               FROM disponibilidad_productor dp
               JOIN up u ON u.up_id = dp.up_id
               WHERE dp.activa = TRUE AND dp.fecha_vencimiento >= CURRENT_DATE
-                AND u.state_name ILIKE (
+                AND u.nombre_estado ILIKE (
                   SELECT b.estado FROM bodegas b
                   JOIN bodeguero_bodegas bb ON bb.bodega_id = b.id
                   WHERE bb.usuario_id = $1 AND bb.estatus = 'aprobada' LIMIT 1
@@ -314,8 +314,8 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
     // ── ADMIN ───────────────────────────────────────────────────
     if (role === 'admin') {
       const [productoresRow, ciclosRow, alertasRow, bodegasRow, recientes, recientesProd, preciosRow, inventariosRow, usuariosRow] = await Promise.all([
-        pool.query(`SELECT COUNT(*)::int AS c FROM producer p WHERE ${soloMaiz('p')}`),
-        pool.query(`SELECT COUNT(*)::int AS c FROM cycle WHERE crop = 'maiz'`),
+        pool.query(`SELECT COUNT(*)::int AS c FROM productor p WHERE ${soloMaiz('p')}`),
+        pool.query(`SELECT COUNT(*)::int AS c FROM ciclo WHERE cultivo = 'maiz'`),
         pool.query(
           `SELECT COUNT(*)::int AS c FROM alertas
            WHERE estado_alerta IN ('pendiente','confirmada')`
@@ -328,8 +328,8 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
            ORDER BY a.fecha_alerta DESC LIMIT 5`
         ),
         pool.query(
-          `SELECT COUNT(*)::int AS c FROM producer p
-           WHERE created_at >= NOW() - INTERVAL '7 days' AND ${soloMaiz('p')}`
+          `SELECT COUNT(*)::int AS c FROM productor p
+           WHERE creado_en >= NOW() - INTERVAL '7 days' AND ${soloMaiz('p')}`
         ).catch(() => ({ rows: [{ c: 0 }] } as any)),
         pool.query(`SELECT COUNT(*)::int AS c FROM precios_maiz`).catch(() => ({ rows: [{ c: 0 }] } as any)),
         pool.query(`SELECT COUNT(*)::int AS c FROM inventarios`).catch(() => ({ rows: [{ c: 0 }] } as any)),

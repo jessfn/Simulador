@@ -1,7 +1,9 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import { instalarCapaCompatibilidad } from './compatibilidadApi';
 
 dotenv.config();
+instalarCapaCompatibilidad();   // las claves JSON históricas de la API se conservan aunque la base use nombres en español
 
 const pool = new Pool({
   host: process.env.DB_HOST,

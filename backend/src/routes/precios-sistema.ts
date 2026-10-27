@@ -17,7 +17,7 @@ const BONO_MAIZ_USD = 50;
 async function obtenerReferenciasExternasActuales() {
   const res = await pool.query(`
     SELECT * FROM precio_referencias_externas
-    ORDER BY created_at DESC LIMIT 1
+    ORDER BY creado_en DESC LIMIT 1
   `);
   if (res.rows.length === 0) {
     console.log('No se encontraron referencias en BD, inicializando por primera vez...');
@@ -32,7 +32,7 @@ async function obtenerReferenciasExternasActuales() {
 
 async function getParametros() {
   const r = await pool.query(`
-    SELECT margen_pct, ventana_dias, min_txns, harineras_n,
+    SELECT margen_pct, ventana_dias, min_transacciones, harineras_n,
            servicios_default, flete_default, costo_fira, precio_garantia_sader
     FROM precio_parametros ORDER BY id DESC LIMIT 1
   `);
@@ -56,7 +56,7 @@ router.get('/bodega/:id', authMiddleware, async (req: AuthRequest, res: Response
       `SELECT precio AS po, fecha, (CURRENT_DATE - fecha::date) AS dias_antiguedad
        FROM precios
        WHERE bodega_id = $1 AND tipo_precio = 'bodega'
-       ORDER BY fecha DESC, created_at DESC LIMIT 1`,
+       ORDER BY fecha DESC, creado_en DESC LIMIT 1`,
       [id]
     );
 
@@ -65,7 +65,7 @@ router.get('/bodega/:id', authMiddleware, async (req: AuthRequest, res: Response
       `SELECT COALESCE(SUM(ts.precio), 0) AS servicios_total
        FROM tarifario_servicios ts
        WHERE ts.bodega_id = $1 AND ts.activo = TRUE
-         AND ts.updated_at >= NOW() - INTERVAL '90 days'`,
+         AND ts.actualizado_en >= NOW() - INTERVAL '90 days'`,
       [id]
     );
 
@@ -262,13 +262,13 @@ router.get('/tendencia', authMiddleware, async (req: AuthRequest, res: Response)
 
     // Obtener historial de referencias de BD
     const extHistory = await pool.query(`
-      SELECT created_at::date AS fecha,
+      SELECT creado_en::date AS fecha,
              AVG(chicago_usd_bushel) AS chicago_usd_bushel,
              AVG(tc_banxico) AS tc_banxico,
              AVG(chicago_mxn) AS chicago_mxn
       FROM precio_referencias_externas
-      WHERE created_at >= NOW() - INTERVAL '${numDias} days'
-      GROUP BY created_at::date
+      WHERE creado_en >= NOW() - INTERVAL '${numDias} days'
+      GROUP BY creado_en::date
       ORDER BY fecha ASC
     `);
 
@@ -512,7 +512,7 @@ router.get('/mercado', authMiddleware, async (_req: AuthRequest, res: Response):
         FROM (
           SELECT bodega_id, SUM(precio) AS s_bodega
           FROM tarifario_servicios
-          WHERE activo = TRUE AND updated_at >= NOW() - INTERVAL '60 days'
+          WHERE activo = TRUE AND actualizado_en >= NOW() - INTERVAL '60 days'
           GROUP BY bodega_id
         ) sub
       `);
@@ -543,12 +543,12 @@ router.get('/mercado', authMiddleware, async (_req: AuthRequest, res: Response):
 
     // Obtener historial de referencias para calcular margen dinámico en la gráfica
     const extHistory = await pool.query(`
-      SELECT created_at::date AS fecha,
+      SELECT creado_en::date AS fecha,
              AVG(chicago_usd_bushel) AS chicago_usd_bushel,
              AVG(tc_banxico) AS tc_banxico
       FROM precio_referencias_externas
-      WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
-      GROUP BY created_at::date
+      WHERE creado_en >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY creado_en::date
       ORDER BY fecha ASC
     `);
     const extMap = new Map();
@@ -676,9 +676,9 @@ router.put('/parametros', authMiddleware, soloAdmin, async (req: AuthRequest, re
 
     await pool.query(`
       INSERT INTO precio_parametros
-        (margen_pct, ventana_dias, min_txns, harineras_n,
+        (margen_pct, ventana_dias, min_transacciones, harineras_n,
          servicios_default, flete_default, costo_fira, precio_garantia_sader,
-         actualizado_por, actualizado_at)
+         actualizado_por, actualizado_en)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
     `, [
       margen_pct        ?? current.margen_pct,
@@ -710,12 +710,12 @@ router.get('/discrepancias', authMiddleware, soloAdmin, async (req: AuthRequest,
     if (prioridad) { conditions.push(`prioridad = $1`); params.push(prioridad); }
 
     const result = await pool.query(`
-      SELECT id, tipo, prioridad, descripcion, accion, datos, creado_at
+      SELECT id, tipo, prioridad, descripcion, accion, datos, creado_en
       FROM discrepancias
       WHERE ${conditions.join(' AND ')}
       ORDER BY
         CASE prioridad WHEN 'ALTA' THEN 1 WHEN 'MEDIA' THEN 2 ELSE 3 END,
-        creado_at DESC
+        creado_en DESC
     `, params);
 
     res.json({ discrepancias: result.rows });
@@ -735,7 +735,7 @@ router.put('/discrepancias/:id/resolver', authMiddleware, soloAdmin, async (req:
 
     const result = await pool.query(`
       UPDATE discrepancias
-      SET estado = 'resuelto', resuelto_at = NOW(), resuelto_por = $1,
+      SET estado = 'resuelto', resuelto_en = NOW(), resuelto_por = $1,
           datos = datos || jsonb_build_object('resolucion', $2::text, 'notas', $3::text)
       WHERE id = $4
       RETURNING id, estado
@@ -766,7 +766,7 @@ router.get('/transacciones/resumen', authMiddleware, async (req: AuthRequest, re
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE tipo_precio = 'bodega')::int AS bodega,
         COUNT(*) FILTER (WHERE tipo_precio = 'observado')::int AS observado,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '1 day')::int AS nuevas_hoy
+        COUNT(*) FILTER (WHERE creado_en >= NOW() - INTERVAL '1 day')::int AS nuevas_hoy
       FROM precios
       WHERE fecha >= NOW() - INTERVAL '${numDias} days'
     `);
@@ -815,7 +815,7 @@ router.get('/actualizaciones-log', authMiddleware, async (req: AuthRequest, res:
     }
     const log = await pool.query(`
       SELECT * FROM precio_referencias_externas
-      ORDER BY created_at DESC LIMIT 20
+      ORDER BY creado_en DESC LIMIT 20
     `);
     res.json({ logs: log.rows });
   } catch (error) {
@@ -908,10 +908,10 @@ router.post('/fira/upload-csv', authMiddleware, upload.single('file'), async (re
           : await client.query('SELECT id FROM costos_fira WHERE estado = $1 AND (municipio IS NULL OR municipio = \'\') AND ciclo = $2 AND modalidad = $3', [estado, cicloClean, modClean]);
 
         if (queryFind.rows.length > 0) {
-          await client.query('UPDATE costos_fira SET costo_por_ton = $1, updated_at = NOW() WHERE id = $2', [costoVal, queryFind.rows[0].id]);
+          await client.query('UPDATE costos_fira SET costo_por_ton = $1, actualizado_en = NOW() WHERE id = $2', [costoVal, queryFind.rows[0].id]);
           actualizados++;
         } else {
-          await client.query('INSERT INTO costos_fira (estado, municipio, ciclo, modalidad, costo_por_ton, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())', [estado, municipio, cicloClean, modClean, costoVal]);
+          await client.query('INSERT INTO costos_fira (estado, municipio, ciclo, modalidad, costo_por_ton, creado_en, actualizado_en) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())', [estado, municipio, cicloClean, modClean, costoVal]);
           insertados++;
         }
       }

@@ -21,7 +21,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
        FROM senales_compra sc
        JOIN bodegas b ON b.id = sc.bodega_id
        ${where}
-       ORDER BY sc.created_at DESC`,
+       ORDER BY sc.creado_en DESC`,
       params
     );
     res.json(result.rows);
@@ -75,7 +75,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
     const result = await pool.query(
       `INSERT INTO senales_compra
-         (bodega_id, usuario_id, tipo_maiz, variedad_code, volumen_ton, precio_ofrecido,
+         (bodega_id, usuario_id, tipo_maiz, variedad_codigo, volumen_ton, precio_ofrecido,
           radio_km, vigencia, vigencia_inicio, fecha_vencimiento,
           humedad_max_pct, impurezas_max_pct, grano_quebrado_max_pct)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
@@ -94,9 +94,9 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
         if (!v || !v.code) continue;
         try {
           await pool.query(
-            `INSERT INTO senal_variedades (senal_id, variedad_code, variedad_libre)
+            `INSERT INTO senal_variedades (senal_id, variedad_codigo, variedad_libre)
              VALUES ($1, $2, $3)
-             ON CONFLICT (senal_id, variedad_code) DO NOTHING`,
+             ON CONFLICT (senal_id, variedad_codigo) DO NOTHING`,
             [senal.id, v.code, v.libre || null]
           );
         } catch (_) { /* best-effort por variedad */ }
@@ -129,16 +129,16 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
             const pgR = await pool.query(`
               SELECT DISTINCT u2.id AS usuario_id,
                 ROUND((ST_Distance(
-                  u.centroid::geography,
+                  u.centroide::geography,
                   ST_SetSRID(ST_Point($1, $2), 4326)::geography
                 ) / 1000)::numeric, 0) AS distancia_km
               FROM up u
-              JOIN producer p ON p.producer_id = u.producer_id
-              JOIN usuarios u2 ON (u2.id = p.usuario_id OR u2.curp = p.curp OR u2.email = p.correo)
+              JOIN productor p ON p.productor_id = u.productor_id
+              JOIN usuarios u2 ON (u2.id = p.usuario_id OR u2.curp = p.curp OR u2.correo_electronico = p.correo)
               WHERE u2.rol = 'productor' AND u2.activo = TRUE
-                AND u.centroid IS NOT NULL
+                AND u.centroide IS NOT NULL
                 AND ST_DWithin(
-                  u.centroid::geography,
+                  u.centroide::geography,
                   ST_SetSRID(ST_Point($1, $2), 4326)::geography,
                   $3
                 )
@@ -153,10 +153,10 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
           const fallR = await pool.query(`
             SELECT DISTINCT u2.id AS usuario_id, 0 AS distancia_km
             FROM up u
-            JOIN producer p ON p.producer_id = u.producer_id
-            JOIN usuarios u2 ON (u2.id = p.usuario_id OR u2.curp = p.curp OR u2.email = p.correo)
+            JOIN productor p ON p.productor_id = u.productor_id
+            JOIN usuarios u2 ON (u2.id = p.usuario_id OR u2.curp = p.curp OR u2.correo_electronico = p.correo)
             WHERE u2.rol = 'productor' AND u2.activo = TRUE
-              AND u.state_name ILIKE $1
+              AND u.nombre_estado ILIKE $1
             LIMIT 500
           `, [b.estado]);
           productoresNotif = fallR.rows;
@@ -230,16 +230,16 @@ router.post('/:id/interes', authMiddleware, async (req: AuthRequest, res: Respon
     try {
       const productorData = await pool.query(
         `SELECT
-            p.producer_id,
+            p.productor_id,
             TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)) AS nombre_completo,
-            up.municipality_name AS municipio,
-            up.state_name AS estado,
-            COALESCE(p.phone, usr.telefono) AS telefono
-         FROM producer p
+            up.nombre_municipio AS municipio,
+            up.nombre_estado AS estado,
+            COALESCE(p.telefono, usr.telefono) AS telefono
+         FROM productor p
          JOIN usuarios usr ON usr.id = p.usuario_id
-         LEFT JOIN up ON up.producer_id = p.producer_id
+         LEFT JOIN up ON up.productor_id = p.productor_id
          WHERE usr.id = $1
-         ORDER BY up.created_at DESC NULLS LAST
+         ORDER BY up.creado_en DESC NULLS LAST
          LIMIT 1`,
         [userId]
       );
@@ -247,9 +247,9 @@ router.post('/:id/interes', authMiddleware, async (req: AuthRequest, res: Respon
       if (prod) {
         await pool.query(
           `INSERT INTO senal_interesados
-             (senal_id, producer_id, usuario_id, municipio, estado, telefono, nombre_productor)
+             (senal_id, productor_id, usuario_id, municipio, estado, telefono, nombre_productor)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (senal_id, producer_id) DO NOTHING`,
+           ON CONFLICT (senal_id, productor_id) DO NOTHING`,
           [req.params.id, prod.producer_id, userId, prod.municipio, prod.estado, prod.telefono, prod.nombre_completo]
         );
       }
@@ -297,10 +297,10 @@ router.get('/:id/interesados', authMiddleware, async (req: AuthRequest, res: Res
           si.municipio,
           si.estado,
           si.telefono,
-          si.created_at AS fecha_interes
+          si.creado_en AS fecha_interes
        FROM senal_interesados si
        WHERE si.senal_id = $1
-       ORDER BY si.created_at DESC`,
+       ORDER BY si.creado_en DESC`,
       [id]
     );
 

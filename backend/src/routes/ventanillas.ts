@@ -16,7 +16,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
        FROM ventanillas v
        JOIN bodegas b ON b.id = v.bodega_id
        WHERE v.usuario_id = $1
-       ORDER BY v.created_at DESC`,
+       ORDER BY v.creado_en DESC`,
       [userId]
     );
     res.json(result.rows);
@@ -65,8 +65,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
             const geoR = await pool.query(`
               SELECT DISTINCT u.id
               FROM usuarios u
-              JOIN producer p ON p.curp = u.curp
-              JOIN up ON up.producer_id = p.producer_id
+              JOIN productor p ON p.curp = u.curp
+              JOIN up ON up.productor_id = p.productor_id
               WHERE u.rol = 'productor' AND u.activo = TRUE
                 AND up.latitud IS NOT NULL AND up.longitud IS NOT NULL
                 AND (6371 * acos(LEAST(1.0,
@@ -86,10 +86,10 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
             const fallR = await pool.query(`
               SELECT DISTINCT u.id
               FROM usuarios u
-              JOIN producer p ON p.curp = u.curp
-              JOIN up ON up.producer_id = p.producer_id
+              JOIN productor p ON p.curp = u.curp
+              JOIN up ON up.productor_id = p.productor_id
               WHERE u.rol = 'productor' AND u.activo = TRUE
-                AND up.state_name ILIKE $1
+                AND up.nombre_estado ILIKE $1
               LIMIT 500
             `, [b.estado]);
             productorIds = fallR.rows;
@@ -117,7 +117,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 router.get('/:id/apoyos', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await pool.query(
-      'SELECT * FROM apoyos_ventanilla WHERE ventanilla_id = $1 ORDER BY created_at DESC',
+      'SELECT * FROM apoyos_ventanilla WHERE ventanilla_id = $1 ORDER BY creado_en DESC',
       [req.params.id]
     );
     res.json(result.rows);
@@ -169,9 +169,9 @@ router.get('/:id/solicitudes', authMiddleware, async (req: AuthRequest, res: Res
               p.municipio_nombre AS municipio
        FROM solicitudes_apoyo sa
        JOIN apoyos_ventanilla av ON av.id = sa.apoyo_id
-       LEFT JOIN producer p ON p.producer_id = sa.producer_id
+       LEFT JOIN productor p ON p.productor_id = sa.productor_id
        ${where}
-       ORDER BY sa.created_at DESC`,
+       ORDER BY sa.creado_en DESC`,
       params
     );
     res.json(result.rows);
@@ -189,7 +189,7 @@ router.patch('/:id/solicitudes/:sid', authMiddleware, async (req: AuthRequest, r
 
   try {
     const result = await pool.query(
-      `UPDATE solicitudes_apoyo SET estado = $1, notas = COALESCE($2, notas), updated_at = NOW()
+      `UPDATE solicitudes_apoyo SET estado = $1, notas = COALESCE($2, notas), actualizado_en = NOW()
        WHERE id = $3 RETURNING *`,
       [estado, notas || null, req.params.sid]
     );
@@ -200,7 +200,7 @@ router.patch('/:id/solicitudes/:sid', authMiddleware, async (req: AuthRequest, r
       const sol = result.rows[0];
       if (sol.producer_id) {
         const prod = await pool.query(
-          'SELECT u.id FROM usuarios u JOIN producer p ON p.usuario_id = u.id WHERE p.producer_id = $1 LIMIT 1',
+          'SELECT u.id FROM usuarios u JOIN productor p ON p.usuario_id = u.id WHERE p.productor_id = $1 LIMIT 1',
           [sol.producer_id]
         );
         if (prod.rows.length > 0) {

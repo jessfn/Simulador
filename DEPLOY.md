@@ -67,3 +67,11 @@ npm run migrate:down                       # revierte la última
 ## Logs
 
 `pm2 logs bodegas-api` y los registros de nginx del servidor.
+
+## Convención de nombres de la base de datos (permanente)
+
+Toda la base usa **nombres en español** (tablas, columnas, llaves, índices, secuencias, disparadores). Lo nuevo se crea ya en español; no se renombran valores guardados ni objetos de sistema. Glosario inglés → español y reglas: `docs/GLOSARIO_BD.md`.
+La migración `0008_homologar_nombres_espanol` renombró todo lo anterior; las claves JSON de la API se conservan con la capa `backend/src/config/compatibilidadApi.ts`.
+Despliegue de una migración que renombra (como la 0008): `MIGRAR_PROD="npm run migrate:up --silent" bash deploy/deploy.sh produccion` (la migración corre entre la compilación y el reinicio).
+Herramientas de la homologación (reutilizables): `backend/db/homologacion/` (`mapa.js`, `generar-migracion.js`, `convertir-consultas.js`, `extraer-consultas.js` + `validar-consultas.js`).
+

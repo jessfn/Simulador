@@ -91,11 +91,11 @@ router.post('/registro', authLimiter, async (req: Request, res: Response): Promi
     // Verificar si ya existe
     const existente = curpUpper
       ? await pool.query(
-          'SELECT id FROM usuarios WHERE email = $1 OR curp = $2',
+          'SELECT id FROM usuarios WHERE correo_electronico = $1 OR curp = $2',
           [email.toLowerCase().trim(), curpUpper]
         )
       : await pool.query(
-          'SELECT id FROM usuarios WHERE email = $1',
+          'SELECT id FROM usuarios WHERE correo_electronico = $1',
           [email.toLowerCase().trim()]
         );
 
@@ -124,12 +124,12 @@ router.post('/registro', authLimiter, async (req: Request, res: Response): Promi
     // Insertar usuario
     const result = await pool.query(
       `INSERT INTO usuarios (
-         email, curp, nombre_completo, password_hash, telefono, rol, state_id, municipality_id,
-         aviso_privacidad_aceptado, aviso_privacidad_fecha, aviso_privacidad_lat,
-         aviso_privacidad_lng, aviso_privacidad_version, aviso_privacidad_foto_url
+         correo_electronico, curp, nombre_completo, hash_contrasena, telefono, rol, estado_id, municipio_id,
+         aviso_privacidad_aceptado, aviso_privacidad_fecha, aviso_privacidad_latitud,
+         aviso_privacidad_longitud, aviso_privacidad_version, aviso_privacidad_foto_url
        )
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-       RETURNING id, email, curp, nombre_completo, telefono, rol, state_id, municipality_id, created_at`,
+       RETURNING id, correo_electronico, curp, nombre_completo, telefono, rol, estado_id, municipio_id, creado_en`,
       [
         email.toLowerCase().trim(), curpUpper || null, nombreNormalizado, passwordHash,
         telefonoLimpio, rol, state_id || null, municipality_id || null,
@@ -194,7 +194,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
     // evita ambigüedad si un productor y una cuenta de panel/bodega llegan
     // a compartir el mismo correo (categorías independientes a propósito).
     const result = await pool.query(
-      "SELECT * FROM usuarios WHERE email = $1 AND activo = true AND rol != 'productor'",
+      "SELECT * FROM usuarios WHERE correo_electronico = $1 AND activo = true AND rol != 'productor'",
       [email.toLowerCase().trim()]
     );
 
@@ -258,7 +258,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
     // excluye admin/responsable porque el panel de soporte legítimamente
     // usa varias pestañas/dispositivos a la vez.
     if (!['admin', 'responsable'].includes(usuario.rol)) {
-      pool.query('UPDATE usuarios SET sesion_activa_jti=$1 WHERE id=$2', [jti, usuario.id]).catch(() => {});
+      pool.query('UPDATE usuarios SET sesion_activa_id_jwt=$1 WHERE id=$2', [jti, usuario.id]).catch(() => {});
     }
 
     res.json({
@@ -298,7 +298,7 @@ router.post('/logout', authMiddleware, async (req: AuthRequest, res: Response): 
     if (decoded?.jti) {
       const expiraEn = decoded.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 8 * 60 * 60 * 1000);
       await pool.query(
-        'INSERT INTO revoked_tokens (jti, usuario_id, expira_en) VALUES ($1, $2, $3) ON CONFLICT (jti) DO NOTHING',
+        'INSERT INTO tokens_revocados (id_jwt, usuario_id, expira_en) VALUES ($1, $2, $3) ON CONFLICT (id_jwt) DO NOTHING',
         [decoded.jti, req.user!.userId, expiraEn]
       );
     }
@@ -315,7 +315,7 @@ router.post('/logout', authMiddleware, async (req: AuthRequest, res: Response): 
 router.get('/perfil', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await pool.query(
-      'SELECT id, email, curp, nombre_completo, telefono, rol, estado_asignado, ultimo_login, state_id, municipality_id, created_at FROM usuarios WHERE id = $1',
+      'SELECT id, correo_electronico, curp, nombre_completo, telefono, rol, estado_asignado, ultimo_login, estado_id, municipio_id, creado_en FROM usuarios WHERE id = $1',
       [req.user!.userId]
     );
 
@@ -340,7 +340,7 @@ router.get('/perfil/acuse', authMiddleware, async (req: AuthRequest, res: Respon
   try {
     const userId = req.user!.userId;
     const userR = await pool.query(
-      'SELECT id, email, curp, nombre_completo, telefono, rol, created_at FROM usuarios WHERE id = $1',
+      'SELECT id, correo_electronico, curp, nombre_completo, telefono, rol, creado_en FROM usuarios WHERE id = $1',
       [userId]
     );
     if (userR.rows.length === 0) {
@@ -352,11 +352,11 @@ router.get('/perfil/acuse', authMiddleware, async (req: AuthRequest, res: Respon
 
     if (u.rol === 'productor') {
       const prodR = await pool.query(
-        `SELECT p.producer_id, p.estado_validacion, up.up_name, up.municipality_name, up.state_name
-         FROM producer p
-         LEFT JOIN up ON up.producer_id = p.producer_id
+        `SELECT p.productor_id, p.estado_validacion, up.nombre_up, up.nombre_municipio, up.nombre_estado
+         FROM productor p
+         LEFT JOIN up ON up.productor_id = p.productor_id
          WHERE p.usuario_id = $1
-         ORDER BY up.created_at ASC LIMIT 1`,
+         ORDER BY up.creado_en ASC LIMIT 1`,
         [userId]
       );
       if (prodR.rows.length > 0) {
@@ -433,14 +433,14 @@ router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response):
         return;
       }
       const emailExistente = await pool.query(
-        'SELECT id FROM usuarios WHERE LOWER(email) = $1 AND id != $2',
+        'SELECT id FROM usuarios WHERE LOWER(correo_electronico) = $1 AND id != $2',
         [emailLimpio, req.user!.userId]
       );
       if (emailExistente.rows.length > 0) {
         res.status(409).json({ error: 'Este email ya está registrado por otro usuario' });
         return;
       }
-      updates.push(`email = $${idx++}`);
+      updates.push(`correo_electronico = $${idx++}`);
       vals.push(emailLimpio);
     }
 
@@ -496,12 +496,12 @@ router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response):
         return;
       }
       // Verificar que el estado existe
-      const stateCheck = await pool.query('SELECT state_id FROM geo_state WHERE state_id = $1', [sid]);
+      const stateCheck = await pool.query('SELECT estado_id FROM geo_estado WHERE estado_id = $1', [sid]);
       if (stateCheck.rows.length === 0) {
         res.status(400).json({ error: 'El estado seleccionado no existe' });
         return;
       }
-      updates.push(`state_id = $${idx++}`);
+      updates.push(`estado_id = $${idx++}`);
       vals.push(sid);
     }
 
@@ -514,13 +514,13 @@ router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response):
       // Verificar que el municipio existe y pertenece al estado enviado (o al actual)
       const targetStateId = state_id ? String(state_id).trim() : null;
       const muniCheck = targetStateId
-        ? await pool.query('SELECT municipality_id FROM geo_municipality WHERE municipality_id = $1 AND state_id = $2', [mid, targetStateId])
-        : await pool.query('SELECT municipality_id FROM geo_municipality WHERE municipality_id = $1', [mid]);
+        ? await pool.query('SELECT municipio_id FROM geo_municipio WHERE municipio_id = $1 AND estado_id = $2', [mid, targetStateId])
+        : await pool.query('SELECT municipio_id FROM geo_municipio WHERE municipio_id = $1', [mid]);
       if (muniCheck.rows.length === 0) {
         res.status(400).json({ error: 'El municipio no existe o no corresponde al estado seleccionado' });
         return;
       }
-      updates.push(`municipality_id = $${idx++}`);
+      updates.push(`municipio_id = $${idx++}`);
       vals.push(mid);
     }
 
@@ -532,7 +532,7 @@ router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response):
     vals.push(req.user!.userId);
     const result = await pool.query(
       `UPDATE usuarios SET ${updates.join(', ')} WHERE id = $${idx}
-       RETURNING id, email, curp, nombre_completo, telefono, rol, estado_asignado, state_id, municipality_id`,
+       RETURNING id, correo_electronico, curp, nombre_completo, telefono, rol, estado_asignado, estado_id, municipio_id`,
       vals
     );
 
@@ -561,7 +561,7 @@ router.post('/cambiar-password', authMiddleware, async (req: AuthRequest, res: R
 
     // Obtener hash actual
     const userRes = await pool.query(
-      'SELECT password_hash FROM usuarios WHERE id = $1',
+      'SELECT hash_contrasena FROM usuarios WHERE id = $1',
       [req.user!.userId]
     );
     if (userRes.rows.length === 0) {
@@ -577,7 +577,7 @@ router.post('/cambiar-password', authMiddleware, async (req: AuthRequest, res: R
 
     const newHash = await bcrypt.hash(password_nuevo, 12);
     await pool.query(
-      'UPDATE usuarios SET password_hash=$1, debe_cambiar_pass=FALSE WHERE id=$2',
+      'UPDATE usuarios SET hash_contrasena=$1, debe_cambiar_contrasena=FALSE WHERE id=$2',
       [newHash, req.user!.userId]
     );
 
@@ -593,7 +593,7 @@ router.post('/cambiar-password', authMiddleware, async (req: AuthRequest, res: R
 // =============================================
 router.get('/states', async (req: Request, res: Response): Promise<void> => {
   try {
-    const states = await pool.query('SELECT state_id, name FROM geo_state ORDER BY name');
+    const states = await pool.query('SELECT estado_id, nombre FROM geo_estado ORDER BY nombre');
     res.json({ states: states.rows });
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener estados' });
@@ -611,7 +611,7 @@ router.get('/municipalities', async (req: Request, res: Response): Promise<void>
       return;
     }
     const result = await pool.query(
-      'SELECT municipality_id, name FROM geo_municipality WHERE state_id = $1 ORDER BY name',
+      'SELECT municipio_id, nombre FROM geo_municipio WHERE estado_id = $1 ORDER BY nombre',
       [state_id]
     );
     res.json({ municipalities: result.rows });
@@ -636,7 +636,7 @@ router.post('/recuperar-password', async (req: Request, res: Response): Promise<
     const emailLimpio = email.toLowerCase().trim();
 
     const { rows } = await pool.query(
-      `SELECT id, nombre_completo, email, rol FROM usuarios WHERE LOWER(email) = $1 AND activo = TRUE`,
+      `SELECT id, nombre_completo, correo_electronico, rol FROM usuarios WHERE LOWER(correo_electronico) = $1 AND activo = TRUE`,
       [emailLimpio]
     );
 
@@ -659,7 +659,7 @@ router.post('/recuperar-password', async (req: Request, res: Response): Promise<
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
 
     await pool.query(
-      `UPDATE usuarios SET reset_token = $1, reset_token_expires = $2 WHERE id = $3`,
+      `UPDATE usuarios SET token_recuperacion = $1, token_recuperacion_expira_en = $2 WHERE id = $3`,
       [tokenHash, expires, user.id]
     );
 
@@ -692,8 +692,8 @@ router.get('/verificar-token-reset/:token', async (req: Request, res: Response):
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const { rows } = await pool.query(
-      `SELECT id, nombre_completo, email FROM usuarios
-       WHERE reset_token = $1 AND reset_token_expires > NOW() AND activo = TRUE`,
+      `SELECT id, nombre_completo, correo_electronico FROM usuarios
+       WHERE token_recuperacion = $1 AND token_recuperacion_expira_en > NOW() AND activo = TRUE`,
       [tokenHash]
     );
 
@@ -729,7 +729,7 @@ router.post('/nuevo-password', async (req: Request, res: Response): Promise<void
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const { rows } = await pool.query(
-      `SELECT id FROM usuarios WHERE reset_token = $1 AND reset_token_expires > NOW() AND activo = TRUE`,
+      `SELECT id FROM usuarios WHERE token_recuperacion = $1 AND token_recuperacion_expira_en > NOW() AND activo = TRUE`,
       [tokenHash]
     );
 
@@ -740,7 +740,7 @@ router.post('/nuevo-password', async (req: Request, res: Response): Promise<void
 
     const hash = await bcrypt.hash(password, 12);
     await pool.query(
-      `UPDATE usuarios SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2`,
+      `UPDATE usuarios SET hash_contrasena = $1, token_recuperacion = NULL, token_recuperacion_expira_en = NULL WHERE id = $2`,
       [hash, rows[0].id]
     );
 

@@ -22,14 +22,14 @@ const redondea = (n: number, d: number) => Math.round(n * 10 ** d) / 10 ** d;
 router.get('/maiz', limitador, async (_req: Request, res: Response): Promise<void> => {
   try {
     const { rows } = await pool.query(`
-      SELECT created_at::date AS fecha,
+      SELECT creado_en::date AS fecha,
              AVG(chicago_usd_bushel)::float AS chicago,
              AVG(tc_banxico)::float AS tc,
-             MAX(created_at) AS actualizado
+             MAX(creado_en) AS actualizado
       FROM precio_referencias_externas
-      WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+      WHERE creado_en >= CURRENT_DATE - INTERVAL '30 days'
         AND chicago_usd_bushel IS NOT NULL AND tc_banxico IS NOT NULL
-      GROUP BY created_at::date
+      GROUP BY creado_en::date
       ORDER BY fecha ASC
     `);
     if (rows.length === 0) {

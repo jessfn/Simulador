@@ -112,9 +112,9 @@ router.post('/auth/buscar-curp', authLimiter, async (req, res): Promise<void> =>
     }
 
     const { rows } = await pool.query(
-      `SELECT p.producer_id, p.nombres, p.apellido_paterno, p.estado_validacion,
+      `SELECT p.productor_id, p.nombres, p.apellido_paterno, p.estado_validacion,
               u.id AS usuario_id
-       FROM producer p
+       FROM productor p
        LEFT JOIN usuarios u ON u.id = p.usuario_id
        WHERE UPPER(p.curp) = UPPER($1)`,
       [curp]
@@ -149,7 +149,7 @@ router.post('/auth/activar-cuenta', authLimiter, async (req, res): Promise<void>
     }
 
     const existing = await pool.query(
-      `SELECT u.id FROM usuarios u JOIN producer p ON p.usuario_id = u.id WHERE p.producer_id = $1`,
+      `SELECT u.id FROM usuarios u JOIN productor p ON p.usuario_id = u.id WHERE p.productor_id = $1`,
       [producer_id]
     );
     if (existing.rows.length) {
@@ -160,8 +160,8 @@ router.post('/auth/activar-cuenta', authLimiter, async (req, res): Promise<void>
     // Obtener datos del productor para el INSERT de usuarios
     const prodInfo = await pool.query(
       `SELECT curp, nombres, apellido_paterno, apellido_materno,
-              COALESCE(phone, '') AS telefono
-       FROM producer WHERE producer_id = $1`,
+              COALESCE(telefono, '') AS telefono
+       FROM productor WHERE productor_id = $1`,
       [producer_id]
     );
     if (!prodInfo.rows.length) {
@@ -180,15 +180,15 @@ router.post('/auth/activar-cuenta', authLimiter, async (req, res): Promise<void>
       await client.query('BEGIN');
 
       const u = await client.query(
-        `INSERT INTO usuarios (curp, nombre_completo, password_hash, pin_texto, telefono, rol, activo)
+        `INSERT INTO usuarios (curp, nombre_completo, hash_contrasena, pin_texto, telefono, rol, activo)
          VALUES ($1, $2, $3, $4, $5, 'productor', true) RETURNING id`,
         [prod.curp, nombreCompleto, hashedPin, String(pin), prod.telefono]
       );
 
       const producer = await client.query(
-        `UPDATE producer
+        `UPDATE productor
          SET usuario_id = $1, tipo_registro = 'A', estado_validacion = 'activo'
-         WHERE producer_id = $2 RETURNING nombres, apellido_paterno, apellido_materno`,
+         WHERE productor_id = $2 RETURNING nombres, apellido_paterno, apellido_materno`,
         [u.rows[0].id, producer_id]
       );
 
@@ -240,9 +240,9 @@ router.post('/auth/login-pin', authLimiter, async (req, res): Promise<void> => {
     }
 
     const { rows } = await pool.query(
-      `SELECT p.producer_id, p.nombres, p.apellido_paterno, p.apellido_materno, p.estado_validacion,
-              u.id AS user_id, u.password_hash, u.rol, u.nombre_completo
-       FROM producer p
+      `SELECT p.productor_id, p.nombres, p.apellido_paterno, p.apellido_materno, p.estado_validacion,
+              u.id AS user_id, u.hash_contrasena, u.rol, u.nombre_completo
+       FROM productor p
        JOIN usuarios u ON u.id = p.usuario_id
        WHERE UPPER(p.curp) = UPPER($1) AND u.activo = true`,
       [curp]
@@ -352,8 +352,8 @@ router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void>
     // Revisar producer (incluye admin-registrados sin cuenta) Y usuarios en una sola query
     const [prodResult, usuResult] = await Promise.all([
       pool.query(
-        `SELECT p.producer_id, u.id AS usuario_id, p.nombres, p.apellido_paterno
-         FROM producer p LEFT JOIN usuarios u ON u.id = p.usuario_id
+        `SELECT p.productor_id, u.id AS usuario_id, p.nombres, p.apellido_paterno
+         FROM productor p LEFT JOIN usuarios u ON u.id = p.usuario_id
          WHERE UPPER(p.curp) = $1 LIMIT 1`,
         [curpN]
       ),
@@ -586,7 +586,7 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       }
 
       const existe = await client.query(
-        `SELECT producer_id FROM producer WHERE UPPER(curp) = UPPER($1)`, [curp]
+        `SELECT productor_id FROM productor WHERE UPPER(curp) = UPPER($1)`, [curp]
       );
       if (existe.rows.length) {
         await client.query('ROLLBACK');
@@ -602,20 +602,20 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       const nombreCompleto = [nombresN, apPaternoN, apMaternoN].filter(Boolean).join(' ');
 
       const u = await client.query(
-        `INSERT INTO usuarios (curp, nombre_completo, password_hash, pin_texto, rol, telefono, activo)
+        `INSERT INTO usuarios (curp, nombre_completo, hash_contrasena, pin_texto, rol, telefono, activo)
          VALUES ($1, $2, $3, $4, 'productor', $5, true) RETURNING id`,
         [curpN, nombreCompleto, hashedPin, String(pin), telefono]
       );
 
       // Cuenta ACTIVA automáticamente (validada por el padrón SADER). sexo desde el padrón.
       const p = await client.query(
-        `INSERT INTO producer
+        `INSERT INTO productor
            (usuario_id, curp, nombres, apellido_paterno, apellido_materno,
-            phone, sexo, tipo_registro, estado_validacion, programas_beneficiario, correo,
-            aviso_privacidad_aceptado, aviso_privacidad_fecha, aviso_privacidad_lat,
-            aviso_privacidad_lng, aviso_privacidad_version, aviso_privacidad_foto_url)
+            telefono, sexo, tipo_registro, estado_validacion, programas_beneficiario, correo,
+            aviso_privacidad_aceptado, aviso_privacidad_fecha, aviso_privacidad_latitud,
+            aviso_privacidad_longitud, aviso_privacidad_version, aviso_privacidad_foto_url)
          VALUES ($1,$2,$3,$4,$5,$6,$7,'B','activo',$8,$9,$10,$11,$12,$13,$14,$15)
-         RETURNING producer_id`,
+         RETURNING productor_id`,
         [
           u.rows[0].id, curpN, nombresN, apPaternoN, apMaternoN,
           telefono, genero || null, programas_beneficiario || [], correo || null,
@@ -630,7 +630,7 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       const producerId = p.rows[0].producer_id;
       // Programa: todo productor que se registra por SIMAC Maíz queda en 'simac_maiz'.
       await client.query(
-        `INSERT INTO producer_programa (producer_id, programa) VALUES ($1, 'simac_maiz') ON CONFLICT DO NOTHING`,
+        `INSERT INTO productor_programa (productor_id, programa) VALUES ($1, 'simac_maiz') ON CONFLICT DO NOTHING`,
         [producerId]
       );
 
@@ -738,7 +738,7 @@ router.get('/auth/catalogo-insumos/buscar', async (req, res: Response): Promise<
 
 // Helper para obtener producer_id del token
 async function getProducerId(userId: number): Promise<number | null> {
-  const r = await pool.query('SELECT producer_id FROM producer WHERE usuario_id = $1 LIMIT 1', [userId]);
+  const r = await pool.query('SELECT productor_id FROM productor WHERE usuario_id = $1 LIMIT 1', [userId]);
   return r.rows[0]?.producer_id || null;
 }
 
@@ -776,7 +776,7 @@ router.put('/encuesta-insumos', authMiddleware, requiereRegistroCompleto, async 
   const client = await pool.connect();
   try {
     const producerId = await getProducerId(req.user!.userId);
-    if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); client.release(); return; }
+    if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
     await client.query('BEGIN');
     const resultado = await guardarEncuestaEnTransaccion(client, producerId, req.body, { canal: 'productor' });
     await client.query('COMMIT');
@@ -803,9 +803,9 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
 
     // UP del productor (ubicación principal)
     const upRes = await pool.query(
-      `SELECT state_name, municipality_name, location_confirmed, centroid_source,
-              ST_Y(centroid::geometry) AS lat, ST_X(centroid::geometry) AS lng
-       FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`,
+      `SELECT nombre_estado, nombre_municipio, ubicacion_confirmada, origen_centroide,
+              ST_Y(centroide::geometry) AS lat, ST_X(centroide::geometry) AS lng
+       FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`,
       [producerId]
     );
     const up = upRes.rows[0];
@@ -813,10 +813,10 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
     // Todas las parcelas del productor — siempre, con o sin polígono
     const parcelasRes = await pool.query(
       `SELECT up_id as id,
-              ST_Y(centroid::geometry) AS lat, ST_X(centroid::geometry) AS lng,
-              CASE WHEN geom IS NOT NULL THEN ST_AsGeoJSON(geom)::json ELSE NULL END AS poligono,
-              geom IS NOT NULL AS tiene_poligono
-       FROM up WHERE producer_id = $1 AND centroid IS NOT NULL AND ${parcelaDeMaiz('up')}`,
+              ST_Y(centroide::geometry) AS lat, ST_X(centroide::geometry) AS lng,
+              CASE WHEN geometria IS NOT NULL THEN ST_AsGeoJSON(geometria)::json ELSE NULL END AS poligono,
+              geometria IS NOT NULL AS tiene_poligono
+       FROM up WHERE productor_id = $1 AND centroide IS NOT NULL AND ${parcelaDeMaiz('up')}`,
       [producerId]
     );
     const parcelas = parcelasRes.rows;
@@ -832,7 +832,7 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
            SELECT b.id, 
                   (SELECT pr.precio FROM precios pr 
                    WHERE pr.bodega_id = b.id AND pr.tipo_precio = 'bodega' 
-                   ORDER BY pr.created_at DESC LIMIT 1) as latest_precio
+                   ORDER BY pr.creado_en DESC LIMIT 1) as latest_precio
            FROM bodegas b
            WHERE b.estado ILIKE $1
          ) sub
@@ -847,8 +847,8 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
            SELECT b.id, 
                   (SELECT pr.precio FROM precios pr 
                    WHERE pr.bodega_id = b.id AND pr.tipo_precio = 'bodega' 
-                     AND pr.created_at < CURRENT_DATE
-                   ORDER BY pr.created_at DESC LIMIT 1) as latest_precio
+                     AND pr.creado_en < CURRENT_DATE
+                   ORDER BY pr.creado_en DESC LIMIT 1) as latest_precio
            FROM bodegas b
            WHERE b.estado ILIKE $1
          ) sub
@@ -866,7 +866,7 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
          WHERE usuario_id = $1
            AND tipo IN ('alerta_climatica','alerta_sanitaria')
            AND leida = FALSE
-         ORDER BY created_at DESC LIMIT 1`,
+         ORDER BY creado_en DESC LIMIT 1`,
         [userId]
       );
       alerta_activa = alertaRes.rows[0] || null;
@@ -882,7 +882,7 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
         SELECT b.id, b.nombre, b.municipio,
                COALESCE((SELECT pr.precio FROM precios pr
                  WHERE pr.bodega_id = b.id AND pr.tipo_precio = 'bodega'
-                 ORDER BY pr.created_at DESC LIMIT 1), 0) AS precio_compra_hoy,
+                 ORDER BY pr.creado_en DESC LIMIT 1), 0) AS precio_compra_hoy,
                FALSE AS is_ventanilla,
                CASE b.semaforo_compra
                  WHEN 'verde'    THEN 'comprando'
@@ -903,7 +903,7 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
         SELECT b.id, b.nombre, b.municipio,
                COALESCE((SELECT pr.precio FROM precios pr
                  WHERE pr.bodega_id = b.id AND pr.tipo_precio = 'bodega'
-                 ORDER BY pr.created_at DESC LIMIT 1), 0) AS precio_compra_hoy,
+                 ORDER BY pr.creado_en DESC LIMIT 1), 0) AS precio_compra_hoy,
                FALSE AS is_ventanilla,
                CASE b.semaforo_compra
                  WHEN 'verde'    THEN 'comprando'
@@ -923,7 +923,7 @@ router.get('/dashboard', authMiddleware, requiereRegistroCompleto, async (req: A
 
     // Datos del productor (nombres, estado_validacion)
     const prodRes = await pool.query(
-      `SELECT nombres, apellido_paterno, apellido_materno, estado_validacion FROM producer WHERE producer_id = $1`,
+      `SELECT nombres, apellido_paterno, apellido_materno, estado_validacion FROM productor WHERE productor_id = $1`,
       [producerId]
     );
 
@@ -958,7 +958,7 @@ router.get('/precios', authMiddleware, requiereRegistroCompleto, async (req: Aut
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
     const upData = await pool.query(
-      `SELECT state_name FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]
+      `SELECT nombre_estado FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]
     );
     const estado = upData.rows[0]?.state_name;
 
@@ -971,7 +971,7 @@ router.get('/precios', authMiddleware, requiereRegistroCompleto, async (req: Aut
         `SELECT ROUND(AVG(pr.precio)::numeric, 2) AS po_hoy
          FROM precios pr
          JOIN bodegas b ON b.id = pr.bodega_id
-         WHERE pr.created_at >= CURRENT_DATE - INTERVAL '7 days'
+         WHERE pr.creado_en >= CURRENT_DATE - INTERVAL '7 days'
            AND pr.tipo_precio = 'bodega'
            AND b.estado ILIKE $1`,
         [estado || '']
@@ -987,13 +987,13 @@ router.get('/precios', authMiddleware, requiereRegistroCompleto, async (req: Aut
     let tendencia: any[] = [];
     try {
       const tendenciaRes = await pool.query(
-        `SELECT pr.created_at::date AS fecha, ROUND(AVG(pr.precio)::numeric, 2) AS precio_compra
+        `SELECT pr.creado_en::date AS fecha, ROUND(AVG(pr.precio)::numeric, 2) AS precio_compra
          FROM precios pr
          JOIN bodegas b ON b.id = pr.bodega_id
-         WHERE pr.created_at >= CURRENT_DATE - INTERVAL '30 days'
+         WHERE pr.creado_en >= CURRENT_DATE - INTERVAL '30 days'
            AND pr.tipo_precio = 'bodega'
            AND b.estado ILIKE $1
-         GROUP BY pr.created_at::date
+         GROUP BY pr.creado_en::date
          ORDER BY fecha ASC`,
         [estado || '']
       );
@@ -1017,7 +1017,7 @@ router.get('/precios', authMiddleware, requiereRegistroCompleto, async (req: Aut
     let tipo_cambio_mxn: number | null = null;
     try {
       const refRes = await pool.query(
-        `SELECT chicago_usd_bushel, tc_banxico FROM precio_referencias_externas ORDER BY created_at DESC LIMIT 1`
+        `SELECT chicago_usd_bushel, tc_banxico FROM precio_referencias_externas ORDER BY creado_en DESC LIMIT 1`
       );
       if (refRes.rows.length > 0) {
         precio_chicago_usd_bushel = Number(refRes.rows[0].chicago_usd_bushel);
@@ -1034,7 +1034,7 @@ router.get('/precios', authMiddleware, requiereRegistroCompleto, async (req: Aut
           SELECT ts.bodega_id, SUM(ts.precio) AS total_por_bodega
           FROM tarifario_servicios ts
           JOIN bodeguero_bodegas bb ON bb.bodega_id = ts.bodega_id
-          WHERE ts.updated_at >= NOW() - INTERVAL '60 days'
+          WHERE ts.actualizado_en >= NOW() - INTERVAL '60 days'
             AND ts.activo = true
           GROUP BY ts.bodega_id
         ) AS totales_por_bodega
@@ -1078,8 +1078,8 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
     // parameter $1" (el error que reportaron los productores).
     const upRes = await pool.query(
       `SELECT up_id FROM up
-       WHERE producer_id = $2 AND ($1::bigint IS NULL OR up_id = $1) AND ${parcelaDeMaiz('up')}
-       ORDER BY created_at ASC
+       WHERE productor_id = $2 AND ($1::bigint IS NULL OR up_id = $1) AND ${parcelaDeMaiz('up')}
+       ORDER BY creado_en ASC
        LIMIT 1`,
       [up_id ?? null, producerId]
     );
@@ -1094,7 +1094,7 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
         return;
       }
       const newUp = await pool.query(
-        `INSERT INTO up (producer_id, up_name, up_type, production_system, water_regime, location_confirmed, centroid_source)
+        `INSERT INTO up (productor_id, nombre_up, tipo_up, sistema_produccion, regimen_hidrico, ubicacion_confirmada, origen_centroide)
          VALUES ($1, 'Mi parcela', 'parcela', 'monocultivo', 'temporal', FALSE, 'productor') RETURNING up_id`,
         [producerId]
       );
@@ -1115,9 +1115,9 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
       if (postgisActivo) {
         // Traslape con OTRAS parcelas del mismo productor (excluyendo esta misma UP)
         const ovPropio = await pool.query(
-          `SELECT up_id, up_name FROM up
-           WHERE producer_id = $1 AND up_id != $2 AND geom IS NOT NULL
-             AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326))
+          `SELECT up_id, nombre_up FROM up
+           WHERE productor_id = $1 AND up_id != $2 AND geometria IS NOT NULL
+             AND ST_Intersects(geometria, ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326))
            LIMIT 1`,
           [producerId, targetUpId, geomGeoJSON]
         );
@@ -1140,7 +1140,7 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
         }
         if (traslape.advertencia) {
           await pool.query(
-            `UPDATE up SET posible_traslape_producer_id = $1, traslape_revisado = false WHERE up_id = $2`,
+            `UPDATE up SET posible_traslape_productor_id = $1, traslape_revisado = false WHERE up_id = $2`,
             [traslape.traslapeProducerId, targetUpId]
           );
         }
@@ -1148,20 +1148,20 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
 
       await pool.query(
         `UPDATE up SET
-           centroid = ST_SetSRID(ST_MakePoint($1, $2), 4326),
-           geom = ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)),
-           area_ha_calc = $4, area_ha_real = $5, coincide_area = $6,
-           location_confirmed = TRUE,
-           centroid_source = 'productor'
+           centroide = ST_SetSRID(ST_MakePoint($1, $2), 4326),
+           geometria = ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)),
+           superficie_ha_calculada = $4, superficie_ha_real = $5, coincide_superficie = $6,
+           ubicacion_confirmada = TRUE,
+           origen_centroide = 'productor'
          WHERE up_id = $7`,
         [lng, lat, geomGeoJSON, area_calc_ha || null, area_real_ha || null, coincide_area ?? null, targetUpId]
       );
     } else {
       await pool.query(
         `UPDATE up SET
-           centroid = ST_SetSRID(ST_MakePoint($1, $2), 4326),
-           location_confirmed = TRUE,
-           centroid_source = 'productor'
+           centroide = ST_SetSRID(ST_MakePoint($1, $2), 4326),
+           ubicacion_confirmada = TRUE,
+           origen_centroide = 'productor'
          WHERE up_id = $3`,
         [lng, lat, targetUpId]
       );
@@ -1175,20 +1175,20 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
         // Actualizar la UP con el estado/municipio reales de la ubicación marcada
         await pool.query(
           `UPDATE up SET
-             state_name = COALESCE($1, state_name),
-             municipality_name = COALESCE($2, municipality_name),
-             state_id = COALESCE($3, state_id),
-             municipality_id = COALESCE($4, municipality_id),
-             updated_at = NOW()
+             nombre_estado = COALESCE($1, nombre_estado),
+             nombre_municipio = COALESCE($2, nombre_municipio),
+             estado_id = COALESCE($3, estado_id),
+             municipio_id = COALESCE($4, municipio_id),
+             actualizado_en = NOW()
            WHERE up_id = $5`,
           [g.state_name, g.municipality_name, g.state_id, g.municipality_id, targetUpId]
         );
         // Mantener el producer en sintonía (state_id/municipality_id)
         await pool.query(
-          `UPDATE producer SET
-             state_id = COALESCE($1, state_id),
-             municipality_id = COALESCE($2, municipality_id)
-           WHERE producer_id = $3`,
+          `UPDATE productor SET
+             estado_id = COALESCE($1, estado_id),
+             municipio_id = COALESCE($2, municipio_id)
+           WHERE productor_id = $3`,
           [g.state_id, g.municipality_id, producerId]
         );
         geo = { estado: g.state_name, municipio: g.municipality_name };
@@ -1214,14 +1214,14 @@ router.get('/mi-up', authMiddleware, async (req: AuthRequest, res: Response): Pr
     try {
       // Intentar primero con PostGIS (centroid geometry)
       const r = await pool.query(
-        `SELECT up_id, up_name, state_name, municipality_name,
-                location_confirmed, centroid_source,
-                ST_Y(centroid::geometry) AS lat,
-                ST_X(centroid::geometry) AS lng,
-                area_ha_calc, area_ha_real, coincide_area,
-                ST_AsGeoJSON(geom)::json AS geom_geojson,
+        `SELECT up_id, nombre_up, nombre_estado, nombre_municipio,
+                ubicacion_confirmada, origen_centroide,
+                ST_Y(centroide::geometry) AS lat,
+                ST_X(centroide::geometry) AS lng,
+                superficie_ha_calculada, superficie_ha_real, coincide_superficie,
+                ST_AsGeoJSON(geometria)::json AS geom_geojson,
                 NULL AS geom_coordenadas
-         FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}
+         FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')}
          LIMIT 1`,
         [producerId]
       );
@@ -1234,10 +1234,10 @@ router.get('/mi-up', authMiddleware, async (req: AuthRequest, res: Response): Pr
     if (rows.length === 0 || (rows[0].lat === 0 && rows[0].lng === 0)) {
       try {
         const r2 = await pool.query(
-          `SELECT up_id, up_name, state_name, municipality_name,
-                  location_confirmed, centroid_source,
-                  area_ha_calc, area_ha_real, coincide_area
-           FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`,
+          `SELECT up_id, nombre_up, nombre_estado, nombre_municipio,
+                  ubicacion_confirmada, origen_centroide,
+                  superficie_ha_calculada, superficie_ha_real, coincide_superficie
+           FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`,
           [producerId]
         );
         if (r2.rows.length > 0) {
@@ -1276,13 +1276,13 @@ router.post('/solicitar-apoyo', authMiddleware, requiereRegistroCompleto, async 
               (SELECT a.id FROM apoyos_ventanilla a
                  WHERE a.ventanilla_id = v.id
                    AND ($2::text IS NULL OR a.nombre_apoyo = $2)
-                 ORDER BY a.created_at DESC LIMIT 1) AS apoyo_id_tipo,
+                 ORDER BY a.creado_en DESC LIMIT 1) AS apoyo_id_tipo,
               (SELECT a2.id FROM apoyos_ventanilla a2
                  WHERE a2.ventanilla_id = v.id
-                 ORDER BY a2.created_at DESC LIMIT 1) AS apoyo_id_any
+                 ORDER BY a2.creado_en DESC LIMIT 1) AS apoyo_id_any
          FROM ventanillas v
         WHERE v.bodega_id = $1 AND v.estatus = 'activa'
-        ORDER BY v.created_at DESC LIMIT 1`,
+        ORDER BY v.creado_en DESC LIMIT 1`,
       [infraestructura_id, nombreApoyo]
     );
     if (resolve.rows.length === 0) {
@@ -1291,7 +1291,7 @@ router.post('/solicitar-apoyo', authMiddleware, requiereRegistroCompleto, async 
     }
     const apoyoId = resolve.rows[0].apoyo_id_tipo || resolve.rows[0].apoyo_id_any;
     const solicitud = await pool.query(
-      `INSERT INTO solicitudes_apoyo (ventanilla_id, apoyo_id, producer_id, estado, notas)
+      `INSERT INTO solicitudes_apoyo (ventanilla_id, apoyo_id, productor_id, estado, notas)
        VALUES ($1, $2, $3, 'recibida', $4) RETURNING id`,
       [resolve.rows[0].ventanilla_id, apoyoId || null, producerId, notas || null]
     );
@@ -1335,7 +1335,7 @@ router.get('/mis-solicitudes', authMiddleware, requiereRegistroCompleto, async (
       `SELECT s.id, s.estado,
               s.notas,
               s.notas AS notas_ventanilla,
-              s.created_at, s.updated_at,
+              s.creado_en, s.actualizado_en,
               COALESCE(a.nombre_apoyo, 'Solicitud') AS tipo_apoyo,
               v.nombre_ventanilla AS ventanilla_nombre,
               b.nombre AS bodega_nombre
@@ -1343,8 +1343,8 @@ router.get('/mis-solicitudes', authMiddleware, requiereRegistroCompleto, async (
        LEFT JOIN ventanillas v ON v.id = s.ventanilla_id
        LEFT JOIN apoyos_ventanilla a ON a.id = s.apoyo_id
        LEFT JOIN bodegas b ON b.id = v.bodega_id
-       WHERE s.producer_id = $1
-       ORDER BY s.created_at DESC`,
+       WHERE s.productor_id = $1
+       ORDER BY s.creado_en DESC`,
       [producerId]
     );
 
@@ -1372,11 +1372,11 @@ router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response):
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
     await pool.query(
-      `UPDATE producer SET
-         phone                  = COALESCE($1, phone),
+      `UPDATE productor SET
+         telefono                  = COALESCE($1, telefono),
          programas_beneficiario = COALESCE($2, programas_beneficiario),
          correo                 = COALESCE($3, correo)
-       WHERE producer_id = $4`,
+       WHERE productor_id = $4`,
       [telefono, programas_beneficiario, correo || null, producerId]
     );
     res.json({ ok: true });
@@ -1402,18 +1402,18 @@ router.patch('/perfil/ubicacion', authMiddleware, async (req: AuthRequest, res: 
 
     const result = await pool.query(
       `UPDATE up
-       SET state_name                = $1,
-           municipality_name         = $2,
-           location_confirmed        = TRUE,
+       SET nombre_estado                = $1,
+           nombre_municipio         = $2,
+           ubicacion_confirmada        = TRUE,
            domicilio_actualizado_en  = NOW(),
            domicilio_actualizado_por = 'productor'
        WHERE up_id = (
          SELECT up_id FROM up
-         WHERE producer_id = $3 AND ${parcelaDeMaiz('up')}
-         ORDER BY created_at DESC
+         WHERE productor_id = $3 AND ${parcelaDeMaiz('up')}
+         ORDER BY creado_en DESC
          LIMIT 1
        )
-       RETURNING up_id, state_name, municipality_name, domicilio_actualizado_en`,
+       RETURNING up_id, nombre_estado, nombre_municipio, domicilio_actualizado_en`,
       [state_name.trim(), municipality_name.trim(), producerId]
     );
 
@@ -1437,17 +1437,17 @@ router.get('/perfil', authMiddleware, async (req: AuthRequest, res: Response): P
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
     const { rows } = await pool.query(
-      `SELECT p.producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno,
-              p.phone AS telefono, p.estado_validacion, p.tipo_registro,
+      `SELECT p.productor_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno,
+              p.telefono AS telefono, p.estado_validacion, p.tipo_registro,
               p.programas_beneficiario, p.correo,
-              u.up_id, u.state_name AS state_name, u.municipality_name AS municipality_name,
-              u.location_confirmed, u.centroid_source,
-              u.area_ha_calc, u.area_ha_real,
-              ST_Y(u.centroid::geometry) AS lat,
-              ST_X(u.centroid::geometry) AS lng
-       FROM producer p
-       LEFT JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
-       WHERE p.producer_id = $1`,
+              u.up_id, u.nombre_estado AS state_name, u.nombre_municipio AS municipality_name,
+              u.ubicacion_confirmada, u.origen_centroide,
+              u.superficie_ha_calculada, u.superficie_ha_real,
+              ST_Y(u.centroide::geometry) AS lat,
+              ST_X(u.centroide::geometry) AS lng
+       FROM productor p
+       LEFT JOIN up u ON u.productor_id = p.productor_id AND ${parcelaDeMaiz('u')}
+       WHERE p.productor_id = $1`,
       [producerId]
     );
     res.json(rows[0] || {});
@@ -1465,19 +1465,19 @@ router.get('/mi-ciclo', authMiddleware, async (req: AuthRequest, res: Response):
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
     // Obtener up_id (la primera parcela que cuenta en maíz: una parcela que solo registró frijol no se usa aquí)
-    const upRes = await pool.query(`SELECT up_id FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]);
+    const upRes = await pool.query(`SELECT up_id FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]);
     if (!upRes.rows[0]) { res.json(null); return; }
     const upId = upRes.rows[0].up_id;
 
     const { rows } = await pool.query(
-      `SELECT c.cycle_id, c.cycle_year, c.cycle_type,
-              cc.area_sown_ha AS hectareas_sembradas,
-              cc.planting_date AS fecha_siembra,
-              COALESCE(cc.variety_other, cc.variety_id) AS variedad_nombre
-       FROM cycle c
-       LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-       WHERE c.up_id = $1 AND c.crop = 'maiz'
-       ORDER BY c.cycle_year DESC, c.cycle_id DESC
+      `SELECT c.ciclo_id, c.anio_ciclo, c.tipo_ciclo,
+              cc.superficie_sembrada_ha AS hectareas_sembradas,
+              cc.fecha_siembra AS fecha_siembra,
+              COALESCE(cc.variedad_otra, cc.variedad_id) AS variedad_nombre
+       FROM ciclo c
+       LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
+       WHERE c.up_id = $1 AND c.cultivo = 'maiz'
+       ORDER BY c.anio_ciclo DESC, c.ciclo_id DESC
        LIMIT 1`,
       [upId]
     );
@@ -1501,15 +1501,15 @@ router.post('/ciclo', authMiddleware, async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const upRes = await pool.query(`SELECT up_id FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]);
+    const upRes = await pool.query(`SELECT up_id FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')} LIMIT 1`, [producerId]);
     if (!upRes.rows[0]) { res.status(404).json({ error: 'UP no encontrada' }); return; }
     const upId = upRes.rows[0].up_id;
 
     // Validar que no exista ya un ciclo activo del mismo tipo+año en esta UP
     const existente = await pool.query(
-      `SELECT cycle_id FROM cycle
-       WHERE up_id = $1 AND cycle_type = $2 AND cycle_year = $3
-         AND crop = 'maiz'
+      `SELECT ciclo_id FROM ciclo
+       WHERE up_id = $1 AND tipo_ciclo = $2 AND anio_ciclo = $3
+         AND cultivo = 'maiz'
          AND COALESCE(estado_ciclo, 'activo') = 'activo'
        LIMIT 1`,
       [upId, cycle_type, cycle_year]
@@ -1530,11 +1530,11 @@ router.post('/ciclo', authMiddleware, async (req: AuthRequest, res: Response): P
     }
 
     const result = await pool.query(
-      `INSERT INTO cycle
-         (up_id, cycle_year, cycle_type, declarado_por_productor,
-          hectareas_sembradas, fecha_siembra, variedad_nombre, estado_ciclo, crop)
+      `INSERT INTO ciclo
+         (up_id, anio_ciclo, tipo_ciclo, declarado_por_productor,
+          hectareas_sembradas, fecha_siembra, variedad_nombre, estado_ciclo, cultivo)
        VALUES ($1, $2, $3, TRUE, $4, $5, $6, 'activo', 'maiz')
-       RETURNING cycle_id, cycle_year, cycle_type`,
+       RETURNING ciclo_id, anio_ciclo, tipo_ciclo`,
       [upId, cycle_year, cycle_type, hectareas_sembradas || null,
        fecha_siembra || null, variedad_nombre || null]
     );
@@ -1566,7 +1566,7 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
             estado_up, municipio_up, nombre_up } = req.body;
 
     const prodResult = await client.query(
-      'SELECT producer_id FROM producer WHERE usuario_id = $1', [usuarioId]
+      'SELECT productor_id FROM productor WHERE usuario_id = $1', [usuarioId]
     );
     if (prodResult.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -1581,7 +1581,7 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
 
     // Evitar nombre duplicado para este productor
     const nombreDup = await client.query(
-      `SELECT up_id FROM up WHERE producer_id = $1 AND LOWER(up_name) = LOWER($2) LIMIT 1`,
+      `SELECT up_id FROM up WHERE productor_id = $1 AND LOWER(nombre_up) = LOWER($2) LIMIT 1`,
       [producer_id, upName]
     );
     if (nombreDup.rows.length > 0) {
@@ -1610,9 +1610,9 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
     // Validar overlap con UPs existentes del mismo productor
     if (hasPoligono && postgisActivo) {
       const overlap = await client.query(
-        `SELECT up_id, up_name FROM up
-         WHERE producer_id = $1 AND geom IS NOT NULL
-           AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
+        `SELECT up_id, nombre_up FROM up
+         WHERE productor_id = $1 AND geometria IS NOT NULL
+           AND ST_Intersects(geometria, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
          LIMIT 1`,
         [producer_id, geojson]
       );
@@ -1658,27 +1658,27 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
       ];
       upResult = await client.query(
         `INSERT INTO up
-           (producer_id, up_name, up_type, production_system, water_regime,
-            state_name, municipality_name, centroid, geom,
-            area_ha_calc, area_ha_real, coincide_area, location_confirmed, centroid_source)
+           (productor_id, nombre_up, tipo_up, sistema_produccion, regimen_hidrico,
+            nombre_estado, nombre_municipio, centroide, geometria,
+            superficie_ha_calculada, superficie_ha_real, coincide_superficie, ubicacion_confirmada, origen_centroide)
          VALUES ($1, $${aIdx + 3}, 'temporal', 'tradicional', 'temporal',
                  $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ${geomSql},
                  $${aIdx}, $${aIdx + 1}, $${aIdx + 2}, TRUE, 'productor')
-         RETURNING up_id, up_name`,
+         RETURNING up_id, nombre_up`,
         params
       );
     } else if (hasPoligono && postgisActivo) {
       upResult = await client.query(
         `INSERT INTO up
-           (producer_id, up_name, up_type, production_system, water_regime,
-            state_name, municipality_name, centroid, geom,
-            area_ha_calc, area_ha_real, coincide_area, location_confirmed, centroid_source)
+           (productor_id, nombre_up, tipo_up, sistema_produccion, regimen_hidrico,
+            nombre_estado, nombre_municipio, centroide, geometria,
+            superficie_ha_calculada, superficie_ha_real, coincide_superficie, ubicacion_confirmada, origen_centroide)
          VALUES ($1, $5, 'temporal', 'tradicional', 'temporal',
                  $2, $3,
                  ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON($4::text), 4326)),
                  ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($4::text), 4326)),
                  $6, $7, $8, TRUE, 'poligono_calculado')
-         RETURNING up_id, up_name`,
+         RETURNING up_id, nombre_up`,
         [producer_id, estadoCanon, municipioCanon, geojson, upName,
          area_calc_ha || null, area_real_ha || null, coincide_area ?? null]
       );
@@ -1686,7 +1686,7 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
       let centroidVal = null;
       try {
         const muni = await client.query(
-          `SELECT centroid::geometry AS centroid FROM municipios_referencia
+          `SELECT centroide::geometry AS centroid FROM municipios_referencia
            WHERE LOWER(nombre) = LOWER($1) AND LOWER(estado) = LOWER($2) LIMIT 1`,
           [municipioCanon, estadoCanon]
         );
@@ -1694,13 +1694,13 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
       } catch { /* tabla opcional */ }
       upResult = await client.query(
         `INSERT INTO up
-           (producer_id, up_name, up_type, production_system, water_regime,
-            state_name, municipality_name, centroid, geom,
-            area_ha_calc, area_ha_real, coincide_area, location_confirmed, centroid_source)
+           (productor_id, nombre_up, tipo_up, sistema_produccion, regimen_hidrico,
+            nombre_estado, nombre_municipio, centroide, geometria,
+            superficie_ha_calculada, superficie_ha_real, coincide_superficie, ubicacion_confirmada, origen_centroide)
          VALUES ($1, $5, 'temporal', 'tradicional', 'temporal',
                  $2, $3, $4::geometry, NULL,
                  $6, $7, $8, FALSE, 'municipio')
-         RETURNING up_id, up_name`,
+         RETURNING up_id, nombre_up`,
         [producer_id, estadoCanon, municipioCanon, centroidVal, upName,
          area_calc_ha || null, area_real_ha || null, coincide_area ?? null]
       );
@@ -1708,7 +1708,7 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
 
     if (traslapeProducerId2 !== null) {
       await client.query(
-        `UPDATE up SET posible_traslape_producer_id = $1, traslape_revisado = false WHERE up_id = $2`,
+        `UPDATE up SET posible_traslape_productor_id = $1, traslape_revisado = false WHERE up_id = $2`,
         [traslapeProducerId2, upResult.rows[0].up_id]
       );
     }
@@ -1732,32 +1732,32 @@ router.get('/mis-ups-con-ciclos', authMiddleware, async (req: AuthRequest, res: 
     const usuarioId = req.user!.userId;
     const result = await pool.query(
       `SELECT
-         u.up_id, u.up_name, u.municipality_name, u.state_name,
-         u.area_ha_calc, u.area_ha_real, u.location_confirmed,
+         u.up_id, u.nombre_up, u.nombre_municipio, u.nombre_estado,
+         u.superficie_ha_calculada, u.superficie_ha_real, u.ubicacion_confirmada,
          COALESCE(
            JSON_AGG(
              JSON_BUILD_OBJECT(
-               'cycle_id', c.cycle_id,
-               'cycle_type', c.cycle_type,
-               'cycle_year', c.cycle_year,
-               'area_sown_ha', COALESCE(cr.area_sown_ha, c.hectareas_sembradas),
-               'variedad_code', cr.variety_id,
-               'variedad_nombre', COALESCE(cv.label, cr.variety_id, c.variedad_nombre),
-               'variedad_other', cr.variety_other,
+               'cycle_id', c.ciclo_id,
+               'cycle_type', c.tipo_ciclo,
+               'cycle_year', c.anio_ciclo,
+               'area_sown_ha', COALESCE(cr.superficie_sembrada_ha, c.hectareas_sembradas),
+               'variedad_code', cr.variedad_id,
+               'variedad_nombre', COALESCE(cv.etiqueta, cr.variedad_id, c.variedad_nombre),
+               'variedad_other', cr.variedad_otra,
                'estado_ciclo', COALESCE(c.estado_ciclo, 'activo')
              )
-           ) FILTER (WHERE c.cycle_id IS NOT NULL),
+           ) FILTER (WHERE c.ciclo_id IS NOT NULL),
            '[]'
          ) AS ciclos_activos
        FROM up u
-       JOIN producer p ON p.producer_id = u.producer_id
-       LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz' AND COALESCE(c.estado_ciclo, 'activo') = 'activo'
-       LEFT JOIN cycle_crop cr ON cr.cycle_id = c.cycle_id
-       LEFT JOIN cat_crop_variety cv ON cv.code = cr.variety_id AND cv.is_active = TRUE
+       JOIN productor p ON p.productor_id = u.productor_id
+       LEFT JOIN ciclo c ON c.up_id = u.up_id AND c.cultivo = 'maiz' AND COALESCE(c.estado_ciclo, 'activo') = 'activo'
+       LEFT JOIN ciclo_cultivo cr ON cr.ciclo_id = c.ciclo_id
+       LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = cr.variedad_id AND cv.activo = TRUE
        WHERE p.usuario_id = $1 AND ${parcelaDeMaiz('u')}
-       GROUP BY u.up_id, u.up_name, u.municipality_name, u.state_name,
-                u.area_ha_calc, u.area_ha_real, u.location_confirmed, u.created_at
-       ORDER BY u.created_at ASC`,
+       GROUP BY u.up_id, u.nombre_up, u.nombre_municipio, u.nombre_estado,
+                u.superficie_ha_calculada, u.superficie_ha_real, u.ubicacion_confirmada, u.creado_en
+       ORDER BY u.creado_en ASC`,
       [usuarioId]
     );
     res.json({ ups: result.rows });
@@ -1787,10 +1787,10 @@ router.post('/ups/validar-overlap', authMiddleware, async (req: AuthRequest, res
       ]],
     });
     const result = await pool.query(
-      `SELECT u.up_id, u.up_name
-       FROM up u JOIN producer p ON p.producer_id = u.producer_id
-       WHERE p.usuario_id = $1 AND u.geom IS NOT NULL
-         AND ST_Intersects(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
+      `SELECT u.up_id, u.nombre_up
+       FROM up u JOIN productor p ON p.productor_id = u.productor_id
+       WHERE p.usuario_id = $1 AND u.geometria IS NOT NULL
+         AND ST_Intersects(u.geometria, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
        LIMIT 1`,
       [usuarioId, geojson]
     );
@@ -1820,13 +1820,13 @@ router.post('/aviso-privacidad', authMiddleware, async (req: AuthRequest, res: R
     const { latitud, longitud } = req.body;
 
     await pool.query(
-      `UPDATE producer SET
+      `UPDATE productor SET
          aviso_privacidad_aceptado = TRUE,
          aviso_privacidad_fecha    = NOW(),
-         aviso_privacidad_lat      = $2,
-         aviso_privacidad_lng      = $3,
+         aviso_privacidad_latitud      = $2,
+         aviso_privacidad_longitud      = $3,
          aviso_privacidad_version  = '1.0'
-       WHERE producer_id = $1`,
+       WHERE productor_id = $1`,
       [producerId, latitud ?? null, longitud ?? null]
     );
 
@@ -1847,7 +1847,7 @@ router.post('/push/suscribir', authMiddleware, async (req: AuthRequest, res: Res
     const usuarioId = req.user?.userId;
     if (!endpoint || !p256dh || !auth) { res.status(400).json({ error: 'Suscripción incompleta' }); return; }
     await pool.query(
-      `UPDATE usuarios SET push_endpoint = $1, push_p256dh = $2, push_auth = $3, push_activo = TRUE WHERE id = $4`,
+      `UPDATE usuarios SET push_url = $1, push_llave_p256dh = $2, push_llave_auth = $3, push_activo = TRUE WHERE id = $4`,
       [endpoint, p256dh, auth, usuarioId]
     );
     res.json({ ok: true });
@@ -1888,10 +1888,10 @@ router.post('/auth/recuperar-nip/verificar-curp', async (req, res): Promise<void
     }
 
     const { rows } = await pool.query(
-      `SELECT p.producer_id, p.nombres, p.apellido_paterno,
+      `SELECT p.productor_id, p.nombres, p.apellido_paterno,
               u.id AS usuario_id, u.activo,
-              COALESCE(p.phone, u.telefono) AS telefono
-       FROM producer p
+              COALESCE(p.telefono, u.telefono) AS telefono
+       FROM productor p
        JOIN usuarios u ON u.id = p.usuario_id
        WHERE UPPER(p.curp) = UPPER($1)`,
       [curp]
@@ -1995,7 +1995,7 @@ router.post('/auth/recuperar-nip/nuevo-nip', async (req, res): Promise<void> => 
 
     const hash = await bcrypt.hash(String(nuevo_pin), 12);
     await pool.query(
-      `UPDATE usuarios SET password_hash = $1, pin_texto = $2, reset_pin_forced = FALSE WHERE id = $3`,
+      `UPDATE usuarios SET hash_contrasena = $1, pin_texto = $2, recuperacion_nip_forzada = FALSE WHERE id = $3`,
       [hash, String(nuevo_pin), payload.usuario_id]
     );
 

@@ -54,6 +54,7 @@ import solicitudesCambioRoutes from './routes/solicitudes-cambio';
 import adminSolicitudesRoutes from './routes/admin-solicitudes';
 import { postgisDisponible } from './utils/postgis';
 import pool from './config/database';
+import { cargarTablasCompatibilidad } from './config/compatibilidadApi';
 
 dotenv.config();
 
@@ -206,8 +207,16 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(err?.status || 500).json({ error: 'Error interno del servidor' });
 });
 
+// Carga el catálogo de tablas de la capa de compatibilidad de la API (3 intentos); sin él las claves JSON saldrían con nombres nuevos.
+async function cargarCompatibilidadConReintentos(): Promise<void> {
+  for (let intento = 1; ; intento++) {
+    try { await cargarTablasCompatibilidad(pool); return; }
+    catch (e) { if (intento >= 3) throw e; await new Promise(r => setTimeout(r, 2000)); }
+  }
+}
+
 // Iniciar servidor
-app.listen(PORT, '0.0.0.0', () => {
+cargarCompatibilidadConReintentos().then(() => app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📦 API disponible en http://localhost:${PORT}/api`);
   postgisDisponible(); // H4 (auditoría Fase 3): log del estado real de PostGIS al arrancar
@@ -221,6 +230,6 @@ app.listen(PORT, '0.0.0.0', () => {
     scheduleFrijolVerificacion();
     scheduleSolicitudesVencimiento();
   }
-});
+}), e => { console.error('[compatibilidadApi] no se pudo cargar el catálogo de tablas; el servidor no arranca para no devolver claves incorrectas:', (e as Error).message); process.exit(1); });
 
 export default app;

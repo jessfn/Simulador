@@ -138,9 +138,9 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 router.get('/geometrias', async (_req, res: Response): Promise<void> => {
   try {
     const { rows } = await pool.query(
-      `SELECT up_id, ST_AsGeoJSON(geom)::json AS geom_geojson
+      `SELECT up_id, ST_AsGeoJSON(geometria)::json AS geom_geojson
        FROM up
-       WHERE geom IS NOT NULL
+       WHERE geometria IS NOT NULL
        ORDER BY up_id`
     );
     res.json({ ups: rows });

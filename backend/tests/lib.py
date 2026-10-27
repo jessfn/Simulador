@@ -160,7 +160,7 @@ def regiones():
     if not _REG:
         _REG.update({'10': (24.2, -104.6, '10005'), '32': (22.7, -102.6, '32010'), '18': (21.8, -104.8, None), '25': (24.9, -107.3, None)})
         for sid in ('18', '25'):
-            _REG[sid] = (_REG[sid][0], _REG[sid][1], val(f"select municipality_id from geo_municipality where state_id='{sid}' limit 1"))
+            _REG[sid] = (_REG[sid][0], _REG[sid][1], val(f"select municipio_id from geo_municipio where estado_id='{sid}' limit 1"))
     return _REG
 
 def poligono(lat0, lng0, area_ha):

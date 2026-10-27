@@ -150,13 +150,13 @@ router.get('/vistas', authMiddleware, soloAdmin, (_req: AuthRequest, res: Respon
 router.get('/usuarios', authMiddleware, soloAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const r = await pool.query(
-      `SELECT u.id, u.nombre_completo, u.email, u.rol, u.activo,
-              u.estado_asignado, u.debe_cambiar_pass, u.ultimo_login, u.created_at,
+      `SELECT u.id, u.nombre_completo, u.correo_electronico, u.rol, u.activo,
+              u.estado_asignado, u.debe_cambiar_contrasena, u.ultimo_login, u.creado_en,
               rp.etiqueta AS rol_etiqueta, rp.permisos_totales, rp.aplica_filtro_estado
        FROM usuarios u
        LEFT JOIN roles_panel rp ON rp.clave = u.rol
        WHERE u.es_panel_usuario = TRUE
-       ORDER BY u.created_at DESC`
+       ORDER BY u.creado_en DESC`
     );
     res.json({ usuarios: r.rows });
   } catch (e) {
@@ -194,7 +194,7 @@ router.post('/usuarios', authMiddleware, soloAdmin, async (req: AuthRequest, res
     // ahora desambigua con el `contexto` que manda el frontend. Por eso
     // aquí solo importa si YA existe otra cuenta de PANEL con ese correo.
     const existente = await pool.query(
-      'SELECT id, nombre_completo, rol, activo FROM usuarios WHERE email = $1 AND es_panel_usuario = TRUE',
+      'SELECT id, nombre_completo, rol, activo FROM usuarios WHERE correo_electronico = $1 AND es_panel_usuario = TRUE',
       [emailLower]
     );
     const conflictoActivo = existente.rows.find(r => r.activo);
@@ -214,7 +214,7 @@ router.post('/usuarios', authMiddleware, soloAdmin, async (req: AuthRequest, res
       // ni se pierde su historial.
       for (const otraCuenta of existente.rows) {
         await pool.query(
-          `UPDATE usuarios SET email = $1 WHERE id = $2`,
+          `UPDATE usuarios SET correo_electronico = $1 WHERE id = $2`,
           [`${emailLower}.liberado-${otraCuenta.id}`, otraCuenta.id]
         );
       }
@@ -235,10 +235,10 @@ router.post('/usuarios', authMiddleware, soloAdmin, async (req: AuthRequest, res
 
     const result = await pool.query(
       `INSERT INTO usuarios
-         (email, nombre_completo, password_hash, rol, activo,
-          es_panel_usuario, estado_asignado, debe_cambiar_pass)
+         (correo_electronico, nombre_completo, hash_contrasena, rol, activo,
+          es_panel_usuario, estado_asignado, debe_cambiar_contrasena)
        VALUES ($1, $2, $3, $4, true, true, $5, $6)
-       RETURNING id, email, nombre_completo, rol, estado_asignado, created_at`,
+       RETURNING id, correo_electronico, nombre_completo, rol, estado_asignado, creado_en`,
       [emailLower, nombre_completo.trim(), hash, rol, estadoCanon, debecambiar]
     );
 
@@ -277,7 +277,7 @@ router.patch('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest
     let n = 1;
 
     if (nombre_completo) { sets.push(`nombre_completo=$${n++}`); vals.push(nombre_completo.trim()); }
-    if (email)           { sets.push(`email=$${n++}`);           vals.push(email.toLowerCase().trim()); }
+    if (email)           { sets.push(`correo_electronico=$${n++}`);           vals.push(email.toLowerCase().trim()); }
     if (rol)             { sets.push(`rol=$${n++}`);             vals.push(rol); }
     if (estado_asignado !== undefined) {
       let estadoVal: string | null = estado_asignado || null;
@@ -290,9 +290,9 @@ router.patch('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest
     }
     if (nueva_password?.trim()) {
       const nuevoHash = await bcrypt.hash(nueva_password.trim(), 12);
-      sets.push(`password_hash=$${n++}`);
+      sets.push(`hash_contrasena=$${n++}`);
       vals.push(nuevoHash);
-      sets.push(`debe_cambiar_pass=$${n++}`);
+      sets.push(`debe_cambiar_contrasena=$${n++}`);
       vals.push(false);
     }
 
@@ -300,7 +300,7 @@ router.patch('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest
 
     vals.push(id);
     const r = await pool.query(
-      `UPDATE usuarios SET ${sets.join(', ')} WHERE id=$${n} AND es_panel_usuario=TRUE RETURNING id, nombre_completo, email, rol, estado_asignado`,
+      `UPDATE usuarios SET ${sets.join(', ')} WHERE id=$${n} AND es_panel_usuario=TRUE RETURNING id, nombre_completo, correo_electronico, rol, estado_asignado`,
       vals
     );
     if (r.rows.length === 0) { res.status(404).json({ error: 'Usuario no encontrado' }); return; }

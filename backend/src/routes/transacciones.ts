@@ -20,8 +20,8 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
     } else if (user.rol === 'productor') {
       // Productor ve sus transacciones donde él es el vendedor
       params.push(user.userId);
-      where = `WHERE t.producer_id IN (
-        SELECT p.producer_id FROM producer p
+      where = `WHERE t.productor_id IN (
+        SELECT p.productor_id FROM productor p
         JOIN usuarios u ON u.id = p.usuario_id
         WHERE u.id = $${params.length}
       )`;
@@ -50,14 +50,14 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
     const result = await pool.query(
       `SELECT t.*, b.nombre AS bodega_nombre,
               t.precio_ton AS precio_por_ton,
-              t.variedad_code AS variedad,
+              t.variedad_codigo AS variedad,
               t.confirmacion_productor AS estado_confirmacion,
               COALESCE(NULLIF(TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)), ''), t.nombre_productor_libre) AS nombre_productor
        FROM transacciones t
        JOIN bodegas b ON b.id = t.bodega_id
-       LEFT JOIN producer p ON p.producer_id = t.producer_id
+       LEFT JOIN productor p ON p.productor_id = t.productor_id
        ${where}
-       ORDER BY t.fecha DESC, t.created_at DESC
+       ORDER BY t.fecha DESC, t.creado_en DESC
        LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
       dataParams
     );
@@ -89,8 +89,8 @@ router.get('/exportar', authMiddleware, async (req: AuthRequest, res: Response):
       where = 'WHERE 1=1';
     } else if (user.rol === 'productor') {
       params.push(user.userId);
-      where = `WHERE t.producer_id IN (
-        SELECT p.producer_id FROM producer p
+      where = `WHERE t.productor_id IN (
+        SELECT p.productor_id FROM productor p
         JOIN usuarios u ON u.id = p.usuario_id WHERE u.id = $1
       )`;
     } else {
@@ -108,16 +108,16 @@ router.get('/exportar', authMiddleware, async (req: AuthRequest, res: Response):
             t.nombre_productor_libre
           ) AS productor,
           t.tipo_maiz,
-          t.variedad_code AS variedad,
+          t.variedad_codigo AS variedad,
           t.volumen_ton,
           t.precio_ton AS precio_por_ton,
           (t.volumen_ton * t.precio_ton) AS total_mxn,
           COALESCE(t.confirmacion_productor, 'pendiente') AS confirmacion
        FROM transacciones t
        JOIN bodegas b ON b.id = t.bodega_id
-       LEFT JOIN producer p ON p.producer_id = t.producer_id
+       LEFT JOIN productor p ON p.productor_id = t.productor_id
        ${where}
-       ORDER BY t.fecha DESC, t.created_at DESC`,
+       ORDER BY t.fecha DESC, t.creado_en DESC`,
       params
     );
 
@@ -167,8 +167,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
   try {
     const result = await pool.query(
       `INSERT INTO transacciones
-         (bodega_id, usuario_bodeguero, producer_id, nombre_productor_libre,
-          tipo_maiz, variedad_code, volumen_ton, precio_ton, fecha, notas,
+         (bodega_id, usuario_bodeguero, productor_id, nombre_productor_libre,
+          tipo_maiz, variedad_codigo, volumen_ton, precio_ton, fecha, notas,
           humedad_pct, impurezas_pct, grano_quebrado_pct)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [bodega_id, userId, producer_id || null, nombre_productor_libre || null,
@@ -185,7 +185,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
       try {
         const [bodegaR, prodR] = await Promise.all([
           pool.query('SELECT nombre FROM bodegas WHERE id = $1', [bodega_id]),
-          pool.query('SELECT u.id FROM usuarios u JOIN producer p ON p.usuario_id = u.id WHERE p.producer_id = $1 LIMIT 1', [producer_id]),
+          pool.query('SELECT u.id FROM usuarios u JOIN productor p ON p.usuario_id = u.id WHERE p.productor_id = $1 LIMIT 1', [producer_id]),
         ]);
         if (prodR.rows.length > 0) {
           const msg = `La Bodega ${bodegaR.rows[0]?.nombre} registró una compra tuya: ${volumen_ton} ton a $${precio_ton}/ton. ¿Es correcto?`;
@@ -216,34 +216,34 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
       SELECT 
         t.id,
         t.bodega_id,
-        t.producer_id,
+        t.productor_id,
         t.volumen_ton,
         t.precio_ton,
         t.precio_ton AS precio_por_ton,
         t.tipo_maiz,
-        t.variedad_code,
-        t.variedad_code AS variedad,
+        t.variedad_codigo,
+        t.variedad_codigo AS variedad,
         t.fecha,
         t.notas,
         t.notas AS observaciones,
         t.confirmacion_productor,
         t.peso_precio_sistema,
-        t.created_at,
+        t.creado_en,
         b.nombre AS bodega_nombre,
         b.municipio AS bodega_municipio,
         b.estado AS bodega_estado,
         COALESCE(NULLIF(TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)), ''), t.nombre_productor_libre) AS nombre_productor
       FROM transacciones t
       LEFT JOIN bodegas b ON b.id = t.bodega_id
-      LEFT JOIN producer p ON p.producer_id = t.producer_id
+      LEFT JOIN productor p ON p.productor_id = t.productor_id
       WHERE t.id = $1
     `;
     const params: any[] = [id];
 
     // Si no es admin, verificar que la transacción pertenece al usuario
     if (!isAdmin) {
-      query += ` AND (t.usuario_bodeguero = $2 OR t.producer_id IN (
-        SELECT p.producer_id FROM producer p JOIN usuarios u ON u.id = p.usuario_id WHERE u.id = $2
+      query += ` AND (t.usuario_bodeguero = $2 OR t.productor_id IN (
+        SELECT p.productor_id FROM productor p JOIN usuarios u ON u.id = p.usuario_id WHERE u.id = $2
       ))`;
       params.push(usuarioId);
     }
@@ -274,7 +274,7 @@ router.patch('/:id/confirmar', authMiddleware, async (req: AuthRequest, res: Res
 
   try {
     const result = await pool.query(
-      `UPDATE transacciones SET confirmacion_productor = $1, peso_precio_sistema = $2, updated_at = NOW()
+      `UPDATE transacciones SET confirmacion_productor = $1, peso_precio_sistema = $2, actualizado_en = NOW()
        WHERE id = $3 RETURNING *`,
       [confirmacion, peso, req.params.id]
     );

@@ -34,7 +34,10 @@ case "$AMBIENTE" in
     # HostKeyAlias: la llave del servidor se guarda con un nombre fijo y no como "localhost:puerto" (que sirve para cualquier túnel).
     SSH_OPTS=(-p "$PUERTO" -i "$(expand "$PROD_LLAVE")" -o StrictHostKeyChecking=accept-new -o HostKeyAlias=simac-produccion -o ConnectTimeout=20)
     MODO_FRONT="build"
-    MIGRAR="true"   # en producción: respaldo primero y luego npm run migrate:up a mano (ver DEPLOY.md)
+    # En producción: respaldo primero. Por omisión NO migra (npm run migrate:up a mano, ver DEPLOY.md).
+    # Cuando el código nuevo exige la migración (p. ej. 0008, que renombra tablas), se pasa MIGRAR_PROD="npm run migrate:up --silent":
+    # así la migración corre entre la compilación y el reinicio y la ventana con errores dura segundos.
+    MIGRAR="${MIGRAR_PROD:-true}"
     ;;
   *) echo "Uso: $0 pruebas|produccion"; exit 1 ;;
 esac

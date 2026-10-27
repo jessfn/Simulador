@@ -44,19 +44,19 @@ const fmt = (n: number) => { const t = (Math.round(n * 100) / 100).toFixed(2); r
  *  - Parcelas sin superficie (0 o vacía) no se pueden comparar: no se bloquea.
  */
 export async function validarSuperficieCombinada(db: { query: (texto: string, valores?: unknown[]) => Promise<{ rows: any[] }> }, e: EntradaSuperficie): Promise<ResultadoSuperficie> {
-  const up = await db.query('SELECT COALESCE(area_ha_real, area_ha_calc)::float AS superficie FROM up WHERE up_id = $1', [e.upId]);
+  const up = await db.query('SELECT COALESCE(superficie_ha_real, superficie_ha_calculada)::float AS superficie FROM up WHERE up_id = $1', [e.upId]);
   const superficie = Number(up.rows[0]?.superficie || 0);
   if (!(superficie > 0)) return { ok: true };
 
   const otros = await db.query(
-    `SELECT cc.crop, cc.area_sown_ha::float AS ha, COALESCE(fc.tipo_siembra = 'asociada', false) AS asociada
-       FROM cycle c
-       JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-       LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id
-      WHERE c.up_id = $1 AND c.cycle_year = $2 AND c.cycle_type = $3
+    `SELECT cc.cultivo, cc.superficie_sembrada_ha::float AS ha, COALESCE(fc.tipo_siembra = 'asociada', false) AS asociada
+       FROM ciclo c
+       JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
+       LEFT JOIN frijol_cultivo fc ON fc.ciclo_cultivo_id = cc.ciclo_cultivo_id
+      WHERE c.up_id = $1 AND c.anio_ciclo = $2 AND c.tipo_ciclo = $3
         AND COALESCE(c.estado_ciclo, 'activo') <> 'cancelado'
-        AND ($4::bigint IS NULL OR c.cycle_id <> $4)
-        AND cc.crop <> $5`,   // solo cuenta el OTRO cultivo: un duplicado del mismo cultivo lo atiende cada flujo con su propio mensaje
+        AND ($4::bigint IS NULL OR c.ciclo_id <> $4)
+        AND cc.cultivo <> $5`,   // solo cuenta el OTRO cultivo: un duplicado del mismo cultivo lo atiende cada flujo con su propio mensaje
     [e.upId, e.cycleYear, e.cycleType, e.excluirCycleId ?? null, e.cultivo]
   );
   if (otros.rows.length === 0) return { ok: true };                        // un solo cultivo: no hay suma que revisar

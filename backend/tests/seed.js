@@ -32,14 +32,14 @@ const USUARIOS = [
     for (const u of USUARIOS) {
       const hash = await bcrypt.hash(u.clave || CLAVE, 10);
       const panel = !!u.panel;
-      const ex = await c.query('SELECT id FROM usuarios WHERE email = $1 AND (es_panel_usuario IS TRUE) = $2', [u.email, panel]);
+      const ex = await c.query('SELECT id FROM usuarios WHERE correo_electronico = $1 AND (es_panel_usuario IS TRUE) = $2', [u.email, panel]);
       let id;
       if (ex.rows.length) {
         id = ex.rows[0].id;
-        await c.query(`UPDATE usuarios SET password_hash=$2, activo=true, rol=$3, tipo_tecnico=$4, nombre_completo=$5, debe_cambiar_pass=false,
+        await c.query(`UPDATE usuarios SET hash_contrasena=$2, activo=true, rol=$3, tipo_tecnico=$4, nombre_completo=$5, debe_cambiar_contrasena=false,
                         intentos_fallidos=0, bloqueado_hasta=NULL, es_panel_usuario=$6 WHERE id=$1`, [id, hash, u.rol, u.tipo || null, u.nombre, panel]);
       } else {
-        id = (await c.query(`INSERT INTO usuarios (email, curp, nombre_completo, password_hash, telefono, activo, rol, tipo_tecnico, debe_cambiar_pass, es_panel_usuario)
+        id = (await c.query(`INSERT INTO usuarios (correo_electronico, curp, nombre_completo, hash_contrasena, telefono, activo, rol, tipo_tecnico, debe_cambiar_contrasena, es_panel_usuario)
                              VALUES ($1,$2,$3,$4,'6180000000',true,$5,$6,false,$7) RETURNING id`, [u.email, u.curp, u.nombre, hash, u.rol, u.tipo || null, panel])).rows[0].id;
       }
       ids[u.email] = id;
@@ -50,12 +50,12 @@ const USUARIOS = [
     }
     // Productor ficticio que solo está en frijol (lo usan las pruebas de técnicos y de borrado)
     const curp = 'FRTS900101HDGXXX01';
-    let pid = (await c.query('SELECT producer_id FROM producer WHERE curp = $1', [curp])).rows[0]?.producer_id;
+    let pid = (await c.query('SELECT productor_id FROM productor WHERE curp = $1', [curp])).rows[0]?.productor_id;
     const f1 = ids[`qa.frijol1@${D}`];
-    if (!pid) pid = (await c.query(`INSERT INTO producer (curp, nombres, apellido_paterno, tipo_registro, usuario_capturista_id) VALUES ($1,'Frijolero','Sintetico','B',$2) RETURNING producer_id`, [curp, f1])).rows[0].producer_id;
-    await c.query(`INSERT INTO producer_programa (producer_id, programa, usuario_capturista_id) VALUES ($1,'frijol_afb',$2)
-                   ON CONFLICT (producer_id, programa) DO UPDATE SET usuario_capturista_id = EXCLUDED.usuario_capturista_id`, [pid, f1]);
-    await c.query('UPDATE producer SET usuario_capturista_id = $2 WHERE producer_id = $1', [pid, f1]);
+    if (!pid) pid = (await c.query(`INSERT INTO productor (curp, nombres, apellido_paterno, tipo_registro, usuario_capturista_id) VALUES ($1,'Frijolero','Sintetico','B',$2) RETURNING productor_id`, [curp, f1])).rows[0].productor_id;
+    await c.query(`INSERT INTO productor_programa (productor_id, programa, usuario_capturista_id) VALUES ($1,'frijol_afb',$2)
+                   ON CONFLICT (productor_id, programa) DO UPDATE SET usuario_capturista_id = EXCLUDED.usuario_capturista_id`, [pid, f1]);
+    await c.query('UPDATE productor SET usuario_capturista_id = $2 WHERE productor_id = $1', [pid, f1]);
     console.log(`Sembrados ${USUARIOS.length} usuarios ficticios y el productor ${curp}.`);
   } finally { await c.end(); }
 })().catch(e => { console.error('seed falló:', e.message); process.exit(1); });

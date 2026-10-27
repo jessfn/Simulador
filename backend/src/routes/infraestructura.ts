@@ -17,9 +17,9 @@ router.get('/catalogos', authMiddleware, async (_req: AuthRequest, res: Response
       pool.query('SELECT id, nombre FROM regiones ORDER BY nombre'),
       pool.query('SELECT DISTINCT estado FROM bodegas WHERE estado IS NOT NULL ORDER BY estado'),
       pool.query('SELECT DISTINCT municipio, estado FROM bodegas WHERE municipio IS NOT NULL ORDER BY municipio'),
-      pool.query("SELECT code, label FROM cat_catalog WHERE catalog='tipo_maiz' ORDER BY sort_order"),
-      pool.query("SELECT code, label, tipo_maiz FROM cat_crop_variety WHERE crop='maiz' AND tipo_maiz IS NOT NULL ORDER BY tipo_maiz, sort_order"),
-      pool.query("SELECT code, label FROM cat_catalog WHERE catalog='cycle_type' ORDER BY sort_order"),
+      pool.query("SELECT codigo, etiqueta FROM cat_catalogo WHERE catalogo='tipo_maiz' ORDER BY orden"),
+      pool.query("SELECT codigo, etiqueta, tipo_maiz FROM cat_variedad_cultivo WHERE cultivo='maiz' AND tipo_maiz IS NOT NULL ORDER BY tipo_maiz, orden"),
+      pool.query("SELECT codigo, etiqueta FROM cat_catalogo WHERE catalogo='cycle_type' ORDER BY orden"),
     ]);
 
     res.json({
@@ -251,7 +251,7 @@ router.put('/:id', authMiddleware, BODEGA_WRITE, async (req: AuthRequest, res: R
         opera_incentivos = CASE WHEN $10 = TRUE THEN TRUE ELSE COALESCE($12, opera_incentivos) END,
         opera_coberturas = CASE WHEN $10 = TRUE THEN TRUE ELSE COALESCE($13, opera_coberturas) END,
         registra_inventario = COALESCE($14, registra_inventario),
-        updated_at = CURRENT_TIMESTAMP
+        actualizado_en = CURRENT_TIMESTAMP
       WHERE id = $15
       RETURNING *
     `, [
@@ -370,7 +370,7 @@ router.post('/:id/inventario', authMiddleware, BODEGA_WRITE, async (req: AuthReq
     const result = await pool.query(`
       INSERT INTO inventarios
         (bodega_id, usuario_id, ciclo, tipo_maiz, origen, volumen_almacenamiento,
-         volumen_problema, fecha, observaciones, variedad_code, humedad_pct, calidad, fecha_registro)
+         volumen_problema, fecha, observaciones, variedad_codigo, humedad_pct, calidad, fecha_registro)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,CURRENT_TIMESTAMP)
       RETURNING *
     `, [id, req.user?.userId, ciclo, tipo_maiz, origen || null, volumen_almacenado,
@@ -435,7 +435,7 @@ router.post('/:id/precios', authMiddleware, BODEGA_WRITE, async (req: AuthReques
     const result = await pool.query(`
       INSERT INTO precios
         (tipo_precio, fuente, precio, tipo_maiz, fecha, observaciones,
-         bodega_id, usuario_captura, variedad_code, humedad_pct, calidad)
+         bodega_id, usuario_captura, variedad_codigo, humedad_pct, calidad)
       VALUES ('bodega','bodeguero',$1,$2,$3,$4,$5,$6,$7,$8,$9)
       RETURNING *
     `, [precio, tipo_maiz, fecha, observaciones || null, id, req.user?.userId,

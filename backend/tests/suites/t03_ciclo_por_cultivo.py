@@ -6,7 +6,7 @@ from lib import *
 tok = login('qa.maiz1@ejemplo.test')
 adm = login_admin()
 prod = str(estado_get('productor_maiz'))
-up = sql(f"select up_id from up where producer_id={prod} limit 1").split('\n')[2].strip()
+up = sql(f"select up_id from up where productor_id={prod} limit 1").split('\n')[2].strip()
 print('productor', prod, 'parcela', up)
 
 # --- Ciclo de maiz con su cultivo (flujo normal de maiz)
@@ -22,9 +22,9 @@ st, r = http(f'/cycles/{maiz_id}/crops', tok, 'POST', {'crop': 'frijol', 'variet
 ok('crop distinto al del ciclo -> 400', st == 400, (r or {}).get('error', ''))
 
 # --- Insertar a mano un ciclo de frijol PV 2026 activo en esa misma parcela
-sql(f"insert into cycle (up_id, cycle_year, cycle_type, estado_ciclo, tipo_riego, crop) values ({up}, 2026, 'PV', 'activo', 'temporal', 'frijol')")
-fid = sql(f"select cycle_id from cycle where up_id={up} and crop='frijol'").split('\n')[2].strip()
-sql(f"insert into cycle_crop (cycle_id, crop, variety_id, area_sown_ha, planting_date) values ({fid}, 'frijol', 'PINTO_SALTILLO', 0.5, '2026-07-10')")
+sql(f"insert into ciclo (up_id, anio_ciclo, tipo_ciclo, estado_ciclo, tipo_riego, cultivo) values ({up}, 2026, 'PV', 'activo', 'temporal', 'frijol')")
+fid = sql(f"select ciclo_id from ciclo where up_id={up} and crop='frijol'").split('\n')[2].strip()
+sql(f"insert into ciclo_cultivo (ciclo_id, cultivo, variedad_id, superficie_sembrada_ha, fecha_siembra) values ({fid}, 'frijol', 'PINTO_SALTILLO', 0.5, '2026-07-10')")
 ok('frijol PV 2026 activo conviviendo con maiz PV 2026 en la misma parcela', fid.isdigit(), f'ciclo frijol {fid}')
 
 st, ciclos = http(f'/ups/{up}/cycles', tok)
@@ -33,7 +33,7 @@ ok('el tecnico de maiz NO ve el ciclo de frijol', fid not in [str(t) for t in ti
 ok('el ciclo de maiz sigue con su cultivo maiz', all(cr['crop'] == 'maiz' for c in ciclos['cycles'] for cr in c['crops']))
 
 # el cultivo de frijol no se puede editar ni borrar desde el flujo de maiz
-cc_f = sql(f"select cycle_crop_id from cycle_crop where cycle_id={fid}").split('\n')[2].strip()
+cc_f = sql(f"select ciclo_cultivo_id from ciclo_cultivo where ciclo_id={fid}").split('\n')[2].strip()
 st, _ = http(f'/cycle-crops/{cc_f}', tok, 'PATCH', {'area_sown_ha': 0.3})
 ok('maiz no puede editar el cultivo de frijol', st == 403, str(st))
 st, _ = http(f'/cycles/{fid}', tok, 'DELETE')
@@ -42,14 +42,14 @@ st, _ = http(f'/cycles/{fid}/estado', tok, 'PATCH', {'estado': 'cancelado'})
 ok('maiz no puede cambiar el estado del ciclo de frijol', st == 404, str(st))
 
 # --- Borrados protegidos (409)
-sql(f"insert into producer_programa (producer_id, programa) values ({prod}, 'frijol_afb') on conflict do nothing")
+sql(f"insert into productor_programa (productor_id, programa) values ({prod}, 'frijol_afb') on conflict do nothing")
 st, r = http(f'/admin/productores/{prod}', adm, 'DELETE')
 ok('admin no puede borrar un productor que tambien esta en Frijol (409)', st == 409, (r or {}).get('error', ''))
 st, r = http(f'/admin/parcelas/{up}', adm, 'DELETE')
 ok('admin no puede borrar una parcela con frijol (409)', st == 409, (r or {}).get('error', ''))
-sql(f"delete from producer_programa where producer_id={prod} and programa='frijol_afb'")
+sql(f"delete from productor_programa where productor_id={prod} and programa='frijol_afb'")
 
 # --- Limpieza del ciclo de frijol de prueba
-sql(f"delete from cycle_crop where cycle_id={fid}"); sql(f"delete from cycle where cycle_id={fid} and crop='frijol'")
+sql(f"delete from ciclo_cultivo where ciclo_id={fid}"); sql(f"delete from ciclo where ciclo_id={fid} and crop='frijol'")
 print('\nRESUMEN T03:', sum(res), '/', len(res))
 estado_set('ciclo_maiz', f'{up},{maiz_id}')

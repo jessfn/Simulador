@@ -68,7 +68,7 @@ async function canonicalizar(estadoRaw: string, municipioRaw: string): Promise<G
   if (!estadoRaw) return result;
 
   const eN = norm(estadoRaw);
-  const states = (await pool.query('SELECT state_id, name FROM geo_state')).rows as { state_id: string; name: string }[];
+  const states = (await pool.query('SELECT estado_id, nombre FROM geo_estado')).rows as { state_id: string; name: string }[];
   let state =
     states.find(s => norm(s.name) === eN) ||
     states.find(s => eN && (norm(s.name).includes(eN) || eN.includes(norm(s.name))));
@@ -82,7 +82,7 @@ async function canonicalizar(estadoRaw: string, municipioRaw: string): Promise<G
   const mN = norm(municipioRaw);
   // IMPORTANTE: filtrar municipios por el estado correcto (hay homónimos como Cuauhtémoc)
   const munis = (await pool.query(
-    'SELECT municipality_id, name FROM geo_municipality WHERE state_id = $1',
+    'SELECT municipio_id, nombre FROM geo_municipio WHERE estado_id = $1',
     [state.state_id]
   )).rows as { municipality_id: string; name: string }[];
 

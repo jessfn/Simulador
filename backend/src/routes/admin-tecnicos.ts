@@ -58,7 +58,7 @@ async function validarTecnico(b: DatosTecnico, parcial: boolean): Promise<string
   }
   if (!parcial || b.tipo_tecnico !== undefined) {
     if (falta(b.tipo_tecnico)) return 'El tipo de técnico es obligatorio';
-    const t = await pool.query(`SELECT 1 FROM cat_catalog WHERE catalog = 'tipo_tecnico' AND code = $1 AND is_active = true`, [b.tipo_tecnico]);
+    const t = await pool.query(`SELECT 1 FROM cat_catalogo WHERE catalogo = 'tipo_tecnico' AND codigo = $1 AND activo = true`, [b.tipo_tecnico]);
     if (t.rows.length === 0) return 'El tipo de técnico no es válido';
   }
   if (!parcial || b.programas !== undefined) {
@@ -70,10 +70,10 @@ async function validarTecnico(b: DatosTecnico, parcial: boolean): Promise<string
     if (!Array.isArray(b.zona) || b.zona.length === 0) return 'Agrega al menos un estado a la zona de operación';
     for (const z of b.zona) {
       if (!z || falta(z.state_id)) return 'Cada renglón de la zona necesita un estado';
-      const e = await pool.query('SELECT 1 FROM geo_state WHERE state_id = $1', [z.state_id]);
+      const e = await pool.query('SELECT 1 FROM geo_estado WHERE estado_id = $1', [z.state_id]);
       if (e.rows.length === 0) return `El estado ${z.state_id} no existe`;
       if (z.municipality_id) {
-        const m = await pool.query('SELECT 1 FROM geo_municipality WHERE municipality_id = $1 AND state_id = $2', [z.municipality_id, z.state_id]);
+        const m = await pool.query('SELECT 1 FROM geo_municipio WHERE municipio_id = $1 AND estado_id = $2', [z.municipality_id, z.state_id]);
         if (m.rows.length === 0) return `El municipio ${z.municipality_id} no pertenece al estado ${z.state_id}`;
       }
     }
@@ -94,7 +94,7 @@ async function guardarProgramasYZona(db: Db, id: number, programas?: string[], z
     await db.query('DELETE FROM tecnico_zona WHERE usuario_id = $1', [id]);
     for (const z of zona) {
       await db.query(
-        `INSERT INTO tecnico_zona (usuario_id, state_id, municipality_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+        `INSERT INTO tecnico_zona (usuario_id, estado_id, municipio_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
         [id, z.state_id, z.municipality_id || null]
       );
     }
@@ -104,16 +104,16 @@ async function guardarProgramasYZona(db: Db, id: number, programas?: string[], z
 // Subconsultas que se agregan al listado y al detalle: tipo, programas y zona legibles
 const CAMPOS_PROGRAMA = `
   u.tipo_tecnico,
-  (SELECT label FROM cat_catalog WHERE catalog = 'tipo_tecnico' AND code = u.tipo_tecnico) AS tipo_tecnico_etiqueta,
+  (SELECT etiqueta FROM cat_catalogo WHERE catalogo = 'tipo_tecnico' AND codigo = u.tipo_tecnico) AS tipo_tecnico_etiqueta,
   COALESCE((SELECT json_agg(x.programa ORDER BY x.programa) FROM usuario_programa x WHERE x.usuario_id = u.id), '[]'::json) AS programas,
   COALESCE((SELECT json_agg(json_build_object(
-      'state_id', z.state_id, 'state_name', gs.name,
-      'municipality_id', z.municipality_id, 'municipality_name', gm.name) ORDER BY gs.name, gm.name)
+      'state_id', z.estado_id, 'state_name', gs.nombre,
+      'municipality_id', z.municipio_id, 'municipality_name', gm.nombre) ORDER BY gs.nombre, gm.nombre)
      FROM tecnico_zona z
-     LEFT JOIN geo_state gs ON gs.state_id = z.state_id
-     LEFT JOIN geo_municipality gm ON gm.municipality_id = z.municipality_id
+     LEFT JOIN geo_estado gs ON gs.estado_id = z.estado_id
+     LEFT JOIN geo_municipio gm ON gm.municipio_id = z.municipio_id
     WHERE z.usuario_id = u.id), '[]'::json) AS zona,
-  (SELECT COUNT(*)::int FROM producer_programa pp WHERE pp.usuario_capturista_id = u.id AND pp.programa = '${PROGRAMA_FRIJOL}') AS registros_frijol`;
+  (SELECT COUNT(*)::int FROM productor_programa pp WHERE pp.usuario_capturista_id = u.id AND pp.programa = '${PROGRAMA_FRIJOL}') AS registros_frijol`;
 
 // =============================================
 // GET /api/admin/tecnicos/catalogos
@@ -124,9 +124,9 @@ const CAMPOS_PROGRAMA = `
 router.get('/catalogos', authMiddleware, verTecnicos, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const [tipos, programas, estados] = await Promise.all([
-      pool.query(`SELECT code, label FROM cat_catalog WHERE catalog = 'tipo_tecnico' AND is_active = true ORDER BY sort_order, label`),
+      pool.query(`SELECT codigo, etiqueta FROM cat_catalogo WHERE catalogo = 'tipo_tecnico' AND activo = true ORDER BY orden, etiqueta`),
       pool.query(`SELECT clave, nombre, cultivo FROM cat_programa WHERE activo = true ORDER BY nombre`),
-      pool.query(`SELECT state_id, name FROM geo_state ORDER BY name`),
+      pool.query(`SELECT estado_id, nombre FROM geo_estado ORDER BY nombre`),
     ]);
     res.json({ tipos_tecnico: tipos.rows, programas: programas.rows, estados: estados.rows });
   } catch (error) {
@@ -139,7 +139,7 @@ router.get('/municipios', authMiddleware, verTecnicos, async (req: AuthRequest, 
   try {
     const stateId = String(req.query.state_id || '');
     if (!stateId) { res.status(400).json({ error: 'Falta state_id' }); return; }
-    const r = await pool.query('SELECT municipality_id, name FROM geo_municipality WHERE state_id = $1 ORDER BY name', [stateId]);
+    const r = await pool.query('SELECT municipio_id, nombre FROM geo_municipio WHERE estado_id = $1 ORDER BY nombre', [stateId]);
     res.json({ municipios: r.rows });
   } catch (error) {
     console.error('Error en municipios de técnicos:', error);
@@ -169,15 +169,15 @@ router.post('/', authMiddleware, crearTecnicos, async (req: AuthRequest, res: Re
     await client.query('SELECT pg_advisory_xact_lock(7400001)');
     const dupCurp = await client.query('SELECT 1 FROM usuarios WHERE UPPER(curp) = $1', [curp]);
     if (dupCurp.rows.length > 0) { await client.query('ROLLBACK'); res.status(409).json({ error: 'Ya existe un usuario con esa CURP' }); return; }
-    const dupMail = await client.query('SELECT 1 FROM usuarios WHERE LOWER(email) = $1', [email]);
+    const dupMail = await client.query('SELECT 1 FROM usuarios WHERE LOWER(correo_electronico) = $1', [email]);
     if (dupMail.rows.length > 0) { await client.query('ROLLBACK'); res.status(409).json({ error: 'Ya existe un usuario con ese correo' }); return; }
 
     const passTemporal = passTemporalTecnico();
     const hash = await bcrypt.hash(passTemporal, 12);
     const r = await client.query(
-      `INSERT INTO usuarios (email, curp, nombre_completo, password_hash, telefono, activo, rol, debe_cambiar_pass, tipo_tecnico)
+      `INSERT INTO usuarios (correo_electronico, curp, nombre_completo, hash_contrasena, telefono, activo, rol, debe_cambiar_contrasena, tipo_tecnico)
        VALUES ($1, $2, $3, $4, $5, true, 'capturista', true, $6)
-       RETURNING id, email, nombre_completo, telefono, activo, tipo_tecnico, debe_cambiar_pass, created_at`,
+       RETURNING id, correo_electronico, nombre_completo, telefono, activo, tipo_tecnico, debe_cambiar_contrasena, creado_en`,
       [email, curp, nombre, hash, telefono, b.tipo_tecnico]
     );
     const nuevo = r.rows[0];
@@ -212,7 +212,7 @@ router.get('/', authMiddleware, verTecnicos, async (req: AuthRequest, res: Respo
     let idx = 1;
 
     if (q) {
-      conditions.push(`(u.nombre_completo ILIKE $${idx} OR u.email ILIKE $${idx} OR u.curp ILIKE $${idx})`);
+      conditions.push(`(u.nombre_completo ILIKE $${idx} OR u.correo_electronico ILIKE $${idx} OR u.curp ILIKE $${idx})`);
       params.push(`%${q}%`);
       idx++;
     }
@@ -222,20 +222,20 @@ router.get('/', authMiddleware, verTecnicos, async (req: AuthRequest, res: Respo
     }
     if (tipo_tecnico) { conditions.push(`u.tipo_tecnico = $${idx++}`); params.push(tipo_tecnico); }
     if (state_id) {
-      conditions.push(`EXISTS (SELECT 1 FROM tecnico_zona fz WHERE fz.usuario_id = u.id AND fz.state_id = $${idx++})`);
+      conditions.push(`EXISTS (SELECT 1 FROM tecnico_zona fz WHERE fz.usuario_id = u.id AND fz.estado_id = $${idx++})`);
       params.push(state_id);
     }
 
     const where = `WHERE ${conditions.join(' AND ')}`;
 
     const result = await pool.query(
-      `SELECT u.id, u.email, u.curp, u.nombre_completo, u.telefono, u.activo, u.debe_cambiar_pass, u.ultimo_login, u.created_at,
-              COUNT(DISTINCT p.producer_id) AS total_registros,
+      `SELECT u.id, u.correo_electronico, u.curp, u.nombre_completo, u.telefono, u.activo, u.debe_cambiar_contrasena, u.ultimo_login, u.creado_en,
+              COUNT(DISTINCT p.productor_id) AS total_registros,
               COUNT(DISTINCT up.up_id) AS total_ups,
               ${CAMPOS_PROGRAMA}
        FROM usuarios u
-       LEFT JOIN producer p ON p.usuario_capturista_id = u.id AND ${soloMaiz('p')}
-       LEFT JOIN up up ON up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
+       LEFT JOIN productor p ON p.usuario_capturista_id = u.id AND ${soloMaiz('p')}
+       LEFT JOIN up up ON up.productor_id = p.productor_id AND ${parcelaDeMaiz('up')}
        ${where}
        GROUP BY u.id
        ORDER BY u.nombre_completo`,
@@ -257,7 +257,7 @@ router.get('/:id', authMiddleware, verDetalleTecnicos, async (req: AuthRequest, 
     const { id } = req.params;
 
     const tecnico = await pool.query(
-      `SELECT u.id, u.email, u.curp, u.nombre_completo, u.telefono, u.activo, u.debe_cambiar_pass, u.ultimo_login, u.created_at,
+      `SELECT u.id, u.correo_electronico, u.curp, u.nombre_completo, u.telefono, u.activo, u.debe_cambiar_contrasena, u.ultimo_login, u.creado_en,
               ${CAMPOS_PROGRAMA}
        FROM usuarios u WHERE u.id = $1 AND u.rol = 'capturista'`,
       [id]
@@ -268,23 +268,23 @@ router.get('/:id', authMiddleware, verDetalleTecnicos, async (req: AuthRequest, 
     }
 
     const registros = await pool.query(
-      `SELECT p.producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno,
-              p.phone AS telefono, p.state_id, p.municipality_id, p.estatus_registro, p.fecha_captura,
-              COUNT(DISTINCT u.up_id) AS total_ups, COUNT(DISTINCT c.cycle_id) AS total_ciclos
-       FROM producer p
-       LEFT JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
-       LEFT JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'maiz'
+      `SELECT p.productor_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno,
+              p.telefono AS telefono, p.estado_id, p.municipio_id, p.estatus_registro, p.fecha_captura,
+              COUNT(DISTINCT u.up_id) AS total_ups, COUNT(DISTINCT c.ciclo_id) AS total_ciclos
+       FROM productor p
+       LEFT JOIN up u ON u.productor_id = p.productor_id AND ${parcelaDeMaiz('u')}
+       LEFT JOIN ciclo c ON c.up_id = u.up_id AND c.cultivo = 'maiz'
        WHERE p.usuario_capturista_id = $1 AND ${soloMaiz('p')}
-       GROUP BY p.producer_id
+       GROUP BY p.productor_id
        ORDER BY p.fecha_captura DESC`,
       [id]
     );
 
     const registrosFrijol = await pool.query(
-      `SELECT p.producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.phone AS telefono,
+      `SELECT p.productor_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.telefono AS telefono,
               pp.verificacion_identidad, pp.estatus_registro, pp.fecha_alta
-       FROM producer_programa pp
-       JOIN producer p ON p.producer_id = pp.producer_id
+       FROM productor_programa pp
+       JOIN productor p ON p.productor_id = pp.productor_id
        WHERE pp.programa = '${PROGRAMA_FRIJOL}' AND pp.usuario_capturista_id = $1
        ORDER BY pp.fecha_alta DESC`,
       [id]
@@ -321,9 +321,9 @@ router.patch('/:id', authMiddleware, editarTecnicos, async (req: AuthRequest, re
     if (nombre_completo !== undefined) { sets.push(`nombre_completo = $${idx++}`); vals.push(String(nombre_completo).trim()); }
     if (email !== undefined) {
       const emailLower = String(email).toLowerCase().trim();
-      const colision = await client.query('SELECT id FROM usuarios WHERE LOWER(email) = $1 AND id != $2', [emailLower, id]);
+      const colision = await client.query('SELECT id FROM usuarios WHERE LOWER(correo_electronico) = $1 AND id != $2', [emailLower, id]);
       if (colision.rows.length > 0) { res.status(409).json({ error: 'Ese correo ya está en uso por otro usuario' }); return; }
-      sets.push(`email = $${idx++}`); vals.push(emailLower);
+      sets.push(`correo_electronico = $${idx++}`); vals.push(emailLower);
     }
     if (telefono !== undefined) { sets.push(`telefono = $${idx++}`); vals.push(String(telefono).trim()); }
     if (activo !== undefined) { sets.push(`activo = $${idx++}`); vals.push(!!activo); }
@@ -343,7 +343,7 @@ router.patch('/:id', authMiddleware, editarTecnicos, async (req: AuthRequest, re
     await client.query('COMMIT');
 
     const result = await pool.query(
-      `SELECT u.id, u.email, u.curp, u.nombre_completo, u.telefono, u.activo, u.debe_cambiar_pass, u.ultimo_login, u.created_at,
+      `SELECT u.id, u.correo_electronico, u.curp, u.nombre_completo, u.telefono, u.activo, u.debe_cambiar_contrasena, u.ultimo_login, u.creado_en,
               ${CAMPOS_PROGRAMA}
        FROM usuarios u WHERE u.id = $1`,
       [id]
@@ -373,9 +373,9 @@ router.post('/:id/reset-password', authMiddleware, editarTecnicos, async (req: A
     const hash = await bcrypt.hash(passTemporal, 12);
 
     const result = await pool.query(
-      `UPDATE usuarios SET password_hash = $1, debe_cambiar_pass = true
+      `UPDATE usuarios SET hash_contrasena = $1, debe_cambiar_contrasena = true
        WHERE id = $2 AND rol = 'capturista'
-       RETURNING id, nombre_completo, email`,
+       RETURNING id, nombre_completo, correo_electronico`,
       [hash, id]
     );
 
@@ -418,7 +418,7 @@ router.delete('/:id', authMiddleware, eliminarTecnicos, async (req: AuthRequest,
     }
 
     const huerfanos = await client.query(
-      'SELECT COUNT(*)::int AS n FROM producer WHERE usuario_capturista_id = $1 AND usuario_id IS NULL',
+      'SELECT COUNT(*)::int AS n FROM productor WHERE usuario_capturista_id = $1 AND usuario_id IS NULL',
       [id]
     );
     if (huerfanos.rows[0].n > 0) {
@@ -430,8 +430,8 @@ router.delete('/:id', authMiddleware, eliminarTecnicos, async (req: AuthRequest,
       return;
     }
 
-    await client.query('UPDATE producer SET usuario_capturista_id = NULL WHERE usuario_capturista_id = $1', [id]);
-    await client.query('UPDATE producer_programa SET usuario_capturista_id = NULL WHERE usuario_capturista_id = $1', [id]);
+    await client.query('UPDATE productor SET usuario_capturista_id = NULL WHERE usuario_capturista_id = $1', [id]);
+    await client.query('UPDATE productor_programa SET usuario_capturista_id = NULL WHERE usuario_capturista_id = $1', [id]);
     await client.query('DELETE FROM usuarios WHERE id = $1', [id]);
 
     await client.query('COMMIT');

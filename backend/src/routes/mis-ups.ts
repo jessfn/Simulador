@@ -13,7 +13,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
 
     // Find ALL producer records linked to this user
     const producerResult = await pool.query(
-      'SELECT producer_id, curp, nombres, apellido_paterno, apellido_materno FROM producer WHERE usuario_id = $1 ORDER BY producer_id DESC',
+      'SELECT productor_id, curp, nombres, apellido_paterno, apellido_materno FROM productor WHERE usuario_id = $1 ORDER BY productor_id DESC',
       [userId]
     );
 
@@ -29,23 +29,23 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
       `SELECT u.*,
         p.curp AS producer_curp,
         p.nombres AS producer_nombres,
-        ST_AsGeoJSON(u.geom)::json AS geom_geojson,
-        CASE WHEN u.geom IS NOT NULL THEN ST_X(ST_PointOnSurface(u.geom)) ELSE NULL END AS centroid_lng,
-        CASE WHEN u.geom IS NOT NULL THEN ST_Y(ST_PointOnSurface(u.geom)) ELSE NULL END AS centroid_lat,
+        ST_AsGeoJSON(u.geometria)::json AS geom_geojson,
+        CASE WHEN u.geometria IS NOT NULL THEN ST_X(ST_PointOnSurface(u.geometria)) ELSE NULL END AS centroid_lng,
+        CASE WHEN u.geometria IS NOT NULL THEN ST_Y(ST_PointOnSurface(u.geometria)) ELSE NULL END AS centroid_lat,
         (
           SELECT json_build_object(
-            'cycle_id', c.cycle_id,
-            'cycle_year', c.cycle_year,
-            'cycle_type', c.cycle_type
+            'cycle_id', c.ciclo_id,
+            'cycle_year', c.anio_ciclo,
+            'cycle_type', c.tipo_ciclo
           )
-          FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz'
-          ORDER BY c.cycle_year DESC, c.cycle_id DESC
+          FROM ciclo c WHERE c.up_id = u.up_id AND c.cultivo = 'maiz'
+          ORDER BY c.anio_ciclo DESC, c.ciclo_id DESC
           LIMIT 1
         ) AS ultimo_ciclo
        FROM up u
-       JOIN producer p ON p.producer_id = u.producer_id
-       WHERE u.producer_id = ANY($1) AND ${parcelaDeMaiz('u')}
-       ORDER BY u.created_at DESC`,
+       JOIN productor p ON p.productor_id = u.productor_id
+       WHERE u.productor_id = ANY($1) AND ${parcelaDeMaiz('u')}
+       ORDER BY u.creado_en DESC`,
       [producerIds]
     );
 
@@ -63,7 +63,7 @@ router.get('/:up_id', authMiddleware, async (req: AuthRequest, res: Response): P
     const { up_id } = req.params;
 
     const producerResult = await pool.query(
-      'SELECT producer_id FROM producer WHERE usuario_id = $1',
+      'SELECT productor_id FROM productor WHERE usuario_id = $1',
       [userId]
     );
     if (producerResult.rows.length === 0) {
@@ -74,11 +74,11 @@ router.get('/:up_id', authMiddleware, async (req: AuthRequest, res: Response): P
 
     const upResult = await pool.query(
       `SELECT u.*,
-        ST_AsGeoJSON(u.geom)::json AS geom_geojson,
-        ST_X(ST_PointOnSurface(u.geom)) AS centroid_lng,
-        ST_Y(ST_PointOnSurface(u.geom)) AS centroid_lat
+        ST_AsGeoJSON(u.geometria)::json AS geom_geojson,
+        ST_X(ST_PointOnSurface(u.geometria)) AS centroid_lng,
+        ST_Y(ST_PointOnSurface(u.geometria)) AS centroid_lat
        FROM up u
-       WHERE u.up_id = $1 AND u.producer_id = ANY($2)`,
+       WHERE u.up_id = $1 AND u.productor_id = ANY($2)`,
       [up_id, producerIds]
     );
 
@@ -91,19 +91,19 @@ router.get('/:up_id', authMiddleware, async (req: AuthRequest, res: Response): P
       pool.query(
         `SELECT c.*, json_agg(
            json_build_object(
-             'cycle_crop_id', cc.cycle_crop_id,
-             'crop', cc.crop,
-             'variety_id', cc.variety_id,
-             'area_sown_ha', cc.area_sown_ha,
-             'planting_date', cc.planting_date,
-             'estimated_harvest_date', cc.estimated_harvest_date
-           ) ORDER BY cc.cycle_crop_id
-         ) FILTER (WHERE cc.cycle_crop_id IS NOT NULL) AS crops
-         FROM cycle c
-         LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-         WHERE c.up_id = $1 AND c.crop = 'maiz'
-         GROUP BY c.cycle_id
-         ORDER BY c.cycle_year DESC, c.cycle_id DESC`,
+             'cycle_crop_id', cc.ciclo_cultivo_id,
+             'crop', cc.cultivo,
+             'variety_id', cc.variedad_id,
+             'area_sown_ha', cc.superficie_sembrada_ha,
+             'planting_date', cc.fecha_siembra,
+             'estimated_harvest_date', cc.fecha_cosecha_estimada
+           ) ORDER BY cc.ciclo_cultivo_id
+         ) FILTER (WHERE cc.ciclo_cultivo_id IS NOT NULL) AS crops
+         FROM ciclo c
+         LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
+         WHERE c.up_id = $1 AND c.cultivo = 'maiz'
+         GROUP BY c.ciclo_id
+         ORDER BY c.anio_ciclo DESC, c.ciclo_id DESC`,
         [up_id]
       ),
       pool.query(
@@ -153,7 +153,7 @@ router.patch('/:up_id', authMiddleware, async (req: AuthRequest, res: Response):
     const { up_name, up_type, production_system, water_regime, state_name, municipality_name } = req.body;
 
     const producerResult = await pool.query(
-      'SELECT producer_id FROM producer WHERE usuario_id = $1',
+      'SELECT productor_id FROM productor WHERE usuario_id = $1',
       [userId]
     );
     if (producerResult.rows.length === 0) {
@@ -164,14 +164,14 @@ router.patch('/:up_id', authMiddleware, async (req: AuthRequest, res: Response):
 
     const result = await pool.query(
       `UPDATE up SET
-         up_name = COALESCE($1, up_name),
-         up_type = COALESCE($2, up_type),
-         production_system = COALESCE($3, production_system),
-         water_regime = COALESCE($4, water_regime),
-         state_name = COALESCE($5, state_name),
-         municipality_name = COALESCE($6, municipality_name),
-         updated_at = NOW()
-       WHERE up_id = $7 AND producer_id = $8
+         nombre_up = COALESCE($1, nombre_up),
+         tipo_up = COALESCE($2, tipo_up),
+         sistema_produccion = COALESCE($3, sistema_produccion),
+         regimen_hidrico = COALESCE($4, regimen_hidrico),
+         nombre_estado = COALESCE($5, nombre_estado),
+         nombre_municipio = COALESCE($6, nombre_municipio),
+         actualizado_en = NOW()
+       WHERE up_id = $7 AND productor_id = $8
        RETURNING *`,
       [up_name, up_type, production_system, water_regime, state_name, municipality_name, up_id, producer_id]
     );
@@ -196,7 +196,7 @@ router.delete('/:up_id', authMiddleware, async (req: AuthRequest, res: Response)
     const { up_id } = req.params;
 
     const producerResult = await pool.query(
-      'SELECT producer_id FROM producer WHERE usuario_id = $1',
+      'SELECT productor_id FROM productor WHERE usuario_id = $1',
       [userId]
     );
     if (producerResult.rows.length === 0) {
@@ -207,7 +207,7 @@ router.delete('/:up_id', authMiddleware, async (req: AuthRequest, res: Response)
 
     // Verificar propiedad
     const own = await pool.query(
-      'SELECT up_id FROM up WHERE up_id = $1 AND producer_id = ANY($2)',
+      'SELECT up_id FROM up WHERE up_id = $1 AND productor_id = ANY($2)',
       [up_id, producerIds]
     );
     if (own.rows.length === 0) {
@@ -216,7 +216,7 @@ router.delete('/:up_id', authMiddleware, async (req: AuthRequest, res: Response)
     }
 
     // Si la parcela también está registrada para otro cultivo (frijol), no se puede eliminar desde aquí.
-    const otroCultivo = await pool.query(`SELECT 1 FROM cycle WHERE up_id = $1 AND crop <> 'maiz' LIMIT 1`, [up_id]);
+    const otroCultivo = await pool.query(`SELECT 1 FROM ciclo WHERE up_id = $1 AND cultivo <> 'maiz' LIMIT 1`, [up_id]);
     if (otroCultivo.rows.length > 0) {
       res.status(409).json({ error: 'Esta parcela también está registrada para frijol; no se puede eliminar. Contacta a tu técnico.', codigo: 'PARCELA_CON_OTRO_CULTIVO' });
       return;

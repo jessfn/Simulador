@@ -13,14 +13,14 @@ st, rmz = http('/tecnico/registro-alterno', tm, 'POST', {'curp': curp_m, 'nombre
 UP = str(rmz.get('up_id')); PM = rmz.get('producer_id')
 anio = 2031   # año que ningún dato real usa, para no chocar con ciclos existentes
 st, r = http(f'/ups/{UP}/cycles', tm, 'POST', {'cycle_year': anio, 'cycle_type': 'PV', 'tipo_riego': 'temporal'})
-ciclo_maiz = (r or {}).get('cycle', {}).get('cycle_id') or val(f"select cycle_id from cycle where up_id={UP} and cycle_year={anio} and crop='maiz'")
+ciclo_maiz = (r or {}).get('cycle', {}).get('cycle_id') or val(f"select ciclo_id from ciclo where up_id={UP} and cycle_year={anio} and crop='maiz'")
 ok('preparación: productor de maíz con su ciclo', st in (200, 201) and str(ciclo_maiz).isdigit(), f'{st} ciclo {ciclo_maiz}')
 
 # un ciclo de frijol en esa misma parcela (como lo dejaría un registro de frijol)
-sql(f"insert into cycle (up_id, cycle_year, cycle_type, estado_ciclo, tipo_riego, crop) values ({UP}, {anio}, 'OI', 'activo', 'temporal', 'frijol')")
-ciclo_frijol = val(f"select cycle_id from cycle where up_id={UP} and crop='frijol' and cycle_year={anio}")
-sql(f"insert into cycle_crop (cycle_id, crop, variety_id, area_sown_ha, planting_date, yield_expected) values ({ciclo_frijol}, 'frijol', 'PINTO_SALTILLO', 0.5, '{anio}-10-10', 0.9)")
-cc_frijol = val(f"select cycle_crop_id from cycle_crop where cycle_id={ciclo_frijol}")
+sql(f"insert into ciclo (up_id, anio_ciclo, tipo_ciclo, estado_ciclo, tipo_riego, cultivo) values ({UP}, {anio}, 'OI', 'activo', 'temporal', 'frijol')")
+ciclo_frijol = val(f"select ciclo_id from ciclo where up_id={UP} and crop='frijol' and cycle_year={anio}")
+sql(f"insert into ciclo_cultivo (ciclo_id, cultivo, variedad_id, superficie_sembrada_ha, fecha_siembra, rendimiento_esperado) values ({ciclo_frijol}, 'frijol', 'PINTO_SALTILLO', 0.5, '{anio}-10-10', 0.9)")
+cc_frijol = val(f"select ciclo_cultivo_id from ciclo_cultivo where ciclo_id={ciclo_frijol}")
 
 cult_maiz = {'variety_id': 'SB-101', 'area_sown_ha': 1, 'planting_date': f'{anio}-07-01', 'yield_expected': 6}
 
@@ -29,16 +29,16 @@ st, r = http(f'/cycles/{ciclo_maiz}/crops', tm, 'POST', {'crop': 'frijol', 'vari
 ok('crop = frijol hacia un ciclo de MAÍZ -> 400 con el mensaje nuevo', st == 400 and 'solo para maíz' in (r or {}).get('error', ''), f'{st} {(r or {}).get("error", "")[:70]}')
 st, r = http(f'/cycles/{ciclo_frijol}/crops', tm, 'POST', {'crop': 'frijol', 'variety_id': 'PINTO_SALTILLO', 'area_sown_ha': 9, 'planting_date': f'{anio}-07-01'})
 ok('crop = frijol hacia un ciclo de FRIJOL -> 400 (no pisa el cultivo)', st == 400 and 'solo para maíz' in (r or {}).get('error', ''), f'{st}')
-ok('el cultivo de frijol quedó intacto (0.5 ha)', val(f"select area_sown_ha from cycle_crop where cycle_crop_id={cc_frijol}") in ('0.5', '0.50'))
+ok('el cultivo de frijol quedó intacto (0.5 ha)', val(f"select superficie_sembrada_ha from ciclo_cultivo where ciclo_cultivo_id={cc_frijol}") in ('0.5', '0.50'))
 st, r = http(f'/cycles/{ciclo_maiz}/crops', tm, 'POST', {'crop': 'trigo', 'variety_id': 'X', 'area_sown_ha': 1, 'planting_date': f'{anio}-07-01'})
 ok('cualquier otro cultivo -> 400', st == 400)
 st, r = http(f'/cycles/{ciclo_maiz}/crops', tm, 'POST', {'crop': 'maiz', **cult_maiz})
 ok('crop = maiz hacia un ciclo de maíz sigue funcionando (crear)', st == 201, f'{st} {(r or {}).get("error", "")}')
 st, r = http(f'/cycles/{ciclo_maiz}/crops', tm, 'POST', {'crop': 'maiz', **{**cult_maiz, 'area_sown_ha': 1.5}})
-ok('el mismo POST de maíz sigue ACTUALIZANDO el cultivo (comportamiento de maíz intacto)', st == 201 and val(f"select area_sown_ha from cycle_crop where cycle_id={ciclo_maiz}") in ('1.5', '1.50'), f'{st}')
+ok('el mismo POST de maíz sigue ACTUALIZANDO el cultivo (comportamiento de maíz intacto)', st == 201 and val(f"select superficie_sembrada_ha from ciclo_cultivo where ciclo_id={ciclo_maiz}") in ('1.5', '1.50'), f'{st}')
 st, r = http(f'/cycles/{ciclo_frijol}/crops', tm, 'POST', {'crop': 'maiz', **cult_maiz})
 ok('crop = maiz hacia un ciclo de FRIJOL -> 400 por incoherencia', st == 400 and 'Este ciclo es de frijol' in (r or {}).get('error', ''), f'{st} {(r or {}).get("error", "")[:70]}')
-ok('el cultivo de frijol sigue sin cambios tras los dos intentos', val(f"select variety_id||'|'||area_sown_ha from cycle_crop where cycle_crop_id={cc_frijol}").startswith('PINTO_SALTILLO|0.5'))
+ok('el cultivo de frijol sigue sin cambios tras los dos intentos', val(f"select variedad_id||'|'||superficie_sembrada_ha from ciclo_cultivo where ciclo_cultivo_id={cc_frijol}").startswith('PINTO_SALTILLO|0.5'))
 
 print('--- 9.1 · los demás endpoints de maíz no tocan ciclos de otro cultivo')
 st, _ = http(f'/cycle-crops/{cc_frijol}', tm, 'PATCH', {'area_sown_ha': 0.3})
@@ -47,7 +47,7 @@ st, _ = http(f'/cycles/{ciclo_frijol}/estado', tm, 'PATCH', {'estado': 'cancelad
 ok('PATCH /cycles/:id/estado sobre un ciclo de frijol -> 404', st == 404, str(st))
 st, _ = http(f'/cycles/{ciclo_frijol}', tm, 'DELETE')
 ok('DELETE /cycles/:id sobre un ciclo de frijol -> 404', st == 404, str(st))
-ok('el ciclo de frijol sigue ahí y activo', val(f"select estado_ciclo from cycle where cycle_id={ciclo_frijol}") == 'activo')
+ok('el ciclo de frijol sigue ahí y activo', val(f"select estado_ciclo from ciclo where ciclo_id={ciclo_frijol}") == 'activo')
 
 print('--- 9.2 · la corrección de frijol valida los catálogos')
 curp_f = curp_nueva('REN'); st, c = consultar(t1, curp_f)
@@ -63,10 +63,10 @@ st, r = corregir(usa_fertilizante=True, tipos_fertilizante=['xyz'])
 ok('PATCH con fertilizante inventado -> 400 con campo cultivo.tipos_fertilizante', st == 400 and (r or {}).get('campo') == 'cultivo.tipos_fertilizante', f'{st} {(r or {}).get("campo")}')
 st, r = corregir(variety_id='NO_EXISTE')
 ok('PATCH con variedad inventada -> 400 con campo cultivo.variety_id', st == 400 and (r or {}).get('campo') == 'cultivo.variety_id', f'{st}')
-ok('nada de lo inventado se guardó', val(f"select coalesce(tipo_siembra,'')||'|'||rotacion from frijol_cultivo where cycle_crop_id={CC}") == 'monocultivo|rota')
+ok('nada de lo inventado se guardó', val(f"select coalesce(tipo_siembra,'')||'|'||rotacion from frijol_cultivo where ciclo_cultivo_id={CC}") == 'monocultivo|rota')
 st, r = corregir(destino='autoconsumo', tipo_siembra='asociada', rotacion='un_cultivo', usa_fertilizante=True, tipos_fertilizante=['organico', 'biofertilizante'], densidad_kg_ha=50)
 ok('PATCH con valores válidos funciona como antes', st == 200, f'{st} {(r or {}).get("error", "")}')
-ok('y quedaron guardados', val(f"select tipo_siembra||'|'||rotacion from frijol_cultivo where cycle_crop_id={CC}") == 'asociada|un_cultivo' and val(f"select destination from cycle_crop where cycle_crop_id={CC}") == 'autoconsumo')
+ok('y quedaron guardados', val(f"select tipo_siembra||'|'||rotacion from frijol_cultivo where ciclo_cultivo_id={CC}") == 'asociada|un_cultivo' and val(f"select destino from ciclo_cultivo where ciclo_cultivo_id={CC}") == 'autoconsumo')
 
 print('--- 9.2.3 · corrección del productor: seguro agrícola y programas contra el catálogo')
 def corregir_prod(**fp):
@@ -94,5 +94,5 @@ st, r = registrar(t1, cuerpo(curp_g, token=c.get('verificacion_token'), cultivo_
 ok('registro nuevo con fertilizante inventado -> 400', st == 400 and (r or {}).get('campo') == 'cultivo.tipos_fertilizante', f'{st}')
 
 # limpieza de lo que se creó para esta prueba (el ciclo de frijol insertado a mano)
-sql(f"delete from cycle_crop where cycle_id={ciclo_frijol}"); sql(f"delete from cycle where cycle_id={ciclo_frijol}")
+sql(f"delete from ciclo_cultivo where ciclo_id={ciclo_frijol}"); sql(f"delete from ciclo where ciclo_id={ciclo_frijol}")
 resumen('T09 (A)')

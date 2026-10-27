@@ -14,10 +14,10 @@ def parcela_con_maiz(ha_maiz, year=2026, tipo='PV', superficie=3.0):
     st, r = http('/tecnico/registro-alterno', tm, 'POST', {'curp': curp, 'nombres': 'Combinado', 'apellido_paterno': f'Suma{suf}{n[0]}', 'apellido_materno': 'Prueba', 'telefono': '6181111111',
         'state_id': '10', 'municipality_id': '10005', 'sexo': 'H', 'fecha_nac': '1985-03-03', 'estado_up': 'Durango', 'municipio_up': 'Durango', 'nombre_up': 'Parcela combinada'})
     pid = r['producer_id']
-    up = int(val(f"select up_id from up where producer_id={pid} order by up_id limit 1"))
-    sql(f"update up set area_ha_real={superficie}, area_ha_calc={superficie} where up_id={up}")
+    up = int(val(f"select up_id from up where productor_id={pid} order by up_id limit 1"))
+    sql(f"update up set superficie_ha_real={superficie}, area_ha_calc={superficie} where up_id={up}")
     http(f'/ups/{up}/cycles', tm, 'POST', {'cycle_year': year, 'cycle_type': tipo, 'tipo_riego': 'temporal'})
-    cid = int(val(f"select cycle_id from cycle where up_id={up} and crop='maiz' and cycle_year={year} and cycle_type='{tipo}'"))
+    cid = int(val(f"select ciclo_id from ciclo where up_id={up} and crop='maiz' and cycle_year={year} and cycle_type='{tipo}'"))
     st, m = http(f'/cycles/{cid}/crops', tm, 'POST', {'crop': 'maiz', 'variety_id': 'SB-101', 'area_sown_ha': ha_maiz, 'planting_date': f'{year}-07-01', 'yield_expected': 6})
     return curp, up, cid, st
 
@@ -42,7 +42,7 @@ ok('2.0 maíz + 1.5 frijol = 3.5 > 3.0: se rechaza con 409', st == 409 and (r or
 msg = (r or {}).get('error', '')
 ok('el mensaje trae los números (parcela, lo que ya tiene, lo que registra, total)', all(x in msg for x in ['3.0', '2.0', '1.5', '3.5']), msg)
 ok('indica el campo y las cifras para pintarlo en el paso del cultivo', r.get('campo') == 'cultivo.area_sown_ha' and r.get('suma') == 3.5 and r.get('superficie_parcela') == 3.0, str(r))
-ok('no se creó ningún ciclo de frijol en la parcela rechazada', val(f"select count(*) from cycle where up_id={up2} and crop='frijol'") == '0')
+ok('no se creó ningún ciclo de frijol en la parcela rechazada', val(f"select count(*) from ciclo where up_id={up2} and crop='frijol'") == '0')
 
 curp3, up3, cid3, _ = parcela_con_maiz(2.0)
 st, r = frijol_en(curp3, up3, 1.5, tipo_siembra='asociada')
@@ -51,13 +51,13 @@ ok('el mismo caso con siembra asociada (milpa) SÍ se guarda', st == 201, f'{st}
 print('--- correcciones')
 curp4, up4, cid4, _ = parcela_con_maiz(2.0)
 frijol_en(curp4, up4, 1.0)
-cc4 = int(val(f"select cc.cycle_crop_id from cycle_crop cc join cycle c using(cycle_id) where c.up_id={up4} and c.crop='frijol'"))
+cc4 = int(val(f"select cc.ciclo_cultivo_id from ciclo_cultivo cc join ciclo c using(ciclo_id) where c.up_id={up4} and c.crop='frijol'"))
 st, r = http(f'/frijol/cultivos/{cc4}', t1, 'PATCH', {'cultivo': {'area_sown_ha': 1.0}})
 ok('corregir frijol sin cambiar la superficie no se cuenta dos veces', st == 200, f'{st} {r}')
 st, r = http(f'/frijol/cultivos/{cc4}', t1, 'PATCH', {'cultivo': {'area_sown_ha': 1.5}})
 ok('corregir frijol a 1.5 (2.0 + 1.5 > 3.0) se rechaza con 409', st == 409 and (r or {}).get('suma') == 3.5, f'{st} {r}')
-ok('la superficie del frijol no cambió tras el rechazo', float(val(f"select area_sown_ha::float from cycle_crop where cycle_crop_id={cc4}")) == 1.0)
-cm4 = int(val(f"select cc.cycle_crop_id from cycle_crop cc where cc.cycle_id={cid4}"))
+ok('la superficie del frijol no cambió tras el rechazo', float(val(f"select superficie_sembrada_ha::float from ciclo_cultivo where ciclo_cultivo_id={cc4}")) == 1.0)
+cm4 = int(val(f"select cc.ciclo_cultivo_id from ciclo_cultivo cc where cc.ciclo_id={cid4}"))
 st, r = http(f'/cycle-crops/{cm4}', tm, 'PATCH', {'area_sown_ha': 2.5})
 ok('corregir maíz a 2.5 (con 1.0 de frijol: 3.5 > 3.0) se rechaza con 409', st == 409 and r.get('suma') == 3.5, f'{st} {r}')
 st, r = http(f'/cycle-crops/{cm4}', tm, 'PATCH', {'area_sown_ha': 2.0})
@@ -69,13 +69,13 @@ print('--- alta de maíz sobre una parcela que ya tiene frijol')
 curp5, up5, cid5, _ = parcela_con_maiz(1.0)
 frijol_en(curp5, up5, 1.5)
 http(f'/ups/{up5}/cycles', tm, 'POST', {'cycle_year': 2026, 'cycle_type': 'OI', 'tipo_riego': 'temporal'})
-cid_oi = int(val(f"select cycle_id from cycle where up_id={up5} and crop='maiz' and cycle_type='OI'"))
+cid_oi = int(val(f"select ciclo_id from ciclo where up_id={up5} and crop='maiz' and cycle_type='OI'"))
 st, r = http(f'/cycles/{cid_oi}/crops', tm, 'POST', {'crop': 'maiz', 'variety_id': 'SB-101', 'area_sown_ha': 3.0, 'planting_date': '2026-11-15', 'yield_expected': 6})
 ok('otro tipo de ciclo (OI) no suma con el PV: se guarda', st == 201, f'{st} {r}')
 
 print('--- lo que no cuenta')
 curp6, up6, cid6, _ = parcela_con_maiz(2.0)
-sql(f"update cycle set estado_ciclo='cancelado' where cycle_id={cid6}")
+sql(f"update ciclo set estado_ciclo='cancelado' where ciclo_id={cid6}")
 st, r = frijol_en(curp6, up6, 3.0)
 ok('un ciclo de maíz cancelado no suma', st == 201, f'{st} {(r or {}).get("error", "")}')
 
@@ -91,7 +91,7 @@ ok('maíz solo, mayor a la parcela: lo sigue rechazando la regla de siempre (400
 
 print('--- consulta de parcelas que ya pasan su superficie')
 sqlf = (BACKEND / 'db' / 'consultas' / 't11b_parcelas_que_pasan_su_superficie.sql').read_text(encoding='utf-8')
-sql(f"update cycle_crop set area_sown_ha=2.5 where cycle_id={cid4}")      # parcela 4 queda con 2.5 + 1.0 = 3.5 > 3.0
+sql(f"update ciclo_cultivo set superficie_sembrada_ha=2.5 where ciclo_id={cid4}")      # parcela 4 queda con 2.5 + 1.0 = 3.5 > 3.0
 ups_marcadas = [int(x) for x in re.findall(r'(?m)^\s*(\d+)\s*\|', sql(sqlf))]
 ok('la consulta de solo lectura marca la parcela que ya pasa', up4 in ups_marcadas, str(ups_marcadas[:5]))
 ok('y no marca las parcelas sanas de esta prueba', not ({up, up3, up8} & set(ups_marcadas)), str(ups_marcadas[:5]))
