@@ -896,7 +896,7 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
         p.aviso_privacidad_version,
         p.aviso_privacidad_foto_url,
         p.estado_validacion,
-        p.creado_en
+        p.creado_en AS created_at
       FROM productor p
       WHERE p.aviso_privacidad_aceptado = TRUE
         AND (p.curp ILIKE $1 OR p.nombres ILIKE $1 OR p.apellido_paterno ILIKE $1 OR p.apellido_materno ILIKE $1)`;
@@ -916,7 +916,7 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
         u.aviso_privacidad_version,
         u.aviso_privacidad_foto_url,
         'activo'                            AS estado_validacion,
-        u.creado_en
+        u.creado_en AS created_at
       FROM usuarios u
       WHERE u.aviso_privacidad_aceptado = TRUE
         AND u.rol IN ('bodeguero','bodega','industria')
