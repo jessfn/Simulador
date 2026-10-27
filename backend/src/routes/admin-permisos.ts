@@ -41,6 +41,7 @@ const VISTAS_PERMISOS: Record<string, string[]> = {
   tecnicos:           ['ver', 'ver_detalle', 'crear', 'editar', 'eliminar'],
   frijol:             ['ver', 'exportar'],
   insumos:            ['ver', 'exportar'],
+  solicitudes_cambio: ['ver', 'resolver'],
 };
 
 async function insertarPermisosDefault(usuarioId: number, vistasDefault: Record<string, string[]>) {

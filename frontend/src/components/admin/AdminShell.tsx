@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Warehouse, AlertTriangle,
   TrendingUp, LogOut, Menu, X, ShieldCheck, ChevronRight,
   Sprout, BarChart3, Settings, Leaf, KeyRound, CircleUserRound, Layers,
-  MessageCircle, UserCog,
+  MessageCircle, UserCog, FileEdit,
 } from 'lucide-react';
 import { apiFetch, BASE } from '../../services/api';
 
@@ -31,6 +31,7 @@ const MENU: SidebarItem[] = [
   { label: 'Bodegas',           subtitle: 'Supervisión y control detallado de centros de acopio',             path: '/maiz/admin/bodegas',           icon: Warehouse,       vista: 'bodegas' },
   { label: 'Técnicos',          subtitle: 'Gestión de técnicos ECA y registros capturados en campo',         path: '/maiz/admin/tecnicos',          icon: UserCog,         vista: 'tecnicos' },
   { label: 'Frijol',            subtitle: 'Registros de frijol capturados por los técnicos: avance, mapa y exportación', path: '/maiz/admin/frijol',            icon: Sprout,          vista: 'frijol' },
+  { label: 'Solicitudes de cambio', subtitle: 'Cambios a datos personales de productores que piden los técnicos', path: '/maiz/admin/solicitudes-cambio', icon: FileEdit, vista: 'solicitudes_cambio' },
   { label: 'Encuesta Insumos',  subtitle: 'Intención de compra de insumos para negociación de la Secretaría', path: '/maiz/admin/insumos',           icon: Sprout,          vista: 'insumos' },
   { label: 'Chats de Ayuda',    subtitle: 'Soporte en vivo a productores y bodegas',                          path: '/maiz/admin/chats',             icon: MessageCircle,   vista: 'chats_ayuda' },
   { label: 'Alertas',           subtitle: 'Centro de notificaciones y avisos en tiempo real',                 path: '/maiz/admin/alertas',           icon: AlertTriangle,   vista: 'alertas' },

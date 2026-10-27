@@ -6,6 +6,7 @@ import { cicloFinal, Regimen } from './cicloSIAP';
 import { huellaDe } from './encuestaService';
 import { PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from '../utils/programas';
 import { validarSuperficieCombinada } from '../utils/superficie';
+import { aplicarEdicionDirecta } from './edicionUnica';
 
 // ─── Errores ────────────────────────────────────────────────────────────────
 export class ErrorRegistro extends Error {
@@ -229,30 +230,20 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
 
     if (prod) {
       producerId = Number(prod.producer_id);
-      // Corregir datos personales con historial: un renglón por campo cambiado
-      const nuevos: Record<string, unknown> = {
-        nombres: p.nombres !== undefined ? String(p.nombres).trim() : prod.nombres,
-        apellido_paterno: p.apellido_paterno !== undefined ? String(p.apellido_paterno).trim() : prod.apellido_paterno,
-        apellido_materno: p.apellido_materno !== undefined ? (String(p.apellido_materno).trim() || null) : prod.apellido_materno,
-        sexo: p.sexo === 'H' || p.sexo === 'M' ? p.sexo : prod.sexo,
-        fecha_nacimiento: fechaValida(p.fecha_nacimiento) ? String(p.fecha_nacimiento).slice(0, 10) : prod.fn,
-        telefono, correo: correo ?? prod.correo,
-      };
-      const sets: string[] = []; const vals: unknown[] = [];
-      for (const [campo, columna] of CAMPOS_PERSONALES) {
-        const antes = columna === 'fecha_nacimiento' ? prod.fn : prod[columna];
-        const despues = nuevos[campo];
-        if ((antes ?? null) !== (despues ?? null) && String(antes ?? '') !== String(despues ?? '')) {
-          vals.push(despues ?? null); sets.push(`${columna} = $${vals.length}`);
-          // T09 §9.5: la exportación de maíz lee producer.correo_electronico y las demás pantallas producer.correo; se escriben iguales.
-          if (columna === 'correo') sets.push(`correo_electronico = $${vals.length}::text`);
-          await client.query(
-            `INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)`,
-            [producerId, campo, antes == null ? null : String(antes), despues == null ? null : String(despues), tecnicoId, PROGRAMA_FRIJOL]
-          );
-        }
-      }
-      if (sets.length > 0) { vals.push(producerId); await client.query(`UPDATE producer SET ${sets.join(', ')} WHERE producer_id = $${vals.length}`, vals); }
+      // T10: registrar frijol sobre un productor que ya existía NO sobrescribe sus datos a ciegas: lo que cambia pasa por la edición única
+      // (una vez por dato, con historial; el teléfono de un productor con cuenta nunca se cambia aquí). Lo que viene igual no cuesta nada.
+      await aplicarEdicionDirecta(client, {
+        producerId, usuarioId: tecnicoId, programa: PROGRAMA_FRIJOL, contexto: 'registro',
+        cambios: {
+          nombres: p.nombres !== undefined ? p.nombres : undefined,
+          apellido_paterno: p.apellido_paterno !== undefined ? p.apellido_paterno : undefined,
+          apellido_materno: p.apellido_materno !== undefined ? p.apellido_materno : undefined,
+          sexo: p.sexo === 'H' || p.sexo === 'M' ? p.sexo : undefined,
+          fecha_nacimiento: fechaValida(p.fecha_nacimiento) ? String(p.fecha_nacimiento).slice(0, 10) : undefined,
+          telefono,
+          correo: correo ?? undefined,
+        },
+      });
       // NO se toca producer.usuario_id ni producer.usuario_capturista_id: maíz sigue igual.
     } else {
       verificacion = leerVerificacion(p.verificacion_token, curp, tecnicoId) ? 'verificada' : 'pendiente';

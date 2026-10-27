@@ -103,6 +103,9 @@ import FrijolPerfilPage from './pages/frijol/FrijolPerfilPage';
 import NuevoRegistroPage from './pages/frijol/NuevoRegistroPage';
 import RegistrosPage from './pages/frijol/RegistrosPage';
 import DetalleProductorFrijolPage from './pages/frijol/DetalleProductorFrijolPage';
+import SolicitudesFrijolPage from './pages/frijol/SolicitudesFrijolPage';
+import SolicitudesTecnicoPage from './pages/tecnico/SolicitudesTecnicoPage';
+import SolicitudesCambioAdminPage from './pages/admin/solicitudes/SolicitudesCambioAdminPage';
 import { destinoTecnico, tienePrograma, PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from './utils/tecnicoDestino';
 import DashboardTecnicoPage from './pages/tecnico/DashboardTecnicoPage';
 import BuscarProductorPage from './pages/tecnico/BuscarProductorPage';
@@ -482,6 +485,7 @@ export const router = createBrowserRouter([{
       { path: 'nuevo/:id', element: <NuevoRegistroPage /> },
       { path: 'registros', element: <RegistrosPage /> },
       { path: 'productor/:id', element: <DetalleProductorFrijolPage /> },
+      { path: 'solicitudes', element: <SolicitudesFrijolPage /> },
       { path: 'perfil', element: <FrijolPerfilPage /> },
     ],
   },
@@ -494,6 +498,7 @@ export const router = createBrowserRouter([{
       { path: 'registrar/:curp/datos', element: <DatosProductorPage /> },
       { path: 'registrar/:curp/up', element: <AgregarUPTecnicoPage /> },
       { path: 'productor/:id', element: <DetalleProductorTecnicoPage /> },
+      { path: 'solicitudes', element: <SolicitudesTecnicoPage /> },
       { path: 'productor/:id/up/nueva', element: <AgregarUPTecnicoPage /> },
       { path: 'productor/:id/ciclo', element: <CicloTecnicoPage /> },
       { path: 'productor/:id/encuesta', element: <EncuestaInsumosTecnicoPage /> },
@@ -518,6 +523,7 @@ export const router = createBrowserRouter([{
       { path: 'frijol',         element: <RequireVista vista="frijol"><FrijolAdminPage /></RequireVista> },
       { path: 'frijol/productor/:id', element: <RequireVista vista="frijol"><FrijolProductorAdminPage /></RequireVista> },
       { path: 'insumos',        element: <RequireVista vista="insumos"><InsumosAdminPage /></RequireVista> },
+      { path: 'solicitudes-cambio', element: <RequireVista vista="solicitudes_cambio"><SolicitudesCambioAdminPage /></RequireVista> },
       { path: 'alertas',        element: <RequireVista vista="alertas"><AlertasAdminPage /></RequireVista> },
       { path: 'chats',          element: <RequireVista vista="chats_ayuda"><ChatsAdminPage /></RequireVista> },
       { path: 'precios',        element: <RequireVista vista="precios"><PreciosAdminPage /></RequireVista> },

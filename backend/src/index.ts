@@ -49,6 +49,9 @@ import frijolRoutes from './routes/frijol';
 import { scheduleBodegaDailyJobs } from './jobs/bodegaDailyJobs';
 import { schedulePreciosCron } from './jobs/preciosCron';
 import { scheduleFrijolVerificacion } from './jobs/frijolVerificacion';
+import { scheduleSolicitudesVencimiento } from './jobs/solicitudesVencimiento';
+import solicitudesCambioRoutes from './routes/solicitudes-cambio';
+import adminSolicitudesRoutes from './routes/admin-solicitudes';
 import { postgisDisponible } from './utils/postgis';
 import pool from './config/database';
 
@@ -170,6 +173,8 @@ app.use('/api/tecnico', tecnicoRoutes);
 app.use('/api/frijol', frijolRoutes);
 app.use('/api/admin/tecnicos', adminTecnicosRoutes);
 app.use('/api/admin/frijol', adminFrijolRoutes);
+app.use('/api/solicitudes-cambio', solicitudesCambioRoutes);
+app.use('/api/admin/solicitudes-cambio', adminSolicitudesRoutes);
 app.use('/api/admin/insumos', insumosAdminRoutes);
 app.use('/api/senasica', senasicaRoutes);
 app.use('/api/chat', chatRoutes);
@@ -214,6 +219,7 @@ app.listen(PORT, '0.0.0.0', () => {
     scheduleBodegaDailyJobs();
     schedulePreciosCron();
     scheduleFrijolVerificacion();
+    scheduleSolicitudesVencimiento();
   }
 });
 
