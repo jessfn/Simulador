@@ -4,6 +4,7 @@ require('dotenv').config();
 const { Client } = require('pg');
 const fs = require('fs');
 const consultas = require(process.env.CONSULTAS || './consultas_tmp.json');
+const ayudantes = process.env.AYUDANTES ? require(process.env.AYUDANTES) : null;
 const HUECO = /\$\{(?:[^{}]|\{[^{}]*\})*\}/g;
 
 function rellenar(sql, variante) {
@@ -14,6 +15,9 @@ function rellenar(sql, variante) {
     const antes = s.slice(Math.max(0, m.index - 60), m.index), despues = s.slice(m.index + m[0].length, m.index + m[0].length + 30);
     const a = antes.replace(/\s+/g, ' ').trimEnd().toUpperCase(), d = despues.replace(/\s+/g, ' ').trimStart().toUpperCase();
     let r;
+    // Ayudantes de condición reales (soloMaiz, tecnicoDeMaiz, parcelaDeMaiz, soloMaizDeUp): se evalúan de verdad para validar el SQL que producen
+    const h = /^\$\{\s*(soloMaiz|tecnicoDeMaiz|parcelaDeMaiz|soloMaizDeUp)\(\s*'([^']*)'\s*(?:,\s*'([^']*)')?\s*\)\s*\}$/.exec(m[0]);
+    if (h && ayudantes) { r = ayudantes[h[1]](h[2], h[3]); out += s.slice(ultimo, m.index) + r; ultimo = m.index + m[0].length; continue; }
     if (/^AS\b/.test(d)) r = 'NULL';
     else if (/(ORDER BY|GROUP BY|LIMIT|OFFSET|WHERE|AND|OR|SELECT|,|\(|ON|HAVING|SET|FROM|JOIN)$/.test(a) === false && /^(ORDER|GROUP|LIMIT|OFFSET|HAVING|RETURNING|UNION|\)|$)/.test(d)) r = '';
     else if (/ORDER BY( [\w.]+( ASC| DESC)?,)*$/.test(a) || /(LIMIT|OFFSET)$/.test(a)) r = '1';

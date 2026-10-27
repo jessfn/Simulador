@@ -676,7 +676,7 @@ router.patch('/productor/:producer_id', authMiddleware, requiereCapturista, requ
       return;
     }
     if (!Number.isInteger(producerId) || producerId <= 0) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
-    const propio = await client.query(`SELECT estado_id, municipio_id FROM productor WHERE productor_id = $1 AND ${tecnicoDeMaiz('producer', '$2')}`, [producerId, tecnicoId]);
+    const propio = await client.query(`SELECT estado_id, municipio_id FROM productor WHERE productor_id = $1 AND ${tecnicoDeMaiz('productor', '$2')}`, [producerId, tecnicoId]);
     if (propio.rows.length === 0) { res.status(403).json({ error: 'Este productor no fue registrado por ti' }); return; }
 
     // T10: nombres, apellidos y teléfono entran en la edición única (una vez, con historial; teléfono con cuenta solo por solicitud al administrador).
