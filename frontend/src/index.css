@@ -573,4 +573,10 @@ body {
 .fila-atras{display:flex;align-items:center;gap:12px;min-height:44px;padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px}
 
 /* Posición estándar del botón Volver cuando flota sobre una pantalla completa (entradas, portadas): siempre la misma esquina */
-.atras-flotante{position:absolute;z-index:30;top:calc(env(safe-area-inset-top,0px) + 12px);left:max(16px,env(safe-area-inset-left,0px))}
+.atras-flotante{position:fixed;z-index:40;top:calc(env(safe-area-inset-top,0px) + 12px);left:max(16px,env(safe-area-inset-left,0px))}
+
+/* Encabezado de página a todo lo ancho de la ventana (aunque el contenido esté centrado en una columna): así el botón Volver queda
+   siempre en la esquina izquierda y no a la mitad de la pantalla en computadora. El título sigue en su columna. */
+.encabezado-ancho{margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+/* Botón Volver fijo en la esquina de la ventana en pantallas grandes (pantallas con barra lateral) */
+@media (min-width:1024px){.atras-fijo-lg{position:fixed;top:12px;left:16px;z-index:40}}

@@ -932,7 +932,7 @@ export default function RegistroNuevoPage() {
 
       {/* ── SIDEBAR — solo desktop, oculto en mapa ── */}
       {paso !== 4 && (
-        <aside className="hidden lg:flex w-[260px] xl:w-[290px] flex-shrink-0 flex-col z-10 border-r border-white/[0.06] px-7 py-10">
+        <aside className="hidden lg:flex w-[260px] xl:w-[290px] flex-shrink-0 flex-col z-10 border-r border-white/[0.06] px-7 pt-[76px] pb-10">
           {/* Logo */}
           <div className="flex items-center gap-2.5 mb-10">
             <div className="w-9 h-9 bg-green-400/15 rounded-xl flex items-center justify-center ring-1 ring-green-400/20">
@@ -972,7 +972,7 @@ export default function RegistroNuevoPage() {
         {/* Header: back + stepper */}
         {paso < 99 && (
           <div className="flex-shrink-0 flex items-center gap-3 px-4 sm:px-6 lg:px-10 py-3.5 border-b border-white/[0.06]">
-            <BotonAtras onClick={handleBack} />
+            <BotonAtras onClick={handleBack} className="atras-fijo-lg" />
 
             {/* Stepper mobile/tablet — oculto en lg (sidebar) */}
             <div className="flex items-center gap-1 lg:hidden flex-1 justify-center">
