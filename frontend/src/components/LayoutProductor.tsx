@@ -74,7 +74,7 @@ export function LayoutProductor({ children }: { children: ReactNode }) {
       {/* ── Main content ───────────────────────────────── */}
       {/* En desktop el contenido se centra en una columna (como en "seleccionar
           bodegas"); las vistas de mapa a pantalla completa van a todo lo ancho. */}
-      <main className="flex-1 overflow-y-auto w-full relative scroll-smooth bg-[#eef8f2]" style={{ overscrollBehaviorY: 'contain' }}>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden w-full relative scroll-smooth bg-[#eef8f2]" style={{ overscrollBehaviorY: 'contain' }}>
         {(pathname === '/maiz/productor/mapa' || pathname.startsWith('/maiz/productor/mapa/') || pathname.startsWith('/maiz/productor/ubicacion') || pathname.startsWith('/maiz/productor/ciclo'))
           ? children
           : <div className="w-full max-w-2xl mx-auto">{children}</div>}
@@ -207,13 +207,13 @@ export function PageHeaderProductor({
 }) {
   const navigate = useNavigate();
   return (
-    <div className="sticky top-0 z-20 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-4 sm:px-6 pt-3.5 pb-4 shadow-sm">
+    <div className="encabezado-ancho sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 pt-3.5 pb-4 shadow-sm">
+      {back !== undefined && (
+        <div className="mb-2.5"><BotonAtras onClick={() => navigate(back as never)} tono="claro" /></div>
+      )}
       <div className="max-w-[700px] mx-auto">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            {back !== undefined && (
-              <div className="mb-2.5"><BotonAtras onClick={() => navigate(back as never)} tono="claro" /></div>
-            )}
             <h1 className="text-[20px] font-bold text-slate-900 leading-tight truncate">{title}</h1>
             {subtitle && <p className="text-[12px] text-slate-500 font-medium mt-0.5 truncate">{subtitle}</p>}
           </div>

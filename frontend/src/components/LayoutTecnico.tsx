@@ -64,7 +64,7 @@ export function LayoutTecnico({ children }: { children: ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main className={`flex-1 overflow-y-auto w-full relative scroll-smooth ${esFrijol ? 'bg-[#e3f1e8]' : 'bg-[#eef8f2]'}`} style={{ overscrollBehaviorY: 'contain' }}>
+      <main className={`flex-1 overflow-y-auto overflow-x-hidden w-full relative scroll-smooth ${esFrijol ? 'bg-[#e3f1e8]' : 'bg-[#eef8f2]'}`} style={{ overscrollBehaviorY: 'contain' }}>
         <div className={`w-full max-w-2xl mx-auto ${esFrijol && !pathname.startsWith('/frijol/tecnico/nuevo') ? 'pb-24' : ''}`}>{children}</div>
       </main>
 
@@ -104,11 +104,11 @@ export function PageHeaderTecnico({
   const navigate = useNavigate();
   const esFrijol = useLocation().pathname.startsWith('/frijol');
   return (
-    <div className={`sticky top-0 z-20 w-full px-4 sm:px-6 pt-3.5 pb-4 shadow-sm ${esFrijol ? 'bg-[#14532d] border-b border-emerald-950 text-white' : 'bg-white/95 backdrop-blur-md border-b border-slate-200/60'}`}>
+    <div className={`encabezado-ancho sticky top-0 z-20 pt-3.5 pb-4 shadow-sm ${esFrijol ? 'bg-[#14532d] border-b border-emerald-950 text-white' : 'bg-white/95 backdrop-blur-md border-b border-slate-200/60'}`}>
+      {back !== undefined && (
+        <div className="mb-2.5"><BotonAtras onClick={() => navigate(back as never)} tono={esFrijol ? 'oscuro' : 'claro'} /></div>
+      )}
       <div className="max-w-[700px] mx-auto">
-        {back !== undefined && (
-          <div className="mb-2.5"><BotonAtras onClick={() => navigate(back as never)} tono={esFrijol ? 'oscuro' : 'claro'} /></div>
-        )}
         <h1 className={`text-[20px] font-bold leading-tight ${esFrijol ? 'text-white break-words' : 'text-slate-900 truncate'}`}>{title}</h1>
         {subtitle && <p className={`text-[12px] font-medium mt-0.5 ${esFrijol ? 'text-emerald-100 break-words' : 'text-slate-500 truncate'}`}>{subtitle}</p>}
       </div>
