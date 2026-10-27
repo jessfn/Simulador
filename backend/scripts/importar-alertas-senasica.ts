@@ -76,19 +76,19 @@ async function importarAlertas(filePath: string) {
     // 2. Calcular qué UPs están dentro del radio
     const upsAfectadas = await pool.query(`
       SELECT u.id AS up_id, p.usuario_id,
-             ST_Distance(u.centroid::geography, ae.coordenada::geography) / 1000 AS distancia_km
+             ST_Distance(u.centroide::geography, ae.coordenada::geography) / 1000 AS distancia_km
       FROM up u
-      JOIN producer p ON p.id = u.producer_id
+      JOIN productor p ON p.id = u.productor_id
       JOIN alertas_externas ae ON ae.id = $1
-      WHERE u.centroid IS NOT NULL
+      WHERE u.centroide IS NOT NULL
         AND ST_DWithin(
-              u.centroid::geography,
+              u.centroide::geography,
               ae.coordenada::geography,
               ae.radio_km * 1000
             )
         AND ($2 = 'todos' OR EXISTS (
-              SELECT 1 FROM cycle_crop cc
-              WHERE cc.up_id = u.id AND cc.crop ILIKE '%' || $2 || '%'
+              SELECT 1 FROM ciclo_cultivo cc
+              WHERE cc.up_id = u.id AND cc.cultivo ILIKE '%' || $2 || '%'
             ))`,
       [alertaId, a.cultivo_afectado]
     );

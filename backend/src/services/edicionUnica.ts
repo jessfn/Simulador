@@ -84,9 +84,9 @@ interface Db { query: PoolClient['query'] }
 /** Estado de edición de los 7 campos de un productor (qué se puede editar directo y qué ya requiere solicitud). Una consulta por tema, con índices. */
 export async function estadoDeCampos(db: Db, producerId: number): Promise<EstadoCampo[]> {
   const [p, usados, pend] = await Promise.all([
-    db.query('SELECT usuario_id IS NOT NULL AS con_cuenta FROM producer WHERE producer_id = $1', [producerId]),
-    db.query('SELECT DISTINCT campo FROM producer_cambios WHERE producer_id = $1 AND consume_edicion', [producerId]),
-    db.query("SELECT campo, id FROM solicitud_cambio WHERE producer_id = $1 AND estado = 'pendiente'", [producerId]),
+    db.query('SELECT usuario_id IS NOT NULL AS con_cuenta FROM productor WHERE productor_id = $1', [producerId]),
+    db.query('SELECT DISTINCT campo FROM productor_cambios WHERE productor_id = $1 AND consume_edicion', [producerId]),
+    db.query("SELECT campo, id FROM solicitud_cambio WHERE productor_id = $1 AND estado = 'pendiente'", [producerId]),
   ]);
   const conCuenta = !!p.rows[0]?.con_cuenta;
   const usado = new Set<string>(usados.rows.map((r: { campo: string }) => r.campo));
@@ -105,8 +105,8 @@ const comparable = (campo: CampoPersonal, v: unknown) => {
 /** Lee los valores actuales del productor con la fecha en texto (y bloquea el renglón: dos ediciones a la vez no pueden gastar la misma "única vez"). */
 async function leerActual(client: Db, producerId: number, bloquear: boolean): Promise<Record<string, unknown> | null> {
   const r = await client.query(
-    `SELECT nombres, apellido_paterno, apellido_materno, sexo, to_char(fecha_nacimiento,'YYYY-MM-DD') AS fecha_nacimiento, phone, correo, usuario_id
-       FROM producer WHERE producer_id = $1 ${bloquear ? 'FOR UPDATE' : ''}`, [producerId]);
+    `SELECT nombres, apellido_paterno, apellido_materno, sexo, to_char(fecha_nacimiento,'YYYY-MM-DD') AS fecha_nacimiento, telefono, correo, usuario_id
+       FROM productor WHERE productor_id = $1 ${bloquear ? 'FOR UPDATE' : ''}`, [producerId]);
   return r.rows[0] ?? null;
 }
 
@@ -153,7 +153,7 @@ export async function aplicarEdicionDirecta(client: PoolClient, o: OpcionesEdici
   for (const a of aplicar) {
     await escribirCampo(client, o.producerId, a.campo, a.despues);
     await client.query(
-      `INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa, consume_edicion) VALUES ($1,$2,$3,$4,$5,$6,TRUE)`,
+      `INSERT INTO productor_cambios (productor_id, campo, valor_anterior, valor_nuevo, usuario_id, programa, consume_edicion) VALUES ($1,$2,$3,$4,$5,$6,TRUE)`,
       [o.producerId, a.campo, a.antes, a.despues, o.usuarioId, o.programa]
     );
   }
@@ -164,9 +164,9 @@ export async function aplicarEdicionDirecta(client: PoolClient, o: OpcionesEdici
 export async function escribirCampo(client: Db, producerId: number, campo: CampoPersonal, valor: string | null): Promise<void> {
   const col = CAMPOS_PERSONALES[campo].columna;
   if (campo === 'correo') {
-    await client.query('UPDATE producer SET correo = $1::text, correo_electronico = $1::text WHERE producer_id = $2', [valor, producerId]);
+    await client.query('UPDATE productor SET correo = $1::text, correo_electronico = $1::text WHERE productor_id = $2', [valor, producerId]);
   } else {
-    await client.query(`UPDATE producer SET ${col} = $1 WHERE producer_id = $2`, [valor, producerId]);
+    await client.query(`UPDATE productor SET ${col} = $1 WHERE productor_id = $2`, [valor, producerId]);
   }
 }
 
@@ -176,7 +176,7 @@ export async function registrarCambioSinGastar(client: Db, producerId: number, c
   const d = despues === null || despues === undefined ? null : String(despues);
   if (a === d) return;
   await client.query(
-    `INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa, consume_edicion) VALUES ($1,$2,$3,$4,$5,$6,FALSE)`,
+    `INSERT INTO productor_cambios (productor_id, campo, valor_anterior, valor_nuevo, usuario_id, programa, consume_edicion) VALUES ($1,$2,$3,$4,$5,$6,FALSE)`,
     [producerId, campo, a, d, usuarioId, programa]
   );
 }

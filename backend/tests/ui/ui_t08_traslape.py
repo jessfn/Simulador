@@ -44,6 +44,6 @@ with sync_playwright() as p:
     ok('el mapa avisa del traslape con la parcela de otro productor', pg.get_by_text('con la parcela de otro productor').count() >= 1, pg.get_by_text('con la parcela de otro productor').first.inner_text() if pg.get_by_text('con la parcela de otro productor').count() else '')
     shot(pg, 'caso8_traslape')
     ok('no deja usar esa parcela (no aparece "Parcela dibujada")', pg.get_by_text('Parcela dibujada').count() == 0)
-    ok('no se creo el segundo productor', val(f"select count(*) from producer where curp='{curp2}'") == '0')
+    ok('no se creo el segundo productor', val(f"select count(*) from productor where curp='{curp2}'") == '0')
     ctx.close(); br.close()
 print('\nRESUMEN UI CASO 8:', sum(res), '/', len(res))

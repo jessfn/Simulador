@@ -139,7 +139,7 @@ export function validarCultivo(cu: any): void {
 
 // ─── Utilidades de base de datos ────────────────────────────────────────────
 async function codigoValido(client: PoolClient, catalogo: string, code: unknown): Promise<boolean> {
-  const r = await client.query(`SELECT 1 FROM cat_catalog WHERE catalog = $1 AND code = $2 AND is_active = true`, [catalogo, code]);
+  const r = await client.query(`SELECT 1 FROM cat_catalogo WHERE catalogo = $1 AND codigo = $2 AND activo = true`, [catalogo, code]);
   return r.rows.length > 0;
 }
 
@@ -148,7 +148,7 @@ async function codigoValido(client: PoolClient, catalogo: string, code: unknown)
  * de modo que no vuelvan a diferir. Lanza ErrorRegistro (400) con el campo que falló.
  */
 export async function validarCatalogosCultivo(client: PoolClient, cu: any): Promise<void> {
-  const vr = await client.query(`SELECT 1 FROM cat_crop_variety WHERE crop = 'frijol' AND code = $1 AND is_active = true`, [cu.variety_id]);
+  const vr = await client.query(`SELECT 1 FROM cat_variedad_cultivo WHERE cultivo = 'frijol' AND codigo = $1 AND activo = true`, [cu.variety_id]);
   if (vr.rows.length === 0) falla('cultivo.variety_id', 'La variedad seleccionada no es válida');
   if (cu.destino && !(await codigoValido(client, 'destino_frijol', cu.destino))) falla('cultivo.destino', 'El destino de la producción no es válido');
   if (cu.tipo_siembra && !(await codigoValido(client, 'tipo_siembra_frijol', cu.tipo_siembra))) falla('cultivo.tipo_siembra', 'El tipo de siembra no es válido');
@@ -199,7 +199,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     const curp = String(p.curp || '').toUpperCase().trim();
 
     // ¿Ya existe el productor? (la CURP manda; el cliente no puede ocultarlo)
-    const existente = await client.query("SELECT *, to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fn FROM producer WHERE UPPER(curp) = $1", [curp]);
+    const existente = await client.query("SELECT *, to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fn FROM productor WHERE UPPER(curp) = $1", [curp]);
     const prod = existente.rows[0] || null;
     if (p.producer_id && (!prod || String(prod.producer_id) !== String(p.producer_id))) falla('productor.producer_id', 'La CURP no coincide con el productor indicado');
 
@@ -211,9 +211,9 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     await validarCatalogosProductor(client, fp);
 
     // Geografía
-    const est = await client.query('SELECT name FROM geo_state WHERE state_id = $1', [pa.state_id]);
+    const est = await client.query('SELECT nombre FROM geo_estado WHERE estado_id = $1', [pa.state_id]);
     if (est.rows.length === 0) falla('parcela.state_id', 'El estado no existe');
-    const mun = await client.query('SELECT name FROM geo_municipality WHERE municipality_id = $1 AND state_id = $2', [pa.municipality_id, pa.state_id]);
+    const mun = await client.query('SELECT nombre FROM geo_municipio WHERE municipio_id = $1 AND estado_id = $2', [pa.municipality_id, pa.state_id]);
     if (mun.rows.length === 0) falla('parcela.municipality_id', 'El municipio no pertenece al estado elegido');
 
     // Ciclo (siempre se recalcula en el servidor)
@@ -248,11 +248,11 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     } else {
       verificacion = leerVerificacion(p.verificacion_token, curp, tecnicoId) ? 'verificada' : 'pendiente';
       const r = await client.query(
-        `INSERT INTO producer
-           (curp, nombres, apellido_paterno, apellido_materno, phone, correo, correo_electronico, sexo, fecha_nacimiento,
-            state_id, municipality_id, localidad, usuario_capturista_id, estatus_registro, fecha_captura, fuente_registro)
+        `INSERT INTO productor
+           (curp, nombres, apellido_paterno, apellido_materno, telefono, correo, correo_electronico, sexo, fecha_nacimiento,
+            estado_id, municipio_id, localidad, usuario_capturista_id, estatus_registro, fecha_captura, fuente_registro)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
-         RETURNING producer_id`,
+         RETURNING productor_id`,
         [curp, String(p.nombres).trim(), String(p.apellido_paterno).trim(), p.apellido_materno ? String(p.apellido_materno).trim() : null,
          telefono, correo, correo, p.sexo, String(p.fecha_nacimiento).slice(0, 10), pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
       );
@@ -260,7 +260,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     }
 
     // ── 2. Programa frijol ──
-    const prog = await client.query('SELECT usuario_capturista_id, verificacion_identidad FROM producer_programa WHERE producer_id = $1 AND programa = $2', [producerId, PROGRAMA_FRIJOL]);
+    const prog = await client.query('SELECT usuario_capturista_id, verificacion_identidad FROM productor_programa WHERE productor_id = $1 AND programa = $2', [producerId, PROGRAMA_FRIJOL]);
     if (prog.rows.length > 0) {
       if (prog.rows[0].usuario_capturista_id !== tecnicoId) {
         throw new ErrorRegistro(409, 'EN_FRIJOL_OTRO_TECNICO', 'Este productor ya fue registrado en Frijol por otro técnico. No es posible registrarlo de nuevo.');
@@ -268,7 +268,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
       verificacion = prog.rows[0].verificacion_identidad;
     } else {
       await client.query(
-        `INSERT INTO producer_programa (producer_id, programa, usuario_capturista_id, verificacion_identidad, estatus_registro)
+        `INSERT INTO productor_programa (productor_id, programa, usuario_capturista_id, verificacion_identidad, estatus_registro)
          VALUES ($1, $2, $3, $4, 'enviado')`,
         [producerId, PROGRAMA_FRIJOL, tecnicoId, verificacion]
       );
@@ -277,14 +277,14 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     // ── 3. Información complementaria del productor ──
     await client.query(
       `INSERT INTO frijol_productor
-         (producer_id, total_ups_declaradas, participa_programas_sader, programas_sader, programas_sader_otro, organizacion,
+         (productor_id, total_ups_declaradas, participa_programas_sader, programas_sader, programas_sader_otro, organizacion,
           seguro_agricola, seguro_agricola_nombre, creado_por)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-       ON CONFLICT (producer_id) DO UPDATE SET
+       ON CONFLICT (productor_id) DO UPDATE SET
          total_ups_declaradas = EXCLUDED.total_ups_declaradas, participa_programas_sader = EXCLUDED.participa_programas_sader,
          programas_sader = EXCLUDED.programas_sader, programas_sader_otro = EXCLUDED.programas_sader_otro,
          organizacion = EXCLUDED.organizacion, seguro_agricola = EXCLUDED.seguro_agricola,
-         seguro_agricola_nombre = EXCLUDED.seguro_agricola_nombre, updated_at = NOW()`,
+         seguro_agricola_nombre = EXCLUDED.seguro_agricola_nombre, actualizado_en = NOW()`,
       [producerId, num(fp.total_ups_declaradas), fp.participa_programas_sader, fp.participa_programas_sader ? fp.programas_sader : [],
        fp.programas_sader?.includes('otro_sader') ? String(fp.programas_sader_otro).trim() : null,
        fp.organizacion ? String(fp.organizacion).trim() : null, fp.seguro_agricola || null,
@@ -294,11 +294,11 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     // ── 4. Parcela ──
     let upId: number;
     if (pa.up_id) {
-      const own = await client.query('SELECT up_id FROM up WHERE up_id = $1 AND producer_id = $2', [pa.up_id, producerId]);
+      const own = await client.query('SELECT up_id FROM up WHERE up_id = $1 AND productor_id = $2', [pa.up_id, producerId]);
       if (own.rows.length === 0) falla('parcela.up_id', 'La parcela no pertenece a este productor', 403);
       upId = Number(own.rows[0].up_id);
       await client.query(
-        `UPDATE up SET numero_up = $1, localidad = $2, documento_propiedad = $3, documento_propiedad_otro = $4, updated_at = NOW() WHERE up_id = $5`,
+        `UPDATE up SET numero_up = $1, localidad = $2, documento_propiedad = $3, documento_propiedad_otro = $4, actualizado_en = NOW() WHERE up_id = $5`,
         [num(pa.numero_up), String(pa.localidad).trim(), pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null, upId]
       );
     } else {
@@ -314,7 +314,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
       }
       await client.query(
         `UPDATE up SET numero_up = $1, localidad = $2, documento_propiedad = $3, documento_propiedad_otro = $4,
-                       state_id = COALESCE(state_id, $5), municipality_id = COALESCE(municipality_id, $6),
+                       estado_id = COALESCE(estado_id, $5), municipio_id = COALESCE(municipio_id, $6),
                        motivo_diferencia_superficie = $7,
                        programa_origen = '${PROGRAMA_FRIJOL}'   -- T11 §11.2: solo las parcelas NUEVAS que crea frijol nacen con origen frijol
          WHERE up_id = $8`,
@@ -322,7 +322,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
          pa.state_id, pa.municipality_id, pa.motivo_diferencia_superficie ? String(pa.motivo_diferencia_superficie).trim() : null, upId]
       );
     }
-    const up = (await client.query('SELECT area_ha_calc, area_ha_real, state_id FROM up WHERE up_id = $1', [upId])).rows[0];
+    const up = (await client.query('SELECT superficie_ha_calculada, superficie_ha_real, estado_id FROM up WHERE up_id = $1', [upId])).rows[0];
     const areaCalc = Number(up.area_ha_calc || 0);
     const areaFinal = Number(up.area_ha_real || up.area_ha_calc || 0);
     if (!pa.up_id && up.area_ha_real != null && areaCalc > 0 && Math.abs(Number(up.area_ha_real) - areaCalc) / areaCalc > 0.10 && !esTexto(pa.motivo_diferencia_superficie)) {
@@ -349,7 +349,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
        ON CONFLICT (up_id) DO UPDATE SET
          se_dedica_produccion_semillas = EXCLUDED.se_dedica_produccion_semillas, trabajo_con_prosebien = EXCLUDED.trabajo_con_prosebien,
          usara_prosebien_pv = EXCLUDED.usara_prosebien_pv, cumple_criterio_original = EXCLUDED.cumple_criterio_original,
-         superficie_evaluada_ha = EXCLUDED.superficie_evaluada_ha, updated_at = NOW()`,
+         superficie_evaluada_ha = EXCLUDED.superficie_evaluada_ha, actualizado_en = NOW()`,
       [upId, se.se_dedica_produccion_semillas, se.trabajo_con_prosebien, se.usara_prosebien_pv, cumple, areaFinal || null, tecnicoId]
     );
 
@@ -357,26 +357,26 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     const c = ciclo.ok ? ciclo.ciclo : null;
     if (!c) falla('cultivo.cycle_type', 'No se pudo determinar el ciclo');
     let cicloRow = (await client.query(
-      `SELECT cycle_id FROM cycle WHERE up_id = $1 AND crop = 'frijol' AND cycle_year = $2 AND cycle_type = $3 AND COALESCE(estado_ciclo,'activo') = 'activo' LIMIT 1`,
+      `SELECT ciclo_id FROM ciclo WHERE up_id = $1 AND cultivo = 'frijol' AND anio_ciclo = $2 AND tipo_ciclo = $3 AND COALESCE(estado_ciclo,'activo') = 'activo' LIMIT 1`,
       [upId, c!.cycle_year, c!.cycle_type]
     )).rows[0];
     if (!cicloRow) {
       cicloRow = (await client.query(
-        `INSERT INTO cycle (up_id, cycle_year, cycle_type, tipo_riego, crop, estado_ciclo, declarado_por_productor, hectareas_sembradas, fecha_siembra, variedad_nombre)
-         VALUES ($1,$2,$3,$4,'frijol','activo',false,$5,$6,$7) RETURNING cycle_id`,
+        `INSERT INTO ciclo (up_id, anio_ciclo, tipo_ciclo, tipo_riego, cultivo, estado_ciclo, declarado_por_productor, hectareas_sembradas, fecha_siembra, variedad_nombre)
+         VALUES ($1,$2,$3,$4,'frijol','activo',false,$5,$6,$7) RETURNING ciclo_id`,
         [upId, c!.cycle_year, c!.cycle_type, regimen, num(cu.area_sown_ha), cu.fecha_siembra, cu.variety_other || cu.variety_id]
       )).rows[0];
     }
     const cycleId = Number(cicloRow.cycle_id);
 
     // ── 7. Cultivo (sin ON CONFLICT DO UPDATE: nunca se pisa un cultivo existente) ──
-    const ya = await client.query('SELECT cycle_crop_id FROM cycle_crop WHERE cycle_id = $1', [cycleId]);
+    const ya = await client.query('SELECT ciclo_cultivo_id FROM ciclo_cultivo WHERE ciclo_id = $1', [cycleId]);
     if (ya.rows.length > 0) {
       throw new ErrorRegistro(409, 'FRIJOL_YA_REGISTRADO', `Ya hay frijol registrado en esta parcela para ${c!.etiqueta}`);
     }
     const cc = await client.query(
-      `INSERT INTO cycle_crop (cycle_id, crop, variety_id, variety_other, area_sown_ha, planting_date, estimated_harvest_date, yield_expected, destination)
-       VALUES ($1,'frijol',$2,$3,$4,$5,$6,$7,$8) RETURNING cycle_crop_id`,
+      `INSERT INTO ciclo_cultivo (ciclo_id, cultivo, variedad_id, variedad_otra, superficie_sembrada_ha, fecha_siembra, fecha_cosecha_estimada, rendimiento_esperado, destino)
+       VALUES ($1,'frijol',$2,$3,$4,$5,$6,$7,$8) RETURNING ciclo_cultivo_id`,
       [cycleId, cu.variety_id, cu.variety_other ? String(cu.variety_other).trim() : null, num(cu.area_sown_ha), cu.fecha_siembra,
        cu.fecha_cosecha_estimada, num(cu.rendimiento_esperado_t_ha), cu.destino || null]
     );
@@ -390,7 +390,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     }
     await client.query(
       `INSERT INTO frijol_cultivo
-         (cycle_crop_id, tipo_siembra, densidad_kg_ha, usa_fertilizante, tipos_fertilizante, rotacion, observaciones, sin_observaciones,
+         (ciclo_cultivo_id, tipo_siembra, densidad_kg_ha, usa_fertilizante, tipos_fertilizante, rotacion, observaciones, sin_observaciones,
           capturado_en, hubo_desconexion, creado_por)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [cycleCropId, cu.tipo_siembra || null, num(cu.densidad_kg_ha), cu.usa_fertilizante, cu.usa_fertilizante ? cu.tipos_fertilizante : [], cu.rotacion,
@@ -399,7 +399,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     );
 
     // Aviso (no bloquea) si la parcela queda fuera de la zona del técnico
-    const zona = await client.query('SELECT state_id, municipality_id FROM tecnico_zona WHERE usuario_id = $1', [tecnicoId]);
+    const zona = await client.query('SELECT estado_id, municipio_id FROM tecnico_zona WHERE usuario_id = $1', [tecnicoId]);
     if (zona.rows.length > 0) {
       const dentro = zona.rows.some((z: { state_id: string; municipality_id: string | null }) => z.state_id === pa.state_id && (!z.municipality_id || z.municipality_id === pa.municipality_id));
       if (!dentro) avisos.push('La parcela está fuera de tu zona de operación.');

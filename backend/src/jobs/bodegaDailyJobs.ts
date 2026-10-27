@@ -26,9 +26,9 @@ export async function runBodegaDailyJobs(): Promise<void> {
       `UPDATE transacciones
          SET confirmacion_productor = 'expirada',
              peso_precio_sistema    = 0.5,
-             updated_at             = NOW()
+             actualizado_en             = NOW()
        WHERE confirmacion_productor = 'pendiente'
-         AND created_at < NOW() - INTERVAL '48 hours'
+         AND creado_en < NOW() - INTERVAL '48 hours'
        RETURNING id`
     );
     if (txRes.rowCount && txRes.rowCount > 0) {
@@ -51,7 +51,7 @@ export async function runBodegaDailyJobs(): Promise<void> {
         FROM tarifario_servicios ts
         JOIN bodeguero_bodegas bb ON bb.bodega_id = ts.bodega_id
         WHERE ts.activo = TRUE
-          AND CURRENT_DATE - ts.updated_at::date > 30
+          AND CURRENT_DATE - ts.actualizado_en::date > 30
         GROUP BY ts.bodega_id, bb.usuario_id
       `);
 
@@ -60,7 +60,7 @@ export async function runBodegaDailyJobs(): Promise<void> {
         const alertaReciente = await pool.query(`
           SELECT id FROM notificaciones
           WHERE usuario_id = $1 AND tipo = 'alerta_tarifario'
-            AND created_at > NOW() - INTERVAL '7 days'
+            AND creado_en > NOW() - INTERVAL '7 days'
           LIMIT 1
         `, [tarifa.usuario_id]);
 

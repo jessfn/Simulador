@@ -27,10 +27,10 @@ with sync_playwright() as p:
     ok('la lista muestra columnas nuevas', pg.get_by_text('Programas').count() >= 1 and pg.get_by_text('Zona').count() >= 1)
     pg.screenshot(path=str(AQUI / '.tmp' / 't4_lista.png'))
     # filtros
-    pg.select_option('select[aria-label="Filtrar por programa"]', 'frijol_afb'); pg.wait_for_timeout(1200)
+    pg.select_option('select[aria-etiqueta="Filtrar por programa"]', 'frijol_afb'); pg.wait_for_timeout(1200)
     filas = pg.locator('tbody tr').count()
     ok('filtro por programa Frijol reduce la lista', 0 < filas < 20, f'{filas} filas')
-    pg.select_option('select[aria-label="Filtrar por programa"]', ''); pg.wait_for_timeout(800)
+    pg.select_option('select[aria-etiqueta="Filtrar por programa"]', ''); pg.wait_for_timeout(800)
 
     pg.get_by_role('button', name=re.compile('Nuevo técnico')).click(); pg.wait_for_timeout(1200)
     ok('abre el formulario de alta', pg.get_by_text('Nuevo técnico').count() >= 1 and pg.get_by_role('button', name='Crear técnico').count() == 1)

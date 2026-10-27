@@ -192,25 +192,25 @@ async function procesarCSV(
       // Buscar UPs dentro del radio (una sola query por grupo)
       const upsRes = await pool.query(
         `SELECT
-           u.up_id, p.producer_id,
+           u.up_id, p.productor_id,
            us.id AS usuario_id,
-           us.push_endpoint, us.push_p256dh, us.push_auth, us.push_activo,
+           us.push_url, us.push_llave_p256dh, us.push_llave_auth, us.push_activo,
            ROUND(
              (ST_Distance(
                ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-               u.geom::geography
+               u.geometria::geography
              ) / 1000.0)::numeric
            , 1) AS distancia_km
          FROM up u
-         JOIN producer p  ON p.producer_id = u.producer_id AND ${soloMaiz('p')} AND ${parcelaDeMaiz('u')}
+         JOIN productor p  ON p.productor_id = u.productor_id AND ${soloMaiz('p')} AND ${parcelaDeMaiz('u')}
          JOIN usuarios us ON us.id = p.usuario_id
          WHERE ST_DWithin(
            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-           u.geom::geography,
+           u.geometria::geography,
            $3 * 1000
          )
          AND us.activo = TRUE
-         AND u.geom IS NOT NULL`,
+         AND u.geometria IS NOT NULL`,
         [g.lng, g.lat, radioKm]
       );
 
@@ -318,7 +318,7 @@ router.get('/estado/:id', authMiddleware, async (req: AuthRequest, res: Response
   try {
     const result = await pool.query(
       `SELECT id, nombre_archivo, estado, total_puntos, total_ups_afectadas,
-              total_notificaciones, error_detalle, created_at, completado_en
+              total_notificaciones, error_detalle, creado_en, completado_en
        FROM senasica_cargas WHERE id = $1`,
       [req.params.id]
     );
@@ -338,7 +338,7 @@ router.get('/historial', authMiddleware, async (_req: AuthRequest, res: Response
       `SELECT sc.*, u.nombre_completo AS subido_por
        FROM senasica_cargas sc
        LEFT JOIN usuarios u ON u.id = sc.usuario_id
-       ORDER BY sc.created_at DESC LIMIT 20`
+       ORDER BY sc.creado_en DESC LIMIT 20`
     );
     res.json({ cargas: result.rows });
   } catch {
@@ -368,7 +368,7 @@ router.patch('/parametros/:nivel', authMiddleware, async (req: AuthRequest, res:
     if (!['alto', 'medio', 'bajo'].includes(nivel)) { res.status(400).json({ error: 'Nivel inválido' }); return; }
     if (!radio_km || radio_km < 1 || radio_km > 500) { res.status(400).json({ error: 'Radio debe ser entre 1 y 500 km' }); return; }
     await pool.query(
-      `UPDATE senasica_parametros SET radio_km = $1, updated_at = NOW() WHERE nivel_riesgo = $2`,
+      `UPDATE senasica_parametros SET radio_km = $1, actualizado_en = NOW() WHERE nivel_riesgo = $2`,
       [radio_km, nivel]
     );
     res.json({ ok: true, nivel, radio_km });

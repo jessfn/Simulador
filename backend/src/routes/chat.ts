@@ -123,7 +123,7 @@ async function responderConBot(opts: {
       [opts.conversacionId, botUserId, respuesta.respuesta]
     );
     await pool.query(
-      `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_usuario = no_leidos_usuario + 1 WHERE id = $1`,
+      `UPDATE chat_conversaciones SET ultimo_mensaje_en = now(), no_leidos_usuario = no_leidos_usuario + 1 WHERE id = $1`,
       [opts.conversacionId]
     );
     emitirAUsuario(opts.usuarioId, { tipo: 'mensaje', conversacionId: opts.conversacionId, mensaje: botMsg.rows[0] });
@@ -203,7 +203,7 @@ router.get('/mi-conversacion', authMiddleware, async (req: AuthRequest, res: Res
     }
     const conv = existente.rows[0];
     const mensajes = await pool.query(
-      'SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at ASC LIMIT 200',
+      'SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY creado_en ASC LIMIT 200',
       [conv.id]
     );
     res.json({ conversacion: conv, mensajes: mensajes.rows });
@@ -248,14 +248,14 @@ router.post('/mensaje', authMiddleware, upload.single('archivo'), async (req: Au
     }
 
     const msg = await pool.query(
-      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido, archivo_url, archivo_mime, archivo_nombre, lat, lng, activo_hasta)
+      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido, archivo_url, archivo_mime, archivo_nombre, latitud, longitud, activo_hasta)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [conv.id, usuarioId, rolUsuario, tipo, contenido?.trim() || null, archivoUrl, archivoMime, archivoNombre,
        lat ? Number(lat) : null, lng ? Number(lng) : null, activoHasta]
     );
 
     await pool.query(
-      `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_admin = no_leidos_admin + 1, estatus = 'abierta' WHERE id = $1`,
+      `UPDATE chat_conversaciones SET ultimo_mensaje_en = now(), no_leidos_admin = no_leidos_admin + 1, estatus = 'abierta' WHERE id = $1`,
       [conv.id]
     );
 
@@ -300,7 +300,7 @@ router.patch('/mensaje/:id/ubicacion', authMiddleware, async (req: AuthRequest, 
   try {
     const { lat, lng } = req.body as { lat?: number; lng?: number };
     const { rows } = await pool.query(
-      `UPDATE chat_mensajes SET lat = $1, lng = $2 WHERE id = $3 AND autor_id = $4 AND tipo = 'ubicacion_vivo' AND activo_hasta > now()
+      `UPDATE chat_mensajes SET latitud = $1, longitud = $2 WHERE id = $3 AND autor_id = $4 AND tipo = 'ubicacion_vivo' AND activo_hasta > now()
        RETURNING id, conversacion_id`,
       [lat, lng, req.params.id, req.user!.userId]
     );
@@ -377,12 +377,12 @@ export const adminChatRouter = Router();
 adminChatRouter.get('/', authMiddleware, verChats, async (_req: AuthRequest, res: Response) => {
   try {
     const { rows } = await pool.query(`
-      SELECT c.*, u.nombre_completo, u.email, u.telefono, u.curp,
-             (SELECT contenido FROM chat_mensajes m WHERE m.conversacion_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS ultimo_contenido,
-             (SELECT tipo FROM chat_mensajes m WHERE m.conversacion_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS ultimo_tipo
+      SELECT c.*, u.nombre_completo, u.correo_electronico, u.telefono, u.curp,
+             (SELECT contenido FROM chat_mensajes m WHERE m.conversacion_id = c.id ORDER BY m.creado_en DESC LIMIT 1) AS ultimo_contenido,
+             (SELECT tipo FROM chat_mensajes m WHERE m.conversacion_id = c.id ORDER BY m.creado_en DESC LIMIT 1) AS ultimo_tipo
       FROM chat_conversaciones c
       JOIN usuarios u ON u.id = c.usuario_id
-      ORDER BY c.ultimo_mensaje_at DESC
+      ORDER BY c.ultimo_mensaje_en DESC
     `);
     res.json({ conversaciones: rows.map(r => ({ ...r, rol_legible: rolLegible(r.rol_usuario) })) });
   } catch (err) {
@@ -394,7 +394,7 @@ adminChatRouter.get('/', authMiddleware, verChats, async (_req: AuthRequest, res
 adminChatRouter.get('/:id/mensajes', authMiddleware, verChats, async (req: AuthRequest, res: Response) => {
   try {
     const [mensajes, conv] = await Promise.all([
-      pool.query('SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at ASC LIMIT 300', [req.params.id]),
+      pool.query('SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY creado_en ASC LIMIT 300', [req.params.id]),
       pool.query('SELECT id, usuario_leido_hasta, admin_leido_hasta FROM chat_conversaciones WHERE id = $1', [req.params.id]),
     ]);
     res.json({ mensajes: mensajes.rows, conversacion: conv.rows[0] || null });
@@ -432,14 +432,14 @@ adminChatRouter.post('/:id/mensaje', authMiddleware, responderChats, upload.sing
     }
 
     const msg = await pool.query(
-      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido, archivo_url, archivo_mime, archivo_nombre, lat, lng)
+      `INSERT INTO chat_mensajes (conversacion_id, autor_id, autor_rol, tipo, contenido, archivo_url, archivo_mime, archivo_nombre, latitud, longitud)
        VALUES ($1,$2,'admin',$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [convId, req.user!.userId, tipo, contenido?.trim() || null, archivoUrl, archivoMime, archivoNombre,
        lat ? Number(lat) : null, lng ? Number(lng) : null]
     );
 
     await pool.query(
-      `UPDATE chat_conversaciones SET ultimo_mensaje_at = now(), no_leidos_usuario = no_leidos_usuario + 1, bot_activo = FALSE WHERE id = $1`,
+      `UPDATE chat_conversaciones SET ultimo_mensaje_en = now(), no_leidos_usuario = no_leidos_usuario + 1, bot_activo = FALSE WHERE id = $1`,
       [convId]
     );
 
@@ -525,7 +525,7 @@ adminChatRouter.post('/:id/responder-con-ia', authMiddleware, responderChats, as
     }
 
     const ultimo = await pool.query(
-      `SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      `SELECT * FROM chat_mensajes WHERE conversacion_id = $1 ORDER BY creado_en DESC LIMIT 1`,
       [convId]
     );
     const ultimoMsg = ultimo.rows[0];

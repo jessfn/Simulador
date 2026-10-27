@@ -27,7 +27,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
   try {
     // Obtener producer_id del usuario
     const prodR = await pool.query(
-      'SELECT producer_id FROM producer WHERE usuario_id = $1 LIMIT 1',
+      'SELECT productor_id FROM productor WHERE usuario_id = $1 LIMIT 1',
       [userId]
     );
     if (prodR.rows.length === 0) {
@@ -40,7 +40,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     let up_id = bodyUpId;
     if (!up_id) {
       const upR = await pool.query(
-        'SELECT up_id FROM up WHERE producer_id = $1 LIMIT 1',
+        'SELECT up_id FROM up WHERE productor_id = $1 LIMIT 1',
         [producer_id]
       );
       if (upR.rows.length === 0) {
@@ -51,7 +51,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     } else {
       // Verificar que la UP pertenece al productor
       const upCheck = await pool.query(
-        'SELECT up_id FROM up WHERE up_id = $1 AND producer_id = $2',
+        'SELECT up_id FROM up WHERE up_id = $1 AND productor_id = $2',
         [up_id, producer_id]
       );
       if (upCheck.rows.length === 0) {
@@ -96,9 +96,9 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     // Desactivar SOLO la propuesta anterior con la MISMA variedad en la MISMA UP.
     // Así un productor puede tener varias propuestas activas de distinta variedad.
     await pool.query(
-      `UPDATE disponibilidad_productor SET activa = FALSE, updated_at = NOW()
-       WHERE producer_id = $1 AND up_id = $2 AND activa = TRUE
-         AND variedad_code IS NOT DISTINCT FROM $3`,
+      `UPDATE disponibilidad_productor SET activa = FALSE, actualizado_en = NOW()
+       WHERE productor_id = $1 AND up_id = $2 AND activa = TRUE
+         AND variedad_codigo IS NOT DISTINCT FROM $3`,
       [producer_id, up_id, variedadFinal]
     );
 
@@ -108,7 +108,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
     const result = await pool.query(
       `INSERT INTO disponibilidad_productor
-         (producer_id, up_id, tipo_maiz, variedad_code, variedad_libre, ciclo_id,
+         (productor_id, up_id, tipo_maiz, variedad_codigo, variedad_libre, ciclo_id,
           volumen_estimado_ton, ventana_venta, fecha_vencimiento, precio_minimo_ton,
           humedad_pct, impurezas_pct, grano_quebrado_pct)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
@@ -120,12 +120,12 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     // Notificar bodegas cercanas usando el centroide de la UP (radio 200 km, Haversine)
     try {
       const upResult = await pool.query(
-        `SELECT ST_Y(centroid::geometry) AS lat,
-                ST_X(centroid::geometry) AS lng,
-                municipality_name AS municipio,
-                state_name AS estado
+        `SELECT ST_Y(centroide::geometry) AS lat,
+                ST_X(centroide::geometry) AS lng,
+                nombre_municipio AS municipio,
+                nombre_estado AS estado
          FROM up
-         WHERE up_id = $1 AND centroid IS NOT NULL`,
+         WHERE up_id = $1 AND centroide IS NOT NULL`,
         [up_id]
       );
 
@@ -148,7 +148,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
         const prodResult = await pool.query(
           `SELECT TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno)) AS nombre
-           FROM producer p WHERE p.usuario_id = $1`,
+           FROM productor p WHERE p.usuario_id = $1`,
           [userId]
         );
         const nombreProductor = prodResult.rows[0]?.nombre || 'Un productor';
@@ -187,16 +187,16 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
   try {
     const result = await pool.query(
       `SELECT dp.*,
-              u.municipality_name AS municipio,
-              u.state_name AS estado,
-              COALESCE(cv.label, dp.variedad_code) AS variedad_nombre
+              u.nombre_municipio AS municipio,
+              u.nombre_estado AS estado,
+              COALESCE(cv.etiqueta, dp.variedad_codigo) AS variedad_nombre
        FROM disponibilidad_productor dp
        JOIN up u ON u.up_id = dp.up_id
-       JOIN producer p ON p.producer_id = dp.producer_id
-       LEFT JOIN cat_crop_variety cv
-         ON cv.code = dp.variedad_code AND cv.is_active = TRUE
+       JOIN productor p ON p.productor_id = dp.productor_id
+       LEFT JOIN cat_variedad_cultivo cv
+         ON cv.codigo = dp.variedad_codigo AND cv.activo = TRUE
        WHERE p.usuario_id = $1 AND dp.activa = TRUE
-       ORDER BY dp.created_at DESC`,
+       ORDER BY dp.creado_en DESC`,
       [userId]
     );
     res.json(result.rows);
@@ -211,9 +211,9 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
   try {
     const result = await pool.query(
       `UPDATE disponibilidad_productor dp
-       SET activa = FALSE, updated_at = NOW()
-       FROM producer p
-       WHERE dp.id = $1 AND dp.producer_id = p.producer_id AND p.usuario_id = $2
+       SET activa = FALSE, actualizado_en = NOW()
+       FROM productor p
+       WHERE dp.id = $1 AND dp.productor_id = p.productor_id AND p.usuario_id = $2
        RETURNING dp.id`,
       [req.params.id, userId]
     );

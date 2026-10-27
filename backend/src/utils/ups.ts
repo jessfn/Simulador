@@ -38,17 +38,17 @@ export async function validarTraslape(
   // de traslape ya descarta los simples contactos de lindero. Maíz conserva su comportamiento original.
   const predicado = estricto ? 'ST_Intersects' : 'ST_Overlaps';
   const result = await db.query(
-    `SELECT traslape_producer_id, up_name, pct FROM (
-       SELECT u.producer_id AS traslape_producer_id, u.up_name,
+    `SELECT traslape_producer_id, nombre_up, pct FROM (
+       SELECT u.productor_id AS traslape_producer_id, u.nombre_up,
          GREATEST(
-           ST_Area(ST_Intersection(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
+           ST_Area(ST_Intersection(u.geometria, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
              / NULLIF(ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326)::geography), 0),
-           ST_Area(ST_Intersection(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
-             / NULLIF(ST_Area(u.geom::geography), 0)
+           ST_Area(ST_Intersection(u.geometria, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))::geography)
+             / NULLIF(ST_Area(u.geometria::geography), 0)
          ) AS pct
        FROM up u
-       WHERE u.producer_id != $1 AND u.geom IS NOT NULL
-         AND ${predicado}(u.geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
+       WHERE u.productor_id != $1 AND u.geometria IS NOT NULL
+         AND ${predicado}(u.geometria, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
          AND ($3::bigint IS NULL OR u.up_id != $3)
      ) t WHERE t.pct > 0.02 ORDER BY t.pct DESC LIMIT 1`,
     [producerIdPropietario, nuevaGeomGeoJSON, excluirUpId ?? null]
@@ -116,9 +116,9 @@ export async function insertarUP(client: any, producerId: number, up: any, opcio
   // Overlap con UPs existentes del mismo productor
   if (hasPoligono && postgisActivo) {
     const ov = await client.query(
-      `SELECT up_id, up_name FROM up
-       WHERE producer_id = $1 AND geom IS NOT NULL
-         AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
+      `SELECT up_id, nombre_up FROM up
+       WHERE productor_id = $1 AND geometria IS NOT NULL
+         AND ST_Intersects(geometria, ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326))
        LIMIT 1`,
       [producerId, geojson]
     );
@@ -174,10 +174,10 @@ export async function insertarUP(client: any, producerId: number, up: any, opcio
     const upNameIdx = params.push(upName);
     const r = await client.query(
       `INSERT INTO up
-         (producer_id, up_name, up_type, production_system, water_regime,
-          state_name, municipality_name, centroid, geom,
-          area_ha_calc, area_ha_real, coincide_area, location_confirmed, centroid_source)
-       VALUES ($1, $${upNameIdx}, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en cycle.tipo_riego */,
+         (productor_id, nombre_up, tipo_up, sistema_produccion, regimen_hidrico,
+          nombre_estado, nombre_municipio, centroide, geometria,
+          superficie_ha_calculada, superficie_ha_real, coincide_superficie, ubicacion_confirmada, origen_centroide)
+       VALUES ($1, $${upNameIdx}, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en ciclo.tipo_riego */,
                $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ${geomSql},
                ${areaCalcSql}, $${areaRealIdx}, $${coincideIdx}, TRUE, 'productor')
        RETURNING up_id`,
@@ -187,10 +187,10 @@ export async function insertarUP(client: any, producerId: number, up: any, opcio
   } else if (hasPoligono && postgisActivo) {
     const r = await client.query(
       `INSERT INTO up
-         (producer_id, up_name, up_type, production_system, water_regime,
-          state_name, municipality_name, centroid, geom,
-          area_ha_calc, area_ha_real, coincide_area, location_confirmed, centroid_source)
-       VALUES ($1, $7, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en cycle.tipo_riego */,
+         (productor_id, nombre_up, tipo_up, sistema_produccion, regimen_hidrico,
+          nombre_estado, nombre_municipio, centroide, geometria,
+          superficie_ha_calculada, superficie_ha_real, coincide_superficie, ubicacion_confirmada, origen_centroide)
+       VALUES ($1, $7, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en ciclo.tipo_riego */,
                $2, $3,
                ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON($4::text), 4326)),
                ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($4::text), 4326)),
@@ -204,7 +204,7 @@ export async function insertarUP(client: any, producerId: number, up: any, opcio
     let centroidVal = null;
     try {
       const muni = await client.query(
-        `SELECT centroid::geometry AS centroid FROM municipios_referencia
+        `SELECT centroide::geometry AS centroid FROM municipios_referencia
          WHERE LOWER(nombre) = LOWER($1) AND LOWER(estado) = LOWER($2) LIMIT 1`,
         [municipioFinal, estadoFinal]
       );
@@ -212,10 +212,10 @@ export async function insertarUP(client: any, producerId: number, up: any, opcio
     } catch { /* tabla opcional */ }
     const r = await client.query(
       `INSERT INTO up
-         (producer_id, up_name, up_type, production_system, water_regime,
-          state_name, municipality_name, centroid,
-          location_confirmed, centroid_source)
-       VALUES ($1, $5, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en cycle.tipo_riego */,
+         (productor_id, nombre_up, tipo_up, sistema_produccion, regimen_hidrico,
+          nombre_estado, nombre_municipio, centroide,
+          ubicacion_confirmada, origen_centroide)
+       VALUES ($1, $5, 'temporal', 'tradicional', 'temporal' /* DEPRECADO: régimen hídrico real vive en ciclo.tipo_riego */,
                $2, $3, $4::geometry, FALSE, 'municipio')
        RETURNING up_id`,
       [producerId, estadoFinal, municipioFinal, centroidVal, upName]
@@ -225,7 +225,7 @@ export async function insertarUP(client: any, producerId: number, up: any, opcio
 
   if (stateIdFinal || municipalityIdFinal) {
     await client.query(
-      `UPDATE up SET state_id = COALESCE($1, state_id), municipality_id = COALESCE($2, municipality_id)
+      `UPDATE up SET estado_id = COALESCE($1, estado_id), municipio_id = COALESCE($2, municipio_id)
        WHERE up_id = $3`,
       [stateIdFinal, municipalityIdFinal, upId]
     );
@@ -233,7 +233,7 @@ export async function insertarUP(client: any, producerId: number, up: any, opcio
 
   if (traslapeProducerId !== null) {
     await client.query(
-      `UPDATE up SET posible_traslape_producer_id = $1, traslape_revisado = false WHERE up_id = $2`,
+      `UPDATE up SET posible_traslape_productor_id = $1, traslape_revisado = false WHERE up_id = $2`,
       [traslapeProducerId, upId]
     );
   }

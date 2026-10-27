@@ -53,7 +53,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
   }
 
   try {
-    const prodR = await pool.query('SELECT producer_id FROM producer WHERE usuario_id = $1 LIMIT 1', [userId]);
+    const prodR = await pool.query('SELECT productor_id FROM productor WHERE usuario_id = $1 LIMIT 1', [userId]);
     if (prodR.rows.length === 0) {
       res.status(403).json({ error: 'No se encontró productor vinculado a tu cuenta' });
       return;
@@ -63,7 +63,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     const dispR = await pool.query(
       `SELECT id, tipo_maiz, volumen_estimado_ton, up_id, humedad_pct, impurezas_pct, grano_quebrado_pct
        FROM disponibilidad_productor
-       WHERE id = $1 AND producer_id = $2 AND activa = TRUE`,
+       WHERE id = $1 AND productor_id = $2 AND activa = TRUE`,
       [disponibilidad_id, producerId]
     );
     if (dispR.rows.length === 0) {
@@ -81,7 +81,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
     const result = await pool.query(
       `INSERT INTO propuestas_negociacion
-         (disponibilidad_id, producer_id, precio_solicitado_ton, precio_referencia_ton,
+         (disponibilidad_id, productor_id, precio_solicitado_ton, precio_referencia_ton,
           volumen_ton, volumen_minimo_comprador, lugar_entrega, vigencia_hasta)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [disponibilidad_id, producerId, precio_solicitado_ton, precioReferencia,
@@ -112,8 +112,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
       if (filtrosR.rows.length > 0) {
         const upR = await pool.query(
-          `SELECT ST_Y(centroid::geometry) AS lat, ST_X(centroid::geometry) AS lng
-           FROM up WHERE up_id = $1 AND centroid IS NOT NULL`,
+          `SELECT ST_Y(centroide::geometry) AS lat, ST_X(centroide::geometry) AS lng
+           FROM up WHERE up_id = $1 AND centroide IS NOT NULL`,
           [disp.up_id]
         );
         if (upR.rows.length > 0) {
@@ -156,18 +156,18 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 router.get('/mias', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
   try {
-    const prodR = await pool.query('SELECT producer_id FROM producer WHERE usuario_id = $1 LIMIT 1', [userId]);
+    const prodR = await pool.query('SELECT productor_id FROM productor WHERE usuario_id = $1 LIMIT 1', [userId]);
     if (prodR.rows.length === 0) { res.json([]); return; }
     const producerId = prodR.rows[0].producer_id;
 
     const result = await pool.query(
       `SELECT pn.*,
-              dp.tipo_maiz, dp.variedad_code,
+              dp.tipo_maiz, dp.variedad_codigo,
               (SELECT COUNT(*) FROM ofertas_bodega ob WHERE ob.propuesta_id = pn.id AND ob.estatus = 'pendiente') AS ofertas_count
        FROM propuestas_negociacion pn
        JOIN disponibilidad_productor dp ON dp.id = pn.disponibilidad_id
-       WHERE pn.producer_id = $1
-       ORDER BY pn.created_at DESC`,
+       WHERE pn.productor_id = $1
+       ORDER BY pn.creado_en DESC`,
       [producerId]
     );
     res.json(result.rows);
@@ -206,23 +206,23 @@ router.get('/disponibles', authMiddleware, async (req: AuthRequest, res: Respons
     if (volumen_min) { params.push(Number(volumen_min)); conditions.push(`pn.volumen_ton >= $${params.length}`); }
 
     let distanciaSelect = 'NULL::numeric AS distancia_km';
-    let orderBy = 'pn.created_at DESC';
+    let orderBy = 'pn.creado_en DESC';
 
     if (bodegaLat != null && bodegaLng != null) {
       params.push(bodegaLng, bodegaLat);
       const idxLng = params.length - 1;
       const idxLat = params.length;
       distanciaSelect = `ROUND((ST_Distance(
-          up.centroid::geography,
+          up.centroide::geography,
           ST_SetSRID(ST_Point($${idxLng}, $${idxLat}), 4326)::geography
         ) / 1000)::numeric, 1) AS distancia_km`;
       if (radio_km) {
         params.push(Number(radio_km) * 1000);
-        conditions.push(`ST_DWithin(up.centroid::geography, ST_SetSRID(ST_Point($${idxLng}, $${idxLat}), 4326)::geography, $${params.length})`);
+        conditions.push(`ST_DWithin(up.centroide::geography, ST_SetSRID(ST_Point($${idxLng}, $${idxLat}), 4326)::geography, $${params.length})`);
       }
       // Aleatorización acotada por cercanía real: entre más lejos, más peso
       // tiene el azar; entre más cerca, más determina el orden la distancia.
-      orderBy = `(COALESCE(ST_Distance(up.centroid::geography, ST_SetSRID(ST_Point($${idxLng}, $${idxLat}), 4326)::geography) / 1000, 999) / 50) + random()`;
+      orderBy = `(COALESCE(ST_Distance(up.centroide::geography, ST_SetSRID(ST_Point($${idxLng}, $${idxLat}), 4326)::geography) / 1000, 999) / 50) + random()`;
     } else {
       orderBy = 'random()';
     }
@@ -238,9 +238,9 @@ router.get('/disponibles', authMiddleware, async (req: AuthRequest, res: Respons
 
     const result = await pool.query(
       `SELECT pn.id, pn.precio_solicitado_ton, pn.precio_referencia_ton, pn.volumen_ton,
-              pn.volumen_minimo_comprador, pn.lugar_entrega, pn.vigencia_hasta, pn.created_at,
-              dp.tipo_maiz, dp.variedad_code, dp.humedad_pct, dp.impurezas_pct, dp.grano_quebrado_pct,
-              up.municipality_name AS municipio, up.state_name AS estado,
+              pn.volumen_minimo_comprador, pn.lugar_entrega, pn.vigencia_hasta, pn.creado_en,
+              dp.tipo_maiz, dp.variedad_codigo, dp.humedad_pct, dp.impurezas_pct, dp.grano_quebrado_pct,
+              up.nombre_municipio AS municipio, up.nombre_estado AS estado,
               ${distanciaSelect},
               ${yaOferteSelect}
        FROM propuestas_negociacion pn
@@ -268,7 +268,7 @@ router.get('/:id/ofertas', authMiddleware, async (req: AuthRequest, res: Respons
   try {
     const propR = await pool.query(
       `SELECT pn.id FROM propuestas_negociacion pn
-       JOIN producer p ON p.producer_id = pn.producer_id
+       JOIN productor p ON p.productor_id = pn.productor_id
        WHERE pn.id = $1 AND p.usuario_id = $2`,
       [req.params.id, userId]
     );
@@ -363,7 +363,7 @@ router.post('/:id/ofertas', authMiddleware, async (req: AuthRequest, res: Respon
     try {
       const dueno = await pool.query(
         `SELECT usr.id, dp.tipo_maiz FROM propuestas_negociacion pn
-         JOIN producer p ON p.producer_id = pn.producer_id
+         JOIN productor p ON p.productor_id = pn.productor_id
          JOIN usuarios usr ON usr.id = p.usuario_id
          JOIN disponibilidad_productor dp ON dp.id = pn.disponibilidad_id
          WHERE pn.id = $1`,
@@ -402,9 +402,9 @@ router.post('/:id/aceptar', authMiddleware, async (req: AuthRequest, res: Respon
     await client.query('BEGIN');
 
     const propR = await client.query(
-      `SELECT pn.*, dp.tipo_maiz, dp.variedad_code, dp.humedad_pct, dp.impurezas_pct, dp.grano_quebrado_pct
+      `SELECT pn.*, dp.tipo_maiz, dp.variedad_codigo, dp.humedad_pct, dp.impurezas_pct, dp.grano_quebrado_pct
        FROM propuestas_negociacion pn
-       JOIN producer p ON p.producer_id = pn.producer_id
+       JOIN productor p ON p.productor_id = pn.productor_id
        JOIN disponibilidad_productor dp ON dp.id = pn.disponibilidad_id
        WHERE pn.id = $1 AND p.usuario_id = $2 FOR UPDATE`,
       [req.params.id, userId]
@@ -446,7 +446,7 @@ router.post('/:id/aceptar', authMiddleware, async (req: AuthRequest, res: Respon
 
     const txResult = await client.query(
       `INSERT INTO transacciones
-         (bodega_id, usuario_bodeguero, producer_id, tipo_maiz, variedad_code, volumen_ton, precio_ton, fecha,
+         (bodega_id, usuario_bodeguero, productor_id, tipo_maiz, variedad_codigo, volumen_ton, precio_ton, fecha,
           humedad_pct, impurezas_pct, grano_quebrado_pct, propuesta_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,CURRENT_DATE,$8,$9,$10,$11) RETURNING *`,
       [ofertaGanadora.bodega_id, ofertaGanadora.usuario_id, propuesta.producer_id,
@@ -494,8 +494,8 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
   try {
     const result = await pool.query(
       `UPDATE propuestas_negociacion pn SET estatus = 'cancelada'
-       FROM producer p
-       WHERE pn.id = $1 AND pn.producer_id = p.producer_id AND p.usuario_id = $2 AND pn.estatus = 'abierta'
+       FROM productor p
+       WHERE pn.id = $1 AND pn.productor_id = p.productor_id AND p.usuario_id = $2 AND pn.estatus = 'abierta'
        RETURNING pn.id`,
       [req.params.id, userId]
     );

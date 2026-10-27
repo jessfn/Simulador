@@ -48,7 +48,7 @@ router.get('/mis-bodegas', authMiddleware, bodegaOnly, async (req: AuthRequest, 
     const result = await pool.query(
       `SELECT b.id, b.nombre, b.municipio, b.estado, b.capacidad_ton,
               b.latitud, b.longitud, b.localidad,
-              b.semaforo_compra, b.semaforo_updated_at,
+              b.semaforo_compra, b.semaforo_actualizado_en,
               b.es_ventanilla, b.estatus,
               bb.estatus AS asociacion_estatus,
               COALESCE(inv.volumen_almacenamiento, 0) AS stock_actual,

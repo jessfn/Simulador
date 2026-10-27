@@ -25,7 +25,7 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
     // Revocación server-side: si el token fue invalidado (logout), rechazarlo
     // aunque su firma y expiración sigan siendo válidas.
     if (decoded.jti) {
-      const revocado = await pool.query('SELECT 1 FROM revoked_tokens WHERE jti = $1', [decoded.jti]);
+      const revocado = await pool.query('SELECT 1 FROM tokens_revocados WHERE id_jwt = $1', [decoded.jti]);
       if (revocado.rows.length > 0) {
         res.status(401).json({ error: 'Token inválido o expirado' });
         return;
@@ -36,7 +36,7 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
     // invalida cualquier sesión previa. Excluye admin/responsable (panel de
     // soporte con varias pestañas es un caso de uso legítimo).
     if (decoded.jti && !['admin', 'responsable'].includes(decoded.rol)) {
-      const sesion = await pool.query('SELECT sesion_activa_jti FROM usuarios WHERE id = $1', [decoded.userId]);
+      const sesion = await pool.query('SELECT sesion_activa_id_jwt FROM usuarios WHERE id = $1', [decoded.userId]);
       const jtiActivo = sesion.rows[0]?.sesion_activa_jti;
       if (jtiActivo && jtiActivo !== decoded.jti) {
         res.status(401).json({ error: 'Tu sesión se cerró porque iniciaste sesión en otro dispositivo' });

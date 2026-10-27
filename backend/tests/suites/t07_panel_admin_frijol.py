@@ -47,7 +47,7 @@ ok('la exportacion queda en la bitacora', despues.split('|')[0] == str(int(antes
 def sql1(q):
     return '|'.join(primera_fila(q))
 s, r = http('/admin/frijol/resumen', adm); t = r['totales']
-man = sql1("select count(distinct u.producer_id), count(distinct u.up_id), round(sum(cc.area_sown_ha)::numeric,1), round(sum(cc.area_sown_ha*cc.yield_expected)::numeric,1), count(*) from cycle_crop cc join cycle c using(cycle_id) join up u using(up_id) join producer_programa pp on pp.producer_id=u.producer_id and pp.programa='frijol_afb' where c.crop='frijol'").split('|')
+man = sql1("select count(distinct u.productor_id), count(distinct u.up_id), round(sum(cc.superficie_sembrada_ha)::numeric,1), round(sum(cc.superficie_sembrada_ha*cc.rendimiento_esperado)::numeric,1), count(*) from ciclo_cultivo cc join ciclo c using(ciclo_id) join up u using(up_id) join productor_programa pp on pp.productor_id=u.productor_id and pp.programa='frijol_afb' where c.cultivo='frijol'").split('|')
 ok('tarjetas = conteo manual en la base (productores, parcelas, ha, produccion, cultivos)',
    [t['productores'], t['parcelas'], t['cultivos']] == [int(man[0]), int(man[1]), int(man[4])] and abs(t['hectareas'] - float(man[2])) < 0.06 and abs(t['produccion_estimada_t'] - float(man[3])) < 0.06, f"{man} vs {t}")
 ok('hay tarjeta de pendientes > 14 dias', 'pendientes_14_dias' in t and 'produccion_estimada_t' in t)

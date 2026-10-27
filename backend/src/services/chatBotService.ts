@@ -17,7 +17,7 @@ let botUserIdCache: number | null = null;
 export async function obtenerBotUserId(): Promise<number | null> {
   if (botUserIdCache != null) return botUserIdCache;
   try {
-    const r = await pool.query(`SELECT id FROM usuarios WHERE email = 'bot@simac.interno' LIMIT 1`);
+    const r = await pool.query(`SELECT id FROM usuarios WHERE correo_electronico = 'bot@simac.interno' LIMIT 1`);
     if (r.rows.length === 0) return null;
     botUserIdCache = r.rows[0].id;
     return botUserIdCache;
@@ -28,8 +28,8 @@ export async function obtenerBotUserId(): Promise<number | null> {
 
 async function construirContextoProductor(usuarioId: number): Promise<string> {
   const perfilR = await pool.query(
-    `SELECT u.email, u.telefono, p.nombres, p.apellido_paterno, p.apellido_materno, p.municipality_id, p.state_id
-     FROM usuarios u LEFT JOIN producer p ON p.usuario_id = u.id WHERE u.id = $1`,
+    `SELECT u.correo_electronico, u.telefono, p.nombres, p.apellido_paterno, p.apellido_materno, p.municipio_id, p.estado_id
+     FROM usuarios u LEFT JOIN productor p ON p.usuario_id = u.id WHERE u.id = $1`,
     [usuarioId]
   );
   const perfil = perfilR.rows[0];
@@ -37,29 +37,29 @@ async function construirContextoProductor(usuarioId: number): Promise<string> {
     ? `Perfil: ${[perfil.nombres, perfil.apellido_paterno, perfil.apellido_materno].filter(Boolean).join(' ') || 'sin nombre registrado'}, correo ${perfil.email || 'no registrado'}, teléfono ${perfil.telefono || 'no registrado'}.`
     : '';
 
-  const prodR = await pool.query('SELECT producer_id FROM producer WHERE usuario_id = $1 LIMIT 1', [usuarioId]);
+  const prodR = await pool.query('SELECT productor_id FROM productor WHERE usuario_id = $1 LIMIT 1', [usuarioId]);
   if (prodR.rows.length === 0) return [perfilLinea, 'Este productor todavía no tiene su registro de productor completo en el sistema (sin parcela/UP registrada).'].filter(Boolean).join('\n');
   const producerId = prodR.rows[0].producer_id;
 
   const [ups, disp, props, txns] = await Promise.all([
     pool.query(
-      `SELECT up_name, municipality_name, state_name FROM up WHERE producer_id = $1 ORDER BY created_at ASC`,
+      `SELECT nombre_up, nombre_municipio, nombre_estado FROM up WHERE productor_id = $1 ORDER BY creado_en ASC`,
       [producerId]
     ),
     pool.query(
-      `SELECT tipo_maiz, variedad_code, volumen_estimado_ton, fecha_vencimiento, activa
-       FROM disponibilidad_productor WHERE producer_id = $1 AND activa = TRUE ORDER BY created_at DESC LIMIT 5`,
+      `SELECT tipo_maiz, variedad_codigo, volumen_estimado_ton, fecha_vencimiento, activa
+       FROM disponibilidad_productor WHERE productor_id = $1 AND activa = TRUE ORDER BY creado_en DESC LIMIT 5`,
       [producerId]
     ),
     pool.query(
       `SELECT pn.id, pn.precio_solicitado_ton, pn.volumen_ton, pn.estatus, pn.vigencia_hasta,
               (SELECT COUNT(*) FROM ofertas_bodega ob WHERE ob.propuesta_id = pn.id AND ob.estatus = 'pendiente') AS ofertas_pendientes
-       FROM propuestas_negociacion pn WHERE pn.producer_id = $1 ORDER BY pn.created_at DESC LIMIT 5`,
+       FROM propuestas_negociacion pn WHERE pn.productor_id = $1 ORDER BY pn.creado_en DESC LIMIT 5`,
       [producerId]
     ),
     pool.query(
       `SELECT volumen_ton, precio_ton, fecha, confirmacion_productor
-       FROM transacciones WHERE producer_id = $1 ORDER BY fecha DESC LIMIT 5`,
+       FROM transacciones WHERE productor_id = $1 ORDER BY fecha DESC LIMIT 5`,
       [producerId]
     ),
   ]);
@@ -82,7 +82,7 @@ async function construirContextoProductor(usuarioId: number): Promise<string> {
 }
 
 async function construirContextoBodeguero(usuarioId: number): Promise<string> {
-  const perfilR = await pool.query('SELECT nombre_completo, email, telefono FROM usuarios WHERE id = $1', [usuarioId]);
+  const perfilR = await pool.query('SELECT nombre_completo, correo_electronico, telefono FROM usuarios WHERE id = $1', [usuarioId]);
   const perfil = perfilR.rows[0];
   const perfilLinea = perfil
     ? `Perfil: ${perfil.nombre_completo || 'sin nombre registrado'}, correo ${perfil.email || 'no registrado'}, teléfono ${perfil.telefono || 'no registrado'}.`
@@ -99,12 +99,12 @@ async function construirContextoBodeguero(usuarioId: number): Promise<string> {
   const [reqs, ofertas, txns] = await Promise.all([
     pool.query(
       `SELECT tipo_maiz, volumen_ton, precio_ofrecido, fecha_vencimiento
-       FROM senales_compra WHERE bodega_id = ANY($1) AND activa = TRUE ORDER BY created_at DESC LIMIT 5`,
+       FROM senales_compra WHERE bodega_id = ANY($1) AND activa = TRUE ORDER BY creado_en DESC LIMIT 5`,
       [bodegaIds]
     ),
     pool.query(
       `SELECT ob.precio_ofrecido_ton, ob.pago_final_estimado_ton, ob.estatus
-       FROM ofertas_bodega ob WHERE ob.bodega_id = ANY($1) ORDER BY ob.created_at DESC LIMIT 5`,
+       FROM ofertas_bodega ob WHERE ob.bodega_id = ANY($1) ORDER BY ob.creado_en DESC LIMIT 5`,
       [bodegaIds]
     ),
     pool.query(
@@ -199,7 +199,7 @@ export async function generarRespuestaBot(opts: {
         ? pool.query(
             `SELECT 1 FROM chat_mensajes
              WHERE conversacion_id = $1 AND autor_rol = 'bot'
-               AND created_at::date = (now() AT TIME ZONE 'America/Mexico_City')::date
+               AND creado_en::date = (now() AT TIME ZONE 'America/Mexico_City')::date
              LIMIT 1`,
             [opts.conversacionId]
           )

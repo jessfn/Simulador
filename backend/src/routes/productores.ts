@@ -23,19 +23,19 @@ router.get('/buscar', authMiddleware, async (req: AuthRequest, res: Response): P
     // Si se da bodega_id, priorizamos productores que ya tienen transacción en esa bodega
     if (bodega_id) {
       params.push(bodega_id);
-      extra = `OR p.producer_id IN (
-        SELECT DISTINCT producer_id FROM transacciones WHERE bodega_id = $${params.length} AND producer_id IS NOT NULL
+      extra = `OR p.productor_id IN (
+        SELECT DISTINCT productor_id FROM transacciones WHERE bodega_id = $${params.length} AND productor_id IS NOT NULL
       )`;
     }
 
     const result = await pool.query(
       `SELECT
-         p.producer_id,
+         p.productor_id,
          TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)) AS nombre_completo,
-         COALESCE(gm.name, p.municipality_id, '') AS municipio,
+         COALESCE(gm.nombre, p.municipio_id, '') AS municipio,
          RIGHT(TRIM(COALESCE(p.curp, '')), 4) AS curp_parcial
-       FROM producer p
-       LEFT JOIN geo_municipality gm ON gm.municipality_id = p.municipality_id
+       FROM productor p
+       LEFT JOIN geo_municipio gm ON gm.municipio_id = p.municipio_id
        WHERE (
          UPPER(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)) LIKE $1
          OR UPPER(TRIM(COALESCE(p.curp, ''))) LIKE $1

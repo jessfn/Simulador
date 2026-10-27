@@ -26,13 +26,13 @@ export interface Asignacion { tipo: 'tecnico' | 'admin'; usuarioId: number | nul
  */
 export async function calcularAsignacion(db: { query: Function }, producerId: number, solicitanteId: number, programaSolicitante: string, campo: CampoPersonal): Promise<Asignacion> {
   if (campo === 'telefono') {
-    const c = await db.query('SELECT usuario_id IS NOT NULL AS con_cuenta FROM producer WHERE producer_id = $1', [producerId]);
+    const c = await db.query('SELECT usuario_id IS NOT NULL AS con_cuenta FROM productor WHERE productor_id = $1', [producerId]);
     if (c.rows[0]?.con_cuenta) return { tipo: 'admin', usuarioId: null, motivo: 'Teléfono de un productor con cuenta: lo aprueba un administrador' };
   }
   const otros = await db.query(
     `SELECT pp.programa, pp.usuario_capturista_id AS tecnico, COALESCE(u.activo, false) AS activo, u.rol
-       FROM producer_programa pp LEFT JOIN usuarios u ON u.id = pp.usuario_capturista_id
-      WHERE pp.producer_id = $1 AND pp.programa <> $2 ORDER BY pp.fecha_alta, pp.programa`, [producerId, programaSolicitante]);
+       FROM productor_programa pp LEFT JOIN usuarios u ON u.id = pp.usuario_capturista_id
+      WHERE pp.productor_id = $1 AND pp.programa <> $2 ORDER BY pp.fecha_alta, pp.programa`, [producerId, programaSolicitante]);
   if (otros.rows.length === 0) return { tipo: 'admin', usuarioId: null, motivo: 'El productor solo está en un programa: lo resuelve un administrador' };
   for (const o of otros.rows) {
     if (o.tecnico && o.activo && o.rol === 'capturista' && Number(o.tecnico) !== solicitanteId) {
@@ -59,10 +59,10 @@ export async function crearSolicitud(d: DatosNueva): Promise<{ id: number; asign
   try {
     await client.query('BEGIN');
     const p = (await client.query(
-      `SELECT nombres, apellido_paterno, apellido_materno, sexo, to_char(fecha_nacimiento,'YYYY-MM-DD') AS fecha_nacimiento, phone, correo FROM producer WHERE producer_id = $1 FOR UPDATE`,
+      `SELECT nombres, apellido_paterno, apellido_materno, sexo, to_char(fecha_nacimiento,'YYYY-MM-DD') AS fecha_nacimiento, telefono, correo FROM productor WHERE productor_id = $1 FOR UPDATE`,
       [d.producerId])).rows[0];
     if (!p) throw new ErrorEdicion(404, 'PRODUCTOR_NO_ENCONTRADO', 'El productor no existe');
-    const resp = await client.query('SELECT usuario_capturista_id FROM producer_programa WHERE producer_id = $1 AND programa = $2', [d.producerId, d.programa]);
+    const resp = await client.query('SELECT usuario_capturista_id FROM productor_programa WHERE productor_id = $1 AND programa = $2', [d.producerId, d.programa]);
     if (resp.rows.length === 0 || Number(resp.rows[0].usuario_capturista_id) !== d.solicitanteId) {
       throw new ErrorEdicion(403, 'SIN_ACCESO', 'Solo puedes pedir cambios de los productores que registraste tú');
     }
@@ -77,8 +77,8 @@ export async function crearSolicitud(d: DatosNueva): Promise<{ id: number; asign
     }
     const asig = await calcularAsignacion(client, d.producerId, d.solicitanteId, d.programa, campo);
     const r = await client.query(
-      `INSERT INTO solicitud_cambio (producer_id, campo, valor_actual, valor_propuesto, motivo, solicitante_id, programa_solicitante,
-                                     asignado_tipo, asignado_a, motivo_asignacion, vence_at)
+      `INSERT INTO solicitud_cambio (productor_id, campo, valor_actual, valor_propuesto, motivo, solicitante_id, programa_solicitante,
+                                     asignado_tipo, asignado_a, motivo_asignacion, vence_en)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW() + ($11 || ' days')::interval) RETURNING id`,
       [d.producerId, campo, actual, n.valor, motivo, d.solicitanteId, d.programa, asig.tipo, asig.usuarioId, asig.motivo, String(DIAS_VENCIMIENTO)]);
     await client.query('COMMIT');
@@ -118,7 +118,7 @@ export async function resolverSolicitud(
 
     if (!decision.aprobar) {
       await client.query(
-        `UPDATE solicitud_cambio SET estado='rechazada', resuelto_por=$2, resuelto_at=NOW(), motivo_rechazo=$3, visto_por_solicitante=FALSE WHERE id=$1`,
+        `UPDATE solicitud_cambio SET estado='rechazada', resuelto_por=$2, resuelto_en=NOW(), motivo_rechazo=$3, visto_por_solicitante=FALSE WHERE id=$1`,
         [id, quien.id, String(decision.motivoRechazo).trim()]);
       await client.query('COMMIT');
       return { estado: 'rechazada', mensaje: 'Solicitud rechazada. El solicitante verá tu motivo.' };
@@ -127,8 +127,8 @@ export async function resolverSolicitud(
     const n = normalizarValor(campo, s.valor_propuesto);
     if (!n.ok) throw new ErrorEdicion(400, 'VALIDACION', `El valor propuesto ya no es válido: ${n.error}. Recházala indicando el motivo.`);
     const p = (await client.query(
-      `SELECT nombres, apellido_paterno, apellido_materno, sexo, to_char(fecha_nacimiento,'YYYY-MM-DD') AS fecha_nacimiento, phone, correo, usuario_id
-         FROM producer WHERE producer_id = $1 FOR UPDATE`, [s.producer_id])).rows[0];
+      `SELECT nombres, apellido_paterno, apellido_materno, sexo, to_char(fecha_nacimiento,'YYYY-MM-DD') AS fecha_nacimiento, telefono, correo, usuario_id
+         FROM productor WHERE productor_id = $1 FOR UPDATE`, [s.producer_id])).rows[0];
     const ahora = valorActual(p, campo);
     // Si el dato cambió desde que se pidió, se avisa y se pide confirmar (no se aplica a ciegas).
     if (comparable(campo, ahora) !== comparable(campo, s.valor_actual) && !(decision as { confirmar?: boolean }).confirmar) {
@@ -142,10 +142,10 @@ export async function resolverSolicitud(
       if (campo === 'telefono' && p.usuario_id) await client.query('UPDATE usuarios SET telefono = $1 WHERE id = $2', [n.valor, p.usuario_id]);
     }
     await client.query(
-      `INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa, consume_edicion, solicitud_id, aprobado_por)
+      `INSERT INTO productor_cambios (productor_id, campo, valor_anterior, valor_nuevo, usuario_id, programa, consume_edicion, solicitud_id, aprobado_por)
        VALUES ($1,$2,$3,$4,$5,$6,TRUE,$7,$8)`,
       [s.producer_id, campo, ahora, n.valor, s.solicitante_id, s.programa_solicitante, id, quien.id]);
-    await client.query(`UPDATE solicitud_cambio SET estado='aprobada', resuelto_por=$2, resuelto_at=NOW(), visto_por_solicitante=FALSE WHERE id=$1`, [id, quien.id]);
+    await client.query(`UPDATE solicitud_cambio SET estado='aprobada', resuelto_por=$2, resuelto_en=NOW(), visto_por_solicitante=FALSE WHERE id=$1`, [id, quien.id]);
     await client.query('COMMIT');
     return { estado: 'aprobada', mensaje: 'Solicitud aprobada. El cambio ya se aplicó.' };
   } catch (e) {
@@ -157,7 +157,7 @@ export async function resolverSolicitud(
 /** El solicitante cancela su solicitud mientras siga pendiente. */
 export async function cancelarSolicitud(id: number, usuarioId: number): Promise<void> {
   const r = await pool.query(
-    `UPDATE solicitud_cambio SET estado='cancelada', resuelto_por=$2, resuelto_at=NOW(), visto_por_solicitante=TRUE
+    `UPDATE solicitud_cambio SET estado='cancelada', resuelto_por=$2, resuelto_en=NOW(), visto_por_solicitante=TRUE
       WHERE id=$1 AND solicitante_id=$2 AND estado='pendiente' RETURNING id`, [id, usuarioId]);
   if (r.rows.length > 0) return;
   const s = await pool.query('SELECT solicitante_id, estado FROM solicitud_cambio WHERE id = $1', [id]);
@@ -181,9 +181,9 @@ export async function escalarVencidas(ahora: Date = new Date()): Promise<number>
     try {
       const r = await client.query(
         `UPDATE solicitud_cambio
-            SET asignado_original_id = asignado_a, asignado_tipo = 'admin', asignado_a = NULL, escalada = TRUE, escalada_at = $1,
+            SET asignado_original_id = asignado_a, asignado_tipo = 'admin', asignado_a = NULL, escalada = TRUE, escalada_en = $1,
                 motivo_asignacion = motivo_asignacion || ' · Sin respuesta en ${DIAS_VENCIMIENTO} días: pasó a un administrador'
-          WHERE estado = 'pendiente' AND asignado_tipo = 'tecnico' AND vence_at <= $1 RETURNING id`, [ahora]);
+          WHERE estado = 'pendiente' AND asignado_tipo = 'tecnico' AND vence_en <= $1 RETURNING id`, [ahora]);
       return r.rowCount ?? 0;
     } finally { await client.query('SELECT pg_advisory_unlock($1)', [LOCK_ESCALADO]); }
   } finally { client.release(); }
@@ -191,25 +191,25 @@ export async function escalarVencidas(ahora: Date = new Date()): Promise<number>
 
 // ── Consultas ──
 const SELECT_LISTA = `
-  SELECT s.id::int AS id, s.producer_id::int AS producer_id, s.campo, s.valor_actual, s.valor_propuesto, s.motivo, s.estado, s.escalada,
+  SELECT s.id::int AS id, s.productor_id::int AS producer_id, s.campo, s.valor_actual, s.valor_propuesto, s.motivo, s.estado, s.escalada,
          s.programa_solicitante, s.asignado_tipo, s.asignado_a, s.motivo_asignacion, s.motivo_rechazo, s.visto_por_solicitante,
-         s.created_at, s.vence_at, s.resuelto_at, s.escalada_at,
+         s.creado_en, s.vence_en, s.resuelto_en, s.escalada_en,
          p.curp, TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)) AS productor,
          us.nombre_completo AS solicitante, ua.nombre_completo AS asignado_nombre, uo.nombre_completo AS asignado_original_nombre,
          ur.nombre_completo AS resuelto_por_nombre, ur.rol AS resuelto_por_rol
     FROM solicitud_cambio s
-    JOIN producer p ON p.producer_id = s.producer_id
+    JOIN productor p ON p.productor_id = s.productor_id
     JOIN usuarios us ON us.id = s.solicitante_id
     LEFT JOIN usuarios ua ON ua.id = s.asignado_a
     LEFT JOIN usuarios uo ON uo.id = s.asignado_original_id
     LEFT JOIN usuarios ur ON ur.id = s.resuelto_por`;
 
 export async function porResolver(usuarioId: number) {
-  return (await pool.query(`${SELECT_LISTA} WHERE s.estado = 'pendiente' AND s.asignado_tipo = 'tecnico' AND s.asignado_a = $1 ORDER BY s.created_at`, [usuarioId])).rows;
+  return (await pool.query(`${SELECT_LISTA} WHERE s.estado = 'pendiente' AND s.asignado_tipo = 'tecnico' AND s.asignado_a = $1 ORDER BY s.creado_en`, [usuarioId])).rows;
 }
 export async function misSolicitudes(usuarioId: number, programa?: string) {
   return (await pool.query(
-    `${SELECT_LISTA} WHERE s.solicitante_id = $1 AND ($2::text IS NULL OR s.programa_solicitante = $2) ORDER BY (s.estado = 'pendiente') DESC, s.created_at DESC LIMIT 200`,
+    `${SELECT_LISTA} WHERE s.solicitante_id = $1 AND ($2::text IS NULL OR s.programa_solicitante = $2) ORDER BY (s.estado = 'pendiente') DESC, s.creado_en DESC LIMIT 200`,
     [usuarioId, programa ?? null])).rows;
 }
 export async function resumenTecnico(usuarioId: number): Promise<{ por_resolver: number; respuestas_nuevas: number }> {

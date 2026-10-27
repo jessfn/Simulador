@@ -52,9 +52,9 @@ with sync_playwright() as p:
     id_parcela = pg.locator('[data-testid=id-parcela]').inner_text() if pg.locator('[data-testid=id-parcela]').count() else ''
     ok('muestra el ID de parcela asignado', id_parcela.isdigit(), id_parcela)
     shot(pg, 'resultado')
-    n = val(f"select count(*) from cycle_crop cc join cycle c using(cycle_id) join up u on u.up_id=c.up_id join producer p on p.producer_id=u.producer_id where p.curp='{curp}'")
+    n = val(f"select count(*) from ciclo_cultivo cc join ciclo c using(ciclo_id) join up u on u.up_id=c.up_id join productor p on p.productor_id=u.productor_id where p.curp='{curp}'")
     ok('doble toque en Enviar: un solo registro en la base', n == '1', n)
-    ok('no se crea cuenta ni PIN para el productor', val(f"select coalesce(usuario_id::text,'sin cuenta') from producer where curp='{curp}'") == 'sin cuenta')
+    ok('no se crea cuenta ni PIN para el productor', val(f"select coalesce(usuario_id::text,'sin cuenta') from productor where curp='{curp}'") == 'sin cuenta')
     with pg.expect_download(timeout=20000) as d:
         pg.get_by_role('button', name='Descargar acuse').click()
     ruta = d.value.path()
@@ -105,9 +105,9 @@ with sync_playwright() as p:
     try: pg.get_by_text('Registro enviado').first.wait_for(timeout=20000)
     except Exception: print('TEXTO:', pg.inner_text('body')[:600]); shot(pg, 'reintento_falla')
     ok('al recuperar senal el reintento lo envia', pg.get_by_text('Registro enviado').count() >= 1)
-    n2 = val(f"select count(*) from cycle_crop cc join cycle c using(cycle_id) join up u on u.up_id=c.up_id join producer p on p.producer_id=u.producer_id where p.curp='{curp2}'")
+    n2 = val(f"select count(*) from ciclo_cultivo cc join ciclo c using(ciclo_id) join up u on u.up_id=c.up_id join productor p on p.productor_id=u.productor_id where p.curp='{curp2}'")
     ok('el reintento no duplico el registro', n2 == '1', n2)
-    ok('hubo_desconexion quedo registrado', val(f"select fc.hubo_desconexion::text from frijol_cultivo fc join cycle_crop cc using(cycle_crop_id) join cycle c using(cycle_id) join up u on u.up_id=c.up_id join producer p on p.producer_id=u.producer_id where p.curp='{curp2}'") == 'true')
+    ok('hubo_desconexion quedo registrado', val(f"select fc.hubo_desconexion::text from frijol_cultivo fc join ciclo_cultivo cc using(ciclo_cultivo_id) join ciclo c using(ciclo_id) join up u on u.up_id=c.up_id join productor p on p.productor_id=u.productor_id where p.curp='{curp2}'") == 'true')
 
     # ---------------- Mis registros y detalle ----------------
     pg.goto(WEB + '/frijol/tecnico/registros'); pg.wait_for_timeout(2000)
@@ -123,7 +123,7 @@ with sync_playwright() as p:
     campos.nth(2).fill('60')
     pg.get_by_role('button', name='Guardar cambios').click(); pg.wait_for_timeout(2500)
     ok('corregir cultivo guarda y regresa al detalle', pg.get_by_text('Cambios guardados').count() == 1)
-    ok('la correccion quedo en la base', val(f"select fc.densidad_kg_ha::int from frijol_cultivo fc join cycle_crop cc using(cycle_crop_id) join cycle c using(cycle_id) join up u on u.up_id=c.up_id join producer p on p.producer_id=u.producer_id where p.curp='{curp2}'") == '60')
+    ok('la correccion quedo en la base', val(f"select fc.densidad_kg_ha::int from frijol_cultivo fc join ciclo_cultivo cc using(ciclo_cultivo_id) join ciclo c using(ciclo_id) join up u on u.up_id=c.up_id join productor p on p.productor_id=u.productor_id where p.curp='{curp2}'") == '60')
     ok('sin errores JS en toda la prueba', not errs, str(errs[:2]))
     ctx.close(); br.close()
 print('\nRESUMEN FLUJO T06:', sum(res), '/', len(res))

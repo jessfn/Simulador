@@ -62,32 +62,32 @@ router.get('/municipios', authMiddleware, async (req: AuthRequest, res: Response
           }
           const distExpr = (bodegaRef && postgis)
             ? `ROUND((MIN(ST_Distance(
-                 ST_SetSRID(ST_Point(ST_X(u.centroid::geometry), ST_Y(u.centroid::geometry)), 4326)::geography,
+                 ST_SetSRID(ST_Point(ST_X(u.centroide::geometry), ST_Y(u.centroide::geometry)), 4326)::geography,
                  ST_SetSRID(ST_Point($1, $2), 4326)::geography
                )) / 1000)::numeric, 1)`
             : '0';
           return {
             text: `SELECT
-                 COALESCE(u.municipality_name, 'Sin municipio') AS municipio,
-                 COALESCE(u.state_name, 'Sin estado') AS estado,
-                 COUNT(DISTINCT dp.producer_id) AS productores_disponibles,
+                 COALESCE(u.nombre_municipio, 'Sin municipio') AS municipio,
+                 COALESCE(u.nombre_estado, 'Sin estado') AS estado,
+                 COUNT(DISTINCT dp.productor_id) AS productores_disponibles,
                  COALESCE(SUM(dp.volumen_estimado_ton), 0)::numeric(12,2) AS toneladas_estimadas,
                  MODE() WITHIN GROUP (ORDER BY dp.ventana_venta) AS ventana_predominante,
                  ${distExpr} AS distancia_km,
                  ROUND(AVG(dp.precio_minimo_ton) FILTER (WHERE dp.precio_minimo_ton IS NOT NULL), 0) AS precio_minimo_promedio,
-                 ARRAY_AGG(DISTINCT COALESCE(cv.label, dp.variedad_libre, dp.variedad_code))
-                   FILTER (WHERE COALESCE(dp.variedad_code, dp.variedad_libre) IS NOT NULL) AS variedades,
+                 ARRAY_AGG(DISTINCT COALESCE(cv.etiqueta, dp.variedad_libre, dp.variedad_codigo))
+                   FILTER (WHERE COALESCE(dp.variedad_codigo, dp.variedad_libre) IS NOT NULL) AS variedades,
                  ARRAY_AGG(DISTINCT dp.tipo_maiz)
                    FILTER (WHERE dp.tipo_maiz IS NOT NULL) AS tipos_maiz
                FROM disponibilidad_productor dp
                JOIN up u ON u.up_id = dp.up_id
-               LEFT JOIN cat_crop_variety cv ON cv.code = dp.variedad_code AND cv.is_active = TRUE
+               LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = dp.variedad_codigo AND cv.activo = TRUE
                WHERE dp.activa = TRUE
                  AND dp.fecha_vencimiento >= CURRENT_DATE
                  ${extraWhere}
                  ${tipoFilter}
-               GROUP BY u.municipality_name, u.state_name
-               HAVING COUNT(DISTINCT dp.producer_id) > 0
+               GROUP BY u.nombre_municipio, u.nombre_estado
+               HAVING COUNT(DISTINCT dp.productor_id) > 0
                ORDER BY ${orderBy}
                LIMIT 50`,
             params,
@@ -97,9 +97,9 @@ router.get('/municipios', authMiddleware, async (req: AuthRequest, res: Response
         // Nivel 1 — dentro del radio de la bodega (si hay bodega con coords + PostGIS)
         if (bodegaRef && postgis) {
           const q = buildQuery(
-            `AND u.centroid IS NOT NULL
+            `AND u.centroide IS NOT NULL
              AND ST_DWithin(
-               ST_SetSRID(ST_Point(ST_X(u.centroid::geometry), ST_Y(u.centroid::geometry)), 4326)::geography,
+               ST_SetSRID(ST_Point(ST_X(u.centroide::geometry), ST_Y(u.centroide::geometry)), 4326)::geography,
                ST_SetSRID(ST_Point($1, $2), 4326)::geography, $3)`,
             [radio * 1000],
             'distancia_km ASC'
@@ -113,7 +113,7 @@ router.get('/municipios', authMiddleware, async (req: AuthRequest, res: Response
 
         // Nivel 2 — todo el estado de la bodega
         if (bodegaRef?.estado) {
-          const q = buildQuery(`AND u.state_name ILIKE $3`, [bodegaRef.estado], 'productores_disponibles DESC');
+          const q = buildQuery(`AND u.nombre_estado ILIKE $3`, [bodegaRef.estado], 'productores_disponibles DESC');
           const r2 = await pool.query(q.text, q.params);
           if (r2.rows.length > 0) {
             res.json({
@@ -144,35 +144,35 @@ router.get('/municipios', authMiddleware, async (req: AuthRequest, res: Response
     }
 
     // ── Strategy B: cycle_crop fallback (original approach) ──
-    let where = `WHERE cy.cycle_year >= EXTRACT(YEAR FROM CURRENT_DATE)::int - 1`;
+    let where = `WHERE cy.anio_ciclo >= EXTRACT(YEAR FROM CURRENT_DATE)::int - 1`;
     const params: any[] = [];
 
     if (tipo_maiz && tipo_maiz !== 'all') {
       params.push(`%${tipo_maiz}%`);
-      where += ` AND (cc.variety_id::text ILIKE $${params.length} OR cc.variety_other::text ILIKE $${params.length})`;
+      where += ` AND (cc.variedad_id::text ILIKE $${params.length} OR cc.variedad_otra::text ILIKE $${params.length})`;
     }
 
     // If we have bodega coords, filter by state at minimum
     if (bodegaRef) {
       params.push(bodegaRef.estado);
-      where += ` AND u.state_name ILIKE $${params.length}`;
+      where += ` AND u.nombre_estado ILIKE $${params.length}`;
     }
 
     const result = await pool.query(
       `SELECT
-         COALESCE(u.municipality_name, u.municipality_id, 'Sin municipio') AS municipio,
-         COALESCE(u.state_name, u.state_id, 'Sin estado') AS estado,
-         COUNT(DISTINCT p.producer_id) AS productores_disponibles,
-         COALESCE(SUM(cc.yield_expected), 0)::numeric(12,2) AS toneladas_estimadas,
+         COALESCE(u.nombre_municipio, u.municipio_id, 'Sin municipio') AS municipio,
+         COALESCE(u.nombre_estado, u.estado_id, 'Sin estado') AS estado,
+         COUNT(DISTINCT p.productor_id) AS productores_disponibles,
+         COALESCE(SUM(cc.rendimiento_esperado), 0)::numeric(12,2) AS toneladas_estimadas,
          'esta_semana' AS ventana_predominante,
          0 AS distancia_km
        FROM up u
-       JOIN producer p ON p.producer_id = u.producer_id
-       JOIN cycle cy ON cy.up_id = u.up_id
-       LEFT JOIN cycle_crop cc ON cc.cycle_id = cy.cycle_id AND cc.crop = 'maiz'
+       JOIN productor p ON p.productor_id = u.productor_id
+       JOIN ciclo cy ON cy.up_id = u.up_id
+       LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = cy.ciclo_id AND cc.cultivo = 'maiz'
        ${where}
-       GROUP BY u.municipality_name, u.municipality_id, u.state_name, u.state_id
-       HAVING COUNT(DISTINCT p.producer_id) > 0
+       GROUP BY u.nombre_municipio, u.municipio_id, u.nombre_estado, u.estado_id
+       HAVING COUNT(DISTINCT p.productor_id) > 0
        ORDER BY productores_disponibles DESC
        LIMIT 50`,
       params
@@ -219,9 +219,9 @@ router.post('/municipios/:municipio/interes', authMiddleware, async (req: AuthRe
     const productores = await pool.query(
       `SELECT DISTINCT u2.id AS usuario_id
        FROM up u
-       JOIN producer p ON p.producer_id = u.producer_id
-       JOIN usuarios u2 ON (u2.id = p.usuario_id OR u2.curp = p.curp OR u2.email = p.correo)
-       WHERE u.municipality_name ILIKE $1
+       JOIN productor p ON p.productor_id = u.productor_id
+       JOIN usuarios u2 ON (u2.id = p.usuario_id OR u2.curp = p.curp OR u2.correo_electronico = p.correo)
+       WHERE u.nombre_municipio ILIKE $1
          AND u2.activo = TRUE AND u2.rol = 'productor'`,
       [municipio]
     );
@@ -262,7 +262,7 @@ router.post('/municipios/:municipio/interes', authMiddleware, async (req: AuthRe
          ON CONFLICT (usuario_id, LOWER(municipio), COALESCE(tipo_maiz, ''))
          DO UPDATE SET bodega_id = EXCLUDED.bodega_id,
                        estado = COALESCE(EXCLUDED.estado, oferta_interes.estado),
-                       created_at = NOW()`,
+                       creado_en = NOW()`,
         [userId, bodega_id, municipio, estado || bodega.estado || null, tipo_maiz || null]
       );
     } catch (_) { /* best-effort: la tabla puede no existir aún */ }
@@ -286,14 +286,14 @@ router.get('/mis-intereses', authMiddleware, async (req: AuthRequest, res: Respo
          oi.municipio,
          oi.estado,
          oi.tipo_maiz,
-         oi.created_at,
+         oi.creado_en,
          COALESCE((
-           SELECT COUNT(DISTINCT dp.producer_id)
+           SELECT COUNT(DISTINCT dp.productor_id)
            FROM disponibilidad_productor dp
            JOIN up u ON u.up_id = dp.up_id
            WHERE dp.activa = TRUE
              AND dp.fecha_vencimiento >= CURRENT_DATE
-             AND u.municipality_name ILIKE oi.municipio
+             AND u.nombre_municipio ILIKE oi.municipio
              AND (oi.tipo_maiz IS NULL OR dp.tipo_maiz ILIKE oi.tipo_maiz)
          ), 0) AS productores_disponibles,
          COALESCE((
@@ -302,12 +302,12 @@ router.get('/mis-intereses', authMiddleware, async (req: AuthRequest, res: Respo
            JOIN up u ON u.up_id = dp.up_id
            WHERE dp.activa = TRUE
              AND dp.fecha_vencimiento >= CURRENT_DATE
-             AND u.municipality_name ILIKE oi.municipio
+             AND u.nombre_municipio ILIKE oi.municipio
              AND (oi.tipo_maiz IS NULL OR dp.tipo_maiz ILIKE oi.tipo_maiz)
          ), 0)::numeric(12,2) AS toneladas_estimadas
        FROM oferta_interes oi
        WHERE oi.usuario_id = $1
-       ORDER BY oi.created_at DESC`,
+       ORDER BY oi.creado_en DESC`,
       [userId]
     );
     res.json({ data: result.rows, total: result.rows.length });

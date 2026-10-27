@@ -54,15 +54,15 @@ router.get('/campos/:producer_id', async (req: AuthRequest, res: Response) => {
     const programa = String(req.query.programa || '');
     if (!producerId || ![PROGRAMA_MAIZ, PROGRAMA_FRIJOL].includes(programa)) { res.status(400).json({ error: 'Faltan datos: productor y programa' }); return; }
     if (!(await programasDe(req.user!.userId)).includes(programa)) { res.status(403).json({ error: 'Tu cuenta no tiene acceso a este programa', codigo: 'SIN_PROGRAMA' }); return; }
-    const resp = await pool.query('SELECT 1 FROM producer_programa WHERE producer_id = $1 AND programa = $2 AND usuario_capturista_id = $3', [producerId, programa, req.user!.userId]);
+    const resp = await pool.query('SELECT 1 FROM productor_programa WHERE productor_id = $1 AND programa = $2 AND usuario_capturista_id = $3', [producerId, programa, req.user!.userId]);
     if (resp.rows.length === 0) { res.status(403).json({ error: 'Este productor no lo registraste tú' }); return; }
     const campos = await estadoDeCampos(pool, producerId);
     const pend = await pool.query(
-      `SELECT id::int AS id, campo, valor_propuesto, created_at, asignado_tipo FROM solicitud_cambio WHERE producer_id = $1 AND estado = 'pendiente' ORDER BY created_at`, [producerId]);
+      `SELECT id::int AS id, campo, valor_propuesto, creado_en, asignado_tipo FROM solicitud_cambio WHERE productor_id = $1 AND estado = 'pendiente' ORDER BY creado_en`, [producerId]);
     const v = (await pool.query(
-      `SELECT nombres, apellido_paterno, apellido_materno, sexo, to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, phone AS telefono, correo,
+      `SELECT nombres, apellido_paterno, apellido_materno, sexo, to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, telefono AS telefono, correo,
               usuario_id IS NOT NULL AS tiene_cuenta
-         FROM producer WHERE producer_id = $1`, [producerId])).rows[0];
+         FROM productor WHERE productor_id = $1`, [producerId])).rows[0];
     res.json({ campos, pendientes: pend.rows, valores: v, tiene_cuenta: !!v?.tiene_cuenta });
   } catch (e) { responderErrorEdicion(res, e, 'GET campos'); }
 });

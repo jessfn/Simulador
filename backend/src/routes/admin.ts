@@ -82,7 +82,7 @@ router.post('/registro-admin', async (req: any, res: Response): Promise<void> =>
     const nombreNorm = nombre_completo.trim();
 
     // Verificar si ya existe
-    const existente = await pool.query('SELECT id FROM usuarios WHERE email = $1', [emailLower]);
+    const existente = await pool.query('SELECT id FROM usuarios WHERE correo_electronico = $1', [emailLower]);
     if (existente.rows.length > 0) {
       res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
       return;
@@ -91,9 +91,9 @@ router.post('/registro-admin', async (req: any, res: Response): Promise<void> =>
     const passwordHash = await bcrypt.hash(password, 12);
 
     const result = await pool.query(
-      `INSERT INTO usuarios (email, nombre_completo, password_hash, rol, activo)
+      `INSERT INTO usuarios (correo_electronico, nombre_completo, hash_contrasena, rol, activo)
        VALUES ($1, $2, $3, 'admin', true)
-       RETURNING id, email, nombre_completo, rol`,
+       RETURNING id, correo_electronico, nombre_completo, rol`,
       [emailLower, nombreNorm, passwordHash]
     );
 
@@ -129,7 +129,7 @@ router.get('/usuarios', authMiddleware, async (req: AuthRequest, res: Response):
     const estadoForzado = getEstadoFiltro(req.user);
     const estadoEfectivo = estadoForzado ?? (estado as string | undefined) ?? null;
     if (estadoEfectivo) {
-      conditions.push(`first_up.state_name = ANY(string_to_array($${idx++}, ','))`);
+      conditions.push(`first_up.nombre_estado = ANY(string_to_array($${idx++}, ','))`);
       params.push(estadoEfectivo);
     }
 
@@ -146,34 +146,34 @@ router.get('/usuarios', authMiddleware, async (req: AuthRequest, res: Response):
 
     const result = await pool.query(`
       SELECT
-        p.producer_id AS id,
+        p.productor_id AS id,
         p.nombres,
         p.apellido_paterno,
         p.apellido_materno,
         p.curp,
-        p.phone AS telefono,
+        p.telefono AS telefono,
         p.correo,
         p.estado_validacion,
         p.tipo_registro,
-        p.created_at AS fecha_registro,
+        p.creado_en AS fecha_registro,
         p.programas_beneficiario,
         p.nota_admin,
-        first_up.state_name AS estado_up,
-        first_up.municipality_name AS municipio_up,
-        first_up.up_name AS nombre_up,
-        first_up.area_ha_calc AS superficie_ha,
+        first_up.nombre_estado AS estado_up,
+        first_up.nombre_municipio AS municipio_up,
+        first_up.nombre_up AS nombre_up,
+        first_up.superficie_ha_calculada AS superficie_ha,
         u.rol AS rol_sistema
-      FROM producer p
+      FROM productor p
       LEFT JOIN LATERAL (
-        SELECT up_id, state_name, municipality_name, up_name, area_ha_calc
+        SELECT up_id, nombre_estado, nombre_municipio, nombre_up, superficie_ha_calculada
         FROM up
-        WHERE up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
-        ORDER BY up.created_at ASC
+        WHERE up.productor_id = p.productor_id AND ${parcelaDeMaiz('up')}
+        ORDER BY up.creado_en ASC
         LIMIT 1
       ) first_up ON TRUE
       LEFT JOIN usuarios u ON u.curp = p.curp
       ${where}
-      ORDER BY p.created_at DESC
+      ORDER BY p.creado_en DESC
     `, params);
     res.json({ usuarios: result.rows, productores: result.rows });
   } catch (error) {
@@ -188,11 +188,11 @@ router.get('/usuarios', authMiddleware, async (req: AuthRequest, res: Response):
 router.get('/usuarios/estados-disponibles', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await pool.query(`
-      SELECT DISTINCT up.state_name AS estado
-      FROM producer p
-      JOIN up ON up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
-      WHERE up.state_name IS NOT NULL
-        AND up.state_name != ''
+      SELECT DISTINCT up.nombre_estado AS estado
+      FROM productor p
+      JOIN up ON up.productor_id = p.productor_id AND ${parcelaDeMaiz('up')}
+      WHERE up.nombre_estado IS NOT NULL
+        AND up.nombre_estado != ''
         AND ${soloMaiz('p')}
       ORDER BY estado ASC
     `);
@@ -220,7 +220,7 @@ router.patch('/usuarios/:id/rol', authMiddleware, soloAdmin, async (req: AuthReq
     }
 
     const result = await pool.query(
-      'UPDATE usuarios SET rol = $1 WHERE id = $2 RETURNING id, nombre_completo, email, rol, activo',
+      'UPDATE usuarios SET rol = $1 WHERE id = $2 RETURNING id, nombre_completo, correo_electronico, rol, activo',
       [rol, id]
     );
 
@@ -253,11 +253,11 @@ router.patch('/usuarios/:id/estatus', authMiddleware, async (req: AuthRequest, r
     if (estado_validacion !== undefined) {
       // Persistir nota_admin si viene en el body
       const result = await pool.query(
-        `UPDATE producer
+        `UPDATE productor
          SET estado_validacion = $1,
              nota_admin = CASE WHEN $3::text IS NOT NULL AND $3 != '' THEN $3::text ELSE nota_admin END
-         WHERE producer_id = $2
-         RETURNING producer_id AS id, nombres, apellido_paterno, estado_validacion, nota_admin`,
+         WHERE productor_id = $2
+         RETURNING productor_id AS id, nombres, apellido_paterno, estado_validacion, nota_admin`,
         [estado_validacion, id, nota || null]
       );
       if (result.rows.length === 0) {
@@ -275,7 +275,7 @@ router.patch('/usuarios/:id/estatus', authMiddleware, async (req: AuthRequest, r
     }
 
     const result = await pool.query(
-      'UPDATE usuarios SET activo = $1 WHERE id = $2 RETURNING id, nombre_completo, email, rol, activo',
+      'UPDATE usuarios SET activo = $1 WHERE id = $2 RETURNING id, nombre_completo, correo_electronico, rol, activo',
       [activo, id]
     );
 
@@ -327,7 +327,7 @@ router.get('/solicitudes-bodega', authMiddleware, async (req: AuthRequest, res: 
       SELECT
         bb.id, bb.estatus, bb.fecha_solicitud,
         u.id          AS usuario_id,
-        u.nombre_completo, u.email, u.telefono, u.rol,
+        u.nombre_completo, u.correo_electronico, u.telefono, u.rol,
         b.id          AS bodega_id,
         b.nombre      AS bodega_nombre,
         b.estado      AS bodega_estado,
@@ -406,7 +406,7 @@ router.post('/crear-usuario', authMiddleware, soloAdmin, async (req: AuthRequest
     const emailLower = email.toLowerCase().trim();
 
     const existente = await pool.query(
-      'SELECT id FROM usuarios WHERE email = $1 OR curp = $2',
+      'SELECT id FROM usuarios WHERE correo_electronico = $1 OR curp = $2',
       [emailLower, curpUpper]
     );
     if (existente.rows.length > 0) {
@@ -418,9 +418,9 @@ router.post('/crear-usuario', authMiddleware, soloAdmin, async (req: AuthRequest
     const nombreNorm = nombre_completo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
 
     const result = await pool.query(
-      `INSERT INTO usuarios (email, curp, nombre_completo, password_hash, telefono, rol, activo)
+      `INSERT INTO usuarios (correo_electronico, curp, nombre_completo, hash_contrasena, telefono, rol, activo)
        VALUES ($1, $2, $3, $4, $5, $6, true)
-       RETURNING id, email, curp, nombre_completo, telefono, rol, activo, created_at as fecha_registro`,
+       RETURNING id, correo_electronico, curp, nombre_completo, telefono, rol, activo, creado_en as fecha_registro`,
       [emailLower, curpUpper, nombreNorm, passwordHash, telefono.replace(/[\s\-\(\)]/g, ''), rol]
     );
 
@@ -453,13 +453,13 @@ router.put('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest, 
     let idx = 1;
 
     if (nombre_completo) { sets.push(`nombre_completo = $${idx++}`); params.push(nombre_completo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim()); }
-    if (email) { sets.push(`email = $${idx++}`); params.push(email.toLowerCase().trim()); }
+    if (email) { sets.push(`correo_electronico = $${idx++}`); params.push(email.toLowerCase().trim()); }
     if (curp) { sets.push(`curp = $${idx++}`); params.push(curp.toUpperCase().trim()); }
     if (telefono) { sets.push(`telefono = $${idx++}`); params.push(telefono.replace(/\D/g, '')); }
 
     params.push(id);
     const result = await pool.query(
-      `UPDATE usuarios SET ${sets.join(', ')} WHERE id = $${idx} RETURNING id, nombre_completo, email, curp, telefono, rol, activo, created_at as fecha_registro`,
+      `UPDATE usuarios SET ${sets.join(', ')} WHERE id = $${idx} RETURNING id, nombre_completo, correo_electronico, curp, telefono, rol, activo, creado_en as fecha_registro`,
       params
     );
 
@@ -525,8 +525,8 @@ router.delete('/productores/:producer_id', authMiddleware, soloAdmin, async (req
 
     // Obtener datos del productor + usuario vinculado
     const prodRow = await client.query(
-      `SELECT p.producer_id, p.usuario_id, p.nombres, p.apellido_paterno, p.apellido_materno
-       FROM producer p WHERE p.producer_id = $1`,
+      `SELECT p.productor_id, p.usuario_id, p.nombres, p.apellido_paterno, p.apellido_materno
+       FROM productor p WHERE p.productor_id = $1`,
       [producer_id]
     );
     if (prodRow.rows.length === 0) {
@@ -535,7 +535,7 @@ router.delete('/productores/:producer_id', authMiddleware, soloAdmin, async (req
     }
     // Si el productor también está en otro programa (p. ej. Frijol), borrarlo desde SIMAC destruiría ese registro.
     const otrosProgramas = await client.query(
-      `SELECT 1 FROM producer_programa WHERE producer_id = $1 AND programa <> 'simac_maiz' LIMIT 1`,
+      `SELECT 1 FROM productor_programa WHERE productor_id = $1 AND programa <> 'simac_maiz' LIMIT 1`,
       [producer_id]
     );
     if (otrosProgramas.rows.length > 0) {
@@ -553,33 +553,33 @@ router.delete('/productores/:producer_id', authMiddleware, soloAdmin, async (req
     // 1. Disponibilidades del productor
     await client.query(
       `DELETE FROM disponibilidad_productor
-       WHERE producer_id = $1`,
+       WHERE productor_id = $1`,
       [producer_id]
     );
 
     // 2. Cycle_crops de todos los ciclos de las UPs del productor
     await client.query(
-      `DELETE FROM cycle_crop
-       WHERE cycle_id IN (
-         SELECT c.cycle_id FROM cycle c
+      `DELETE FROM ciclo_cultivo
+       WHERE ciclo_id IN (
+         SELECT c.ciclo_id FROM ciclo c
          JOIN up u ON u.up_id = c.up_id
-         WHERE u.producer_id = $1
+         WHERE u.productor_id = $1
        )`,
       [producer_id]
     );
 
     // 3. Ciclos de las UPs del productor
     await client.query(
-      `DELETE FROM cycle
-       WHERE up_id IN (SELECT up_id FROM up WHERE producer_id = $1)`,
+      `DELETE FROM ciclo
+       WHERE up_id IN (SELECT up_id FROM up WHERE productor_id = $1)`,
       [producer_id]
     );
 
     // 4. UPs del productor
-    await client.query('DELETE FROM up WHERE producer_id = $1', [producer_id]);
+    await client.query('DELETE FROM up WHERE productor_id = $1', [producer_id]);
 
     // 5. Registro de productor
-    await client.query('DELETE FROM producer WHERE producer_id = $1', [producer_id]);
+    await client.query('DELETE FROM productor WHERE productor_id = $1', [producer_id]);
 
     // 6. Usuario vinculado (si existe)
     if (prod.usuario_id) {
@@ -607,25 +607,25 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
     const { id } = req.params;
     const result = await pool.query(`
       SELECT
-        p.producer_id AS id,
+        p.productor_id AS id,
         p.nombres,
         p.apellido_paterno,
         p.apellido_materno,
         p.curp,
-        p.phone AS telefono,
+        p.telefono AS telefono,
         p.correo,
         p.estado_validacion,
         p.tipo_registro,
-        p.created_at AS fecha_registro,
+        p.creado_en AS fecha_registro,
         p.programas_beneficiario,
         up.up_id,
-        up.state_name AS estado_up,
-        up.municipality_name AS municipio_up,
-        up.up_name AS nombre_up,
-        up.area_ha_calc AS superficie_ha,
-        ST_Y(up.centroid::geometry) AS lat,
-        ST_X(up.centroid::geometry) AS lng,
-        up.posible_traslape_producer_id,
+        up.nombre_estado AS estado_up,
+        up.nombre_municipio AS municipio_up,
+        up.nombre_up AS nombre_up,
+        up.superficie_ha_calculada AS superficie_ha,
+        ST_Y(up.centroide::geometry) AS lat,
+        ST_X(up.centroide::geometry) AS lng,
+        up.posible_traslape_productor_id,
         up.traslape_revisado,
         ciclo.ciclo_activo,
         ciclo.cultivo_principal,
@@ -636,43 +636,43 @@ router.get('/usuarios/:id', authMiddleware, async (req: AuthRequest, res: Respon
           SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
               'up_id', u.up_id,
-              'up_name', u.up_name,
-              'state_name', u.state_name,
-              'municipality_name', u.municipality_name,
-              'area_ha_calc', u.area_ha_calc,
-              'created_at', u.created_at,
-              'geom_geojson', ST_AsGeoJSON(u.geom)::json,
-              'centroid_lat', ST_Y(u.centroid::geometry),
-              'centroid_lng', ST_X(u.centroid::geometry)
-            ) ORDER BY u.created_at ASC
+              'up_name', u.nombre_up,
+              'state_name', u.nombre_estado,
+              'municipality_name', u.nombre_municipio,
+              'area_ha_calc', u.superficie_ha_calculada,
+              'created_at', u.creado_en,
+              'geom_geojson', ST_AsGeoJSON(u.geometria)::json,
+              'centroid_lat', ST_Y(u.centroide::geometry),
+              'centroid_lng', ST_X(u.centroide::geometry)
+            ) ORDER BY u.creado_en ASC
           )
           FROM up u
-          WHERE u.producer_id = p.producer_id AND u.geom IS NOT NULL AND ${parcelaDeMaiz('u')}
+          WHERE u.productor_id = p.productor_id AND u.geometria IS NOT NULL AND ${parcelaDeMaiz('u')}
         ) AS ups_geom
-      FROM producer p
+      FROM productor p
       LEFT JOIN LATERAL (
-        SELECT up_id, state_name, municipality_name, up_name, area_ha_calc, centroid,
-               posible_traslape_producer_id, traslape_revisado
-        FROM up WHERE up.producer_id = p.producer_id AND ${parcelaDeMaiz('up')}
-        ORDER BY created_at ASC LIMIT 1
+        SELECT up_id, nombre_estado, nombre_municipio, nombre_up, superficie_ha_calculada, centroide,
+               posible_traslape_productor_id, traslape_revisado
+        FROM up WHERE up.productor_id = p.productor_id AND ${parcelaDeMaiz('up')}
+        ORDER BY creado_en ASC LIMIT 1
       ) up ON TRUE
       LEFT JOIN LATERAL (
         SELECT
-          CONCAT(c.cycle_type, ' ', c.cycle_year) AS ciclo_activo,
-          CASE cc.crop WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.crop) END AS cultivo_principal,
+          CONCAT(c.tipo_ciclo, ' ', c.anio_ciclo) AS ciclo_activo,
+          CASE cc.cultivo WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.cultivo) END AS cultivo_principal,
           -- MED-13 (auditoría Fase 4): variety_other (nombre libre que el
           -- técnico/productor escribió) tiene prioridad sobre la etiqueta
           -- genérica del catálogo ("Otra variedad") cuando existe.
-          COALESCE(NULLIF(cc.variety_other, ''), cv.label, cc.variety_id, '') AS variedad
-        FROM cycle c
-        LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.is_active = TRUE
-        WHERE c.up_id = up.up_id AND c.crop = 'maiz'
-        ORDER BY c.cycle_year DESC, c.cycle_id DESC
+          COALESCE(NULLIF(cc.variedad_otra, ''), cv.etiqueta, cc.variedad_id, '') AS variedad
+        FROM ciclo c
+        LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
+        LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = cc.variedad_id AND cv.activo = TRUE
+        WHERE c.up_id = up.up_id AND c.cultivo = 'maiz'
+        ORDER BY c.anio_ciclo DESC, c.ciclo_id DESC
         LIMIT 1
       ) ciclo ON TRUE
-      LEFT JOIN producer pt ON pt.producer_id = up.posible_traslape_producer_id
-      WHERE p.producer_id = $1
+      LEFT JOIN productor pt ON pt.productor_id = up.posible_traslape_productor_id
+      WHERE p.productor_id = $1
     `, [id]);
     if (result.rows.length === 0) {
       res.status(404).json({ error: 'Productor no encontrado' });
@@ -713,20 +713,20 @@ router.get('/productor-disponibilidades/:producer_id', authMiddleware, async (re
     const result = await pool.query(
       `SELECT
          dp.id,
-         dp.producer_id,
+         dp.productor_id,
          dp.up_id,
          dp.activa,
-         dp.created_at,
+         dp.creado_en,
          COALESCE(dp.volumen_estimado_ton, 0)::numeric AS volumen_toneladas,
          COALESCE(dp.tipo_maiz, 'Maíz Blanco') AS tipo_maiz,
-         COALESCE(cv.label, dp.variedad_code, dp.variedad_libre, '') AS variedad,
-         u.state_name AS estado,
-         u.municipality_name AS municipio
+         COALESCE(cv.etiqueta, dp.variedad_codigo, dp.variedad_libre, '') AS variedad,
+         u.nombre_estado AS estado,
+         u.nombre_municipio AS municipio
        FROM disponibilidad_productor dp
        LEFT JOIN up u ON u.up_id = dp.up_id
-       LEFT JOIN cat_crop_variety cv ON cv.code = dp.variedad_code AND cv.is_active = TRUE
-       WHERE dp.producer_id = $1
-       ORDER BY dp.created_at DESC`,
+       LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = dp.variedad_codigo AND cv.activo = TRUE
+       WHERE dp.productor_id = $1
+       ORDER BY dp.creado_en DESC`,
       [producer_id]
     );
     res.json({ disponibilidades: result.rows });
@@ -765,18 +765,18 @@ router.get('/actividad-reciente', authMiddleware, async (req: AuthRequest, res: 
   try {
     const estado = (u.rol === 'admin' || u.rol === 'responsable') ? null : (u.estado_asignado ?? null);
     const ep = estado ? [estado] : [];
-    const whereEstadoP = estado ? `WHERE p.state_name = $1 AND ${soloMaiz('p')}` : `WHERE ${soloMaiz('p')}`;
+    const whereEstadoP = estado ? `WHERE p.nombre_estado = $1 AND ${soloMaiz('p')}` : `WHERE ${soloMaiz('p')}`;
 
     const productoresR = pool.query(`
       SELECT
         'validacion' AS tipo,
         CONCAT(p.nombres, ' ', p.apellido_paterno, ' (Tipo ', COALESCE(p.tipo_registro, 'B'), ') registrado') AS descripcion,
         'Sistema' AS actor,
-        p.created_at AS fecha,
-        CONCAT('/admin/productores/', p.producer_id) AS link
-      FROM producer p
+        p.creado_en AS fecha,
+        CONCAT('/admin/productores/', p.productor_id) AS link
+      FROM productor p
       ${whereEstadoP}
-      ORDER BY p.created_at DESC
+      ORDER BY p.creado_en DESC
       LIMIT 10
     `, ep);
 
@@ -788,7 +788,7 @@ router.get('/actividad-reciente', authMiddleware, async (req: AuthRequest, res: 
         a.fecha_alerta AS fecha,
         '/admin/alertas' AS link
       FROM alertas a
-      ${estado ? `JOIN up u2 ON u2.up_id = a.up_id AND u2.state_name = $1` : ''}
+      ${estado ? `JOIN up u2 ON u2.up_id = a.up_id AND u2.nombre_estado = $1` : ''}
       ORDER BY a.fecha_alerta DESC
       LIMIT 10
     `, ep).catch(() => ({ rows: [] as any[] }));
@@ -885,19 +885,19 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
     const sqlProd = `
       SELECT
         'productor'                         AS tipo,
-        p.producer_id::text                 AS id,
+        p.productor_id::text                 AS id,
         p.curp,
         CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno) AS nombre,
-        p.phone                             AS telefono,
+        p.telefono                             AS telefono,
         p.aviso_privacidad_aceptado,
         p.aviso_privacidad_fecha,
-        p.aviso_privacidad_lat,
-        p.aviso_privacidad_lng,
+        p.aviso_privacidad_latitud,
+        p.aviso_privacidad_longitud,
         p.aviso_privacidad_version,
         p.aviso_privacidad_foto_url,
         p.estado_validacion,
-        p.created_at
-      FROM producer p
+        p.creado_en
+      FROM productor p
       WHERE p.aviso_privacidad_aceptado = TRUE
         AND (p.curp ILIKE $1 OR p.nombres ILIKE $1 OR p.apellido_paterno ILIKE $1 OR p.apellido_materno ILIKE $1)`;
 
@@ -911,12 +911,12 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
         u.telefono,
         u.aviso_privacidad_aceptado,
         u.aviso_privacidad_fecha,
-        u.aviso_privacidad_lat,
-        u.aviso_privacidad_lng,
+        u.aviso_privacidad_latitud,
+        u.aviso_privacidad_longitud,
         u.aviso_privacidad_version,
         u.aviso_privacidad_foto_url,
         'activo'                            AS estado_validacion,
-        u.created_at
+        u.creado_en
       FROM usuarios u
       WHERE u.aviso_privacidad_aceptado = TRUE
         AND u.rol IN ('bodeguero','bodega','industria')
@@ -938,11 +938,11 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
       SELECT
         COUNT(*)                                                          AS total,
         COUNT(*) FILTER (WHERE aviso_privacidad_foto_url IS NOT NULL)    AS con_foto,
-        COUNT(*) FILTER (WHERE aviso_privacidad_lat IS NOT NULL)         AS con_gps,
+        COUNT(*) FILTER (WHERE aviso_privacidad_latitud IS NOT NULL)         AS con_gps,
         ROUND(AVG(
           (CASE WHEN aviso_privacidad_aceptado   THEN 1 ELSE 0 END +
            CASE WHEN aviso_privacidad_fecha  IS NOT NULL THEN 1 ELSE 0 END +
-           CASE WHEN aviso_privacidad_lat    IS NOT NULL THEN 1 ELSE 0 END +
+           CASE WHEN aviso_privacidad_latitud    IS NOT NULL THEN 1 ELSE 0 END +
            CASE WHEN aviso_privacidad_foto_url IS NOT NULL THEN 1 ELSE 0 END)::numeric / 4 * 100
         ))                                                                AS completitud_media
       FROM (${unionAll}) t`;
@@ -1064,7 +1064,7 @@ router.post('/reset-nip/:producer_id', authMiddleware, soloAdmin, async (req: Au
     const { producer_id } = req.params;
 
     const { rows } = await pool.query(
-      `SELECT u.id, u.nombre_completo FROM producer p JOIN usuarios u ON u.id = p.usuario_id WHERE p.producer_id = $1`,
+      `SELECT u.id, u.nombre_completo FROM productor p JOIN usuarios u ON u.id = p.usuario_id WHERE p.productor_id = $1`,
       [producer_id]
     );
     if (!rows.length) {
@@ -1077,7 +1077,7 @@ router.post('/reset-nip/:producer_id', authMiddleware, soloAdmin, async (req: Au
     const hash = await bcrypt.hash(pinTemporal, 12);
 
     await pool.query(
-      `UPDATE usuarios SET password_hash = $1, pin_texto = $2, reset_pin_forced = TRUE WHERE id = $3`,
+      `UPDATE usuarios SET hash_contrasena = $1, pin_texto = $2, recuperacion_nip_forzada = TRUE WHERE id = $3`,
       [hash, pinTemporal, rows[0].id]
     );
 
@@ -1094,7 +1094,7 @@ router.get('/productor-nip/:producer_id', authMiddleware, soloAdmin, async (req:
   try {
     const { producer_id } = req.params;
     const { rows } = await pool.query(
-      `SELECT u.pin_texto FROM producer p JOIN usuarios u ON u.id = p.usuario_id WHERE p.producer_id = $1`,
+      `SELECT u.pin_texto FROM productor p JOIN usuarios u ON u.id = p.usuario_id WHERE p.productor_id = $1`,
       [producer_id]
     );
     if (!rows.length) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
@@ -1111,7 +1111,7 @@ router.post('/asignar-nip/:producer_id', authMiddleware, soloAdmin, async (req: 
   try {
     const { producer_id } = req.params;
     const { rows } = await pool.query(
-      `SELECT u.id, u.nombre_completo FROM producer p JOIN usuarios u ON u.id = p.usuario_id WHERE p.producer_id = $1`,
+      `SELECT u.id, u.nombre_completo FROM productor p JOIN usuarios u ON u.id = p.usuario_id WHERE p.productor_id = $1`,
       [producer_id]
     );
     if (!rows.length) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
@@ -1120,7 +1120,7 @@ router.post('/asignar-nip/:producer_id', authMiddleware, soloAdmin, async (req: 
     const hash = await bcrypt.hash(pin, 12);
 
     await pool.query(
-      `UPDATE usuarios SET password_hash = $1, pin_texto = $2 WHERE id = $3`,
+      `UPDATE usuarios SET hash_contrasena = $1, pin_texto = $2 WHERE id = $3`,
       [hash, pin, rows[0].id]
     );
 
@@ -1138,7 +1138,7 @@ router.post('/reset-password/:usuario_id', authMiddleware, soloAdmin, async (req
     const { usuario_id } = req.params;
 
     const { rows } = await pool.query(
-      `SELECT id, nombre_completo, email FROM usuarios WHERE id = $1 AND activo = TRUE`,
+      `SELECT id, nombre_completo, correo_electronico FROM usuarios WHERE id = $1 AND activo = TRUE`,
       [usuario_id]
     );
     if (!rows.length) {
@@ -1151,7 +1151,7 @@ router.post('/reset-password/:usuario_id', authMiddleware, soloAdmin, async (req
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas para admin
 
     await pool.query(
-      `UPDATE usuarios SET reset_token = $1, reset_token_expires = $2 WHERE id = $3`,
+      `UPDATE usuarios SET token_recuperacion = $1, token_recuperacion_expira_en = $2 WHERE id = $3`,
       [tokenHash, expires, rows[0].id]
     );
 
@@ -1176,8 +1176,8 @@ router.get('/usuarios-bodega', authMiddleware, soloAdmin, async (req: AuthReques
     const like = `%${q.trim()}%`;
     const { rows } = await pool.query(`
       SELECT
-        u.id, u.nombre_completo, u.email, u.telefono, u.rol,
-        u.activo, u.created_at,
+        u.id, u.nombre_completo, u.correo_electronico, u.telefono, u.rol,
+        u.activo, u.creado_en,
         COALESCE(
           json_agg(
             json_build_object(
@@ -1195,9 +1195,9 @@ router.get('/usuarios-bodega', authMiddleware, soloAdmin, async (req: AuthReques
       LEFT JOIN bodeguero_bodegas bb ON bb.usuario_id = u.id
       LEFT JOIN bodegas b ON b.id = bb.bodega_id
       WHERE u.rol IN ('bodeguero','bodega','industria','admin')
-        AND ($1 = '%%' OR u.nombre_completo ILIKE $1 OR u.email ILIKE $1 OR u.telefono ILIKE $1)
-      GROUP BY u.id, u.nombre_completo, u.email, u.telefono, u.rol, u.activo, u.created_at
-      ORDER BY u.created_at DESC
+        AND ($1 = '%%' OR u.nombre_completo ILIKE $1 OR u.correo_electronico ILIKE $1 OR u.telefono ILIKE $1)
+      GROUP BY u.id, u.nombre_completo, u.correo_electronico, u.telefono, u.rol, u.activo, u.creado_en
+      ORDER BY u.creado_en DESC
     `, [like]);
     res.json({ usuarios: rows, total: rows.length });
   } catch (error) {
@@ -1212,7 +1212,7 @@ router.get('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: AuthRe
     const { id } = req.params;
     const { rows } = await pool.query(`
       SELECT
-        u.id, u.nombre_completo, u.email, u.telefono, u.rol, u.activo, u.curp, u.created_at,
+        u.id, u.nombre_completo, u.correo_electronico, u.telefono, u.rol, u.activo, u.curp, u.creado_en,
         u.aviso_privacidad_aceptado, u.aviso_privacidad_fecha,
         b.id AS bodega_id, b.nombre AS bodega_nombre,
         b.estado AS bodega_estado, b.municipio AS bodega_municipio,
@@ -1241,7 +1241,7 @@ router.patch('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: Auth
     const vals: any[]   = [];
     let   idx = 1;
     if (nombre_completo !== undefined) { sets.push(`nombre_completo=$${idx++}`); vals.push(nombre_completo); }
-    if (email           !== undefined) { sets.push(`email=$${idx++}`);           vals.push(email); }
+    if (email           !== undefined) { sets.push(`correo_electronico=$${idx++}`);           vals.push(email); }
     if (telefono        !== undefined) { sets.push(`telefono=$${idx++}`);         vals.push(telefono); }
     if (activo          !== undefined) { sets.push(`activo=$${idx++}`);           vals.push(activo); }
     if (password) {
@@ -1250,10 +1250,10 @@ router.patch('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: Auth
         return;
       }
       const passwordHash = await bcrypt.hash(password, 12);
-      sets.push(`password_hash=$${idx++}`); vals.push(passwordHash);
+      sets.push(`hash_contrasena=$${idx++}`); vals.push(passwordHash);
     }
     if (!sets.length) { res.status(400).json({ error: 'Sin campos para actualizar' }); return; }
-    sets.push(`updated_at=NOW()`);
+    sets.push(`actualizado_en=NOW()`);
     vals.push(id);
     await pool.query(`UPDATE usuarios SET ${sets.join(', ')} WHERE id=$${idx}`, vals);
     res.json({ ok: true });
@@ -1313,12 +1313,12 @@ router.delete('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: Aut
 router.get('/parcelas/filtros', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   if (!esPanelAdmin(req.user)) { res.status(403).json({ error: 'Acceso denegado' }); return; }
   try {
-    const { sql: wSql, params: wParams } = estadoWhereClause(getEstadoFiltro(req.user), 1, 'UPPER(state_name)');
+    const { sql: wSql, params: wParams } = estadoWhereClause(getEstadoFiltro(req.user), 1, 'UPPER(nombre_estado)');
     const { rows: estadosRows } = await pool.query(
-      `SELECT DISTINCT state_name FROM up WHERE geom IS NOT NULL AND state_name IS NOT NULL AND ${soloMaizDeUp('up')} ${wSql} ORDER BY state_name`, wParams
+      `SELECT DISTINCT nombre_estado FROM up WHERE geometria IS NOT NULL AND nombre_estado IS NOT NULL AND ${soloMaizDeUp('up')} ${wSql} ORDER BY nombre_estado`, wParams
     );
     const { rows: municipiosRows } = await pool.query(
-      `SELECT DISTINCT state_name, municipality_name FROM up WHERE geom IS NOT NULL AND municipality_name IS NOT NULL AND ${soloMaizDeUp('up')} ${wSql} ORDER BY state_name, municipality_name`, wParams
+      `SELECT DISTINCT nombre_estado, nombre_municipio FROM up WHERE geometria IS NOT NULL AND nombre_municipio IS NOT NULL AND ${soloMaizDeUp('up')} ${wSql} ORDER BY nombre_estado, nombre_municipio`, wParams
     );
     res.json({ estados: estadosRows.map((r: any) => r.state_name), municipios: municipiosRows });
   } catch (error) {
@@ -1333,30 +1333,30 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
   try {
     const { estado, municipio, q } = req.query as Record<string, string>;
     const params: any[] = [];
-    const conds: string[] = ['u.geom IS NOT NULL', soloMaiz('p'), parcelaDeMaiz('u')];
+    const conds: string[] = ['u.geometria IS NOT NULL', soloMaiz('p'), parcelaDeMaiz('u')];
     let pi = 1;
 
-    if (estado)    { conds.push(`u.state_name = $${pi++}`);                       params.push(estado); }
-    if (municipio) { conds.push(`u.municipality_name = $${pi++}`);                params.push(municipio); }
+    if (estado)    { conds.push(`u.nombre_estado = $${pi++}`);                       params.push(estado); }
+    if (municipio) { conds.push(`u.nombre_municipio = $${pi++}`);                params.push(municipio); }
     if (q)         { conds.push(`(p.nombres ILIKE $${pi} OR p.apellido_paterno ILIKE $${pi++})`); params.push(`%${q}%`); }
 
     const estadoForzado = getEstadoFiltro(req.user);
-    if (estadoForzado) { conds.push(`UPPER(u.state_name) = ANY(SELECT UPPER(unnest(string_to_array($${pi++}, ','))))`); params.push(estadoForzado); }
+    if (estadoForzado) { conds.push(`UPPER(u.nombre_estado) = ANY(SELECT UPPER(unnest(string_to_array($${pi++}, ','))))`); params.push(estadoForzado); }
 
     const where = conds.join(' AND ');
 
     const { rows } = await pool.query(`
       SELECT
         u.up_id,
-        u.up_name,
-        u.state_name,
-        u.municipality_name,
-        u.area_ha_calc,
-        u.created_at,
-        ST_AsGeoJSON(u.geom)::json   AS geom_geojson,
-        ST_Y(u.centroid::geometry)   AS centroid_lat,
-        ST_X(u.centroid::geometry)   AS centroid_lng,
-        p.producer_id,
+        u.nombre_up,
+        u.nombre_estado,
+        u.nombre_municipio,
+        u.superficie_ha_calculada,
+        u.creado_en,
+        ST_AsGeoJSON(u.geometria)::json   AS geom_geojson,
+        ST_Y(u.centroide::geometry)   AS centroid_lat,
+        ST_X(u.centroide::geometry)   AS centroid_lng,
+        p.productor_id,
         p.nombres,
         p.apellido_paterno,
         p.apellido_materno,
@@ -1367,11 +1367,11 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
         ciclo.cultivo_principal,
         ciclo.tipo_cultivo
       FROM up u
-      JOIN producer p ON p.producer_id = u.producer_id
+      JOIN productor p ON p.productor_id = u.productor_id
       LEFT JOIN LATERAL (
         SELECT
-          CONCAT(c.cycle_type, ' ', c.cycle_year) AS ciclo_activo,
-          CASE cc.crop WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.crop) END AS cultivo_principal,
+          CONCAT(c.tipo_ciclo, ' ', c.anio_ciclo) AS ciclo_activo,
+          CASE cc.cultivo WHEN 'maiz' THEN 'Maíz' WHEN 'frijol' THEN 'Frijol' ELSE INITCAP(cc.cultivo) END AS cultivo_principal,
           -- Tipo/variedad real: prioriza el color de grano (blanco/amarillo/criollo)
           -- cuando está capturado; si no, usa el nombre de la variedad comercial
           -- del catálogo (o el texto libre capturado si es "OTRA").
@@ -1379,18 +1379,18 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
             NULLIF(INITCAP(cc.tipo_maiz), ''),
             -- MED-13 (auditoría Fase 4): además de 'OTRA', también
             -- 'OTRA_AMARILLO' y 'OTRA_CRIOLLO' son códigos de "texto libre".
-            CASE WHEN cc.variety_id IN ('OTRA', 'OTRA_AMARILLO', 'OTRA_CRIOLLO')
-                 THEN NULLIF(cc.variety_other, '') END,
-            cv.label
+            CASE WHEN cc.variedad_id IN ('OTRA', 'OTRA_AMARILLO', 'OTRA_CRIOLLO')
+                 THEN NULLIF(cc.variedad_otra, '') END,
+            cv.etiqueta
           ) AS tipo_cultivo
-        FROM cycle c
-        LEFT JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id
-        LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.is_active = TRUE
-        WHERE c.up_id = u.up_id AND c.crop = 'maiz'
-        ORDER BY c.cycle_year DESC, c.cycle_id DESC LIMIT 1
+        FROM ciclo c
+        LEFT JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id
+        LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = cc.variedad_id AND cv.activo = TRUE
+        WHERE c.up_id = u.up_id AND c.cultivo = 'maiz'
+        ORDER BY c.anio_ciclo DESC, c.ciclo_id DESC LIMIT 1
       ) ciclo ON TRUE
       WHERE ${where}
-      ORDER BY u.state_name NULLS LAST, u.created_at DESC, u.up_id
+      ORDER BY u.nombre_estado NULLS LAST, u.creado_en DESC, u.up_id
     `, params);
 
     res.json({ parcelas: rows });
@@ -1406,7 +1406,7 @@ router.delete('/parcelas/:up_id', authMiddleware, soloAdmin, async (req: AuthReq
   try {
     const { up_id } = req.params;
 
-    const check = await client.query('SELECT up_id, up_name FROM up WHERE up_id = $1', [up_id]);
+    const check = await client.query('SELECT up_id, nombre_up FROM up WHERE up_id = $1', [up_id]);
     if (check.rows.length === 0) {
       res.status(404).json({ error: 'Parcela no encontrada' });
       return;
@@ -1414,15 +1414,15 @@ router.delete('/parcelas/:up_id', authMiddleware, soloAdmin, async (req: AuthReq
     const upName = check.rows[0].up_name || `UP-${up_id}`;
 
     // Si la parcela tiene ciclos de otro cultivo (frijol), borrarla destruiría ese registro.
-    const otroCultivo = await client.query(`SELECT 1 FROM cycle WHERE up_id = $1 AND crop <> 'maiz' LIMIT 1`, [up_id]);
+    const otroCultivo = await client.query(`SELECT 1 FROM ciclo WHERE up_id = $1 AND cultivo <> 'maiz' LIMIT 1`, [up_id]);
     if (otroCultivo.rows.length > 0) {
       res.status(409).json({ error: 'Esta parcela tiene registro de frijol.', codigo: 'PARCELA_CON_OTRO_CULTIVO' });
       return;
     }
 
     await client.query('BEGIN');
-    await client.query(`DELETE FROM cycle_crop WHERE cycle_id IN (SELECT cycle_id FROM cycle WHERE up_id = $1)`, [up_id]);
-    await client.query(`DELETE FROM cycle WHERE up_id = $1`, [up_id]);
+    await client.query(`DELETE FROM ciclo_cultivo WHERE ciclo_id IN (SELECT ciclo_id FROM ciclo WHERE up_id = $1)`, [up_id]);
+    await client.query(`DELETE FROM ciclo WHERE up_id = $1`, [up_id]);
     await client.query(`DELETE FROM disponibilidad_productor WHERE up_id = $1`, [up_id]);
     await client.query(`DELETE FROM up WHERE up_id = $1`, [up_id]);
     await client.query('COMMIT');

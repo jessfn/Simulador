@@ -38,13 +38,13 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
     if (req.user!.rol === 'capturista') {
       ownershipQuery = `
         SELECT u.up_id FROM up u
-        JOIN producer p ON p.producer_id = u.producer_id
+        JOIN productor p ON p.productor_id = u.productor_id
         WHERE u.up_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`;
       ownershipParams = [up_id, req.user!.userId];
     } else {
       ownershipQuery = `
         SELECT u.up_id FROM up u
-        JOIN producer p ON p.producer_id = u.producer_id
+        JOIN productor p ON p.productor_id = u.productor_id
         WHERE u.up_id = $1 AND p.usuario_id = $2`;
       ownershipParams = [up_id, req.user!.userId];
     }
@@ -57,11 +57,11 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
 
     // Verificar si ya existe un ciclo activo del mismo tipo y año en esta UP
     const duplicado = await pool.query(`
-      SELECT cycle_id FROM cycle 
+      SELECT ciclo_id FROM ciclo 
       WHERE up_id = $1 
-        AND cycle_year = $2 
-        AND cycle_type = $3 
-        AND crop = 'maiz'
+        AND anio_ciclo = $2 
+        AND tipo_ciclo = $3 
+        AND cultivo = 'maiz'
         AND COALESCE(estado_ciclo, 'activo') = 'activo'
     `, [up_id, cycle_year, cycle_type]);
 
@@ -73,9 +73,9 @@ router.post('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: 
     }
 
     const result = await pool.query(
-      `INSERT INTO cycle (up_id, cycle_year, cycle_type, tipo_riego, crop)
+      `INSERT INTO ciclo (up_id, anio_ciclo, tipo_ciclo, tipo_riego, cultivo)
        VALUES ($1, $2, $3, $4, 'maiz')
-       RETURNING cycle_id, up_id, cycle_year, cycle_type, tipo_riego, created_at`,
+       RETURNING ciclo_id, up_id, anio_ciclo, tipo_ciclo, tipo_riego, creado_en`,
       [up_id, cycle_year, cycle_type, tipoRiegoValido]
     );
 
@@ -110,13 +110,13 @@ router.get('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: R
     if (req.user!.rol === 'capturista') {
       ownershipQuery = `
         SELECT u.up_id FROM up u
-        JOIN producer p ON p.producer_id = u.producer_id
+        JOIN productor p ON p.productor_id = u.productor_id
         WHERE u.up_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`;
       ownershipParams = [up_id, req.user!.userId];
     } else {
       ownershipQuery = `
         SELECT u.up_id FROM up u
-        JOIN producer p ON p.producer_id = u.producer_id
+        JOIN productor p ON p.productor_id = u.productor_id
         WHERE u.up_id = $1 AND p.usuario_id = $2`;
       ownershipParams = [up_id, req.user!.userId];
     }
@@ -127,32 +127,32 @@ router.get('/ups/:up_id/cycles', authMiddleware, async (req: AuthRequest, res: R
     }
 
     const result = await pool.query(
-      `SELECT c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.created_at,
+      `SELECT c.ciclo_id, c.up_id, c.anio_ciclo, c.tipo_ciclo, c.creado_en,
               COALESCE(c.tipo_riego, 'temporal') AS tipo_riego,
               COALESCE(c.estado_ciclo, 'activo') AS estado_ciclo,
               COALESCE(json_agg(
                 json_build_object(
-                  'cycle_crop_id', cc.cycle_crop_id,
-                  'crop', cc.crop,
-                  'variety_id', cc.variety_id,
-                  'variety_other', cc.variety_other,
-                  'area_sown_ha', cc.area_sown_ha,
-                  'planting_date', cc.planting_date,
-                  'estimated_harvest_date', cc.estimated_harvest_date,
-                  'yield_expected', cc.yield_expected,
-                  'area_harvested_ha', cc.area_harvested_ha,
-                  'destination', cc.destination,
-                  'production_qty', cc.production_qty,
-                  'production_unit', cc.production_unit
-                ) ORDER BY cc.cycle_crop_id
-              ) FILTER (WHERE cc.cycle_crop_id IS NOT NULL), '[]') as crops
-       FROM cycle c
-       LEFT JOIN cycle_crop cc ON c.cycle_id = cc.cycle_id
+                  'cycle_crop_id', cc.ciclo_cultivo_id,
+                  'crop', cc.cultivo,
+                  'variety_id', cc.variedad_id,
+                  'variety_other', cc.variedad_otra,
+                  'area_sown_ha', cc.superficie_sembrada_ha,
+                  'planting_date', cc.fecha_siembra,
+                  'estimated_harvest_date', cc.fecha_cosecha_estimada,
+                  'yield_expected', cc.rendimiento_esperado,
+                  'area_harvested_ha', cc.superficie_cosechada_ha,
+                  'destination', cc.destino,
+                  'production_qty', cc.cantidad_producida,
+                  'production_unit', cc.unidad_medida_produccion
+                ) ORDER BY cc.ciclo_cultivo_id
+              ) FILTER (WHERE cc.ciclo_cultivo_id IS NOT NULL), '[]') as crops
+       FROM ciclo c
+       LEFT JOIN ciclo_cultivo cc ON c.ciclo_id = cc.ciclo_id
        WHERE c.up_id = $1
-         AND c.crop = 'maiz'
+         AND c.cultivo = 'maiz'
          AND COALESCE(c.estado_ciclo, 'activo') != 'cancelado'
-       GROUP BY c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.created_at, c.tipo_riego, c.estado_ciclo
-       ORDER BY c.cycle_year DESC, c.cycle_type`,
+       GROUP BY c.ciclo_id, c.up_id, c.anio_ciclo, c.tipo_ciclo, c.creado_en, c.tipo_riego, c.estado_ciclo
+       ORDER BY c.anio_ciclo DESC, c.tipo_ciclo`,
       [up_id]
     );
 
@@ -176,11 +176,11 @@ router.delete('/cycles/:cycle_id', authMiddleware, async (req: AuthRequest, res:
     // técnico que lo capturó (antes solo aceptaba usuario_id, así que un
     // técnico nunca podía limpiar sus propios ciclos huérfanos: CRIT-07).
     const own = await client.query(
-      `SELECT c.cycle_id FROM cycle c
+      `SELECT c.ciclo_id FROM ciclo c
        JOIN up u ON u.up_id = c.up_id
-       JOIN producer p ON p.producer_id = u.producer_id
-       WHERE c.cycle_id = $1 AND (p.usuario_id = $2 OR ${tecnicoDeMaiz('p', '$2')})
-         AND c.crop = 'maiz'
+       JOIN productor p ON p.productor_id = u.productor_id
+       WHERE c.ciclo_id = $1 AND (p.usuario_id = $2 OR ${tecnicoDeMaiz('p', '$2')})
+         AND c.cultivo = 'maiz'
          AND COALESCE(c.estado_ciclo, 'activo') = 'activo'`,
       [cycle_id, userId]
     );
@@ -190,8 +190,8 @@ router.delete('/cycles/:cycle_id', authMiddleware, async (req: AuthRequest, res:
     }
 
     await client.query('BEGIN');
-    await client.query('DELETE FROM cycle_crop WHERE cycle_id = $1', [cycle_id]);
-    await client.query('DELETE FROM cycle WHERE cycle_id = $1', [cycle_id]);
+    await client.query('DELETE FROM ciclo_cultivo WHERE ciclo_id = $1', [cycle_id]);
+    await client.query('DELETE FROM ciclo WHERE ciclo_id = $1', [cycle_id]);
     await client.query('COMMIT');
     res.json({ ok: true });
   } catch (error) {
@@ -264,7 +264,7 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
       res.status(400).json({ error: 'Debe especificar la variedad cuando selecciona Criollo/local u Otra' });
       return;
     }
-    const varietyExiste = await pool.query('SELECT 1 FROM cat_crop_variety WHERE code = $1', [variety_id]);
+    const varietyExiste = await pool.query('SELECT 1 FROM cat_variedad_cultivo WHERE codigo = $1', [variety_id]);
     if (varietyExiste.rows.length === 0) {
       res.status(400).json({ error: 'La variedad seleccionada no es válida. Selecciona una variedad del catálogo.' });
       return;
@@ -285,19 +285,19 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
     let cycleOwnershipParams: any[];
     if (req.user!.rol === 'capturista') {
       cycleOwnershipQuery = `
-        SELECT c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.crop AS cycle_crop, u.up_name, u.area_ha_calc, u.area_ha_real
-        FROM cycle c
+        SELECT c.ciclo_id, c.up_id, c.anio_ciclo, c.tipo_ciclo, c.cultivo AS cycle_crop, u.nombre_up, u.superficie_ha_calculada, u.superficie_ha_real
+        FROM ciclo c
         JOIN up u ON u.up_id = c.up_id
-        JOIN producer p ON p.producer_id = u.producer_id
-        WHERE c.cycle_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`;
+        JOIN productor p ON p.productor_id = u.productor_id
+        WHERE c.ciclo_id = $1 AND ${tecnicoDeMaiz('p', '$2')}`;
       cycleOwnershipParams = [cycle_id, req.user!.userId];
     } else {
       cycleOwnershipQuery = `
-        SELECT c.cycle_id, c.up_id, c.cycle_year, c.cycle_type, c.crop AS cycle_crop, u.up_name, u.area_ha_calc, u.area_ha_real
-        FROM cycle c
+        SELECT c.ciclo_id, c.up_id, c.anio_ciclo, c.tipo_ciclo, c.cultivo AS cycle_crop, u.nombre_up, u.superficie_ha_calculada, u.superficie_ha_real
+        FROM ciclo c
         JOIN up u ON u.up_id = c.up_id
-        JOIN producer p ON p.producer_id = u.producer_id
-        WHERE c.cycle_id = $1 AND p.usuario_id = $2`;
+        JOIN productor p ON p.productor_id = u.productor_id
+        WHERE c.ciclo_id = $1 AND p.usuario_id = $2`;
       cycleOwnershipParams = [cycle_id, req.user!.userId];
     }
     const cycleCheck = await pool.query(cycleOwnershipQuery, cycleOwnershipParams);
@@ -338,24 +338,24 @@ router.post('/cycles/:cycle_id/crops', authMiddleware, async (req: AuthRequest, 
 
     // Upsert: si ya existe un cultivo para este ciclo, actualizar en lugar de insertar
     const result = await pool.query(
-      `INSERT INTO cycle_crop (
-        cycle_id, crop, variety_id, variety_other, area_sown_ha,
-        planting_date, estimated_harvest_date, yield_expected,
-        area_harvested_ha, destination, production_qty, production_unit
+      `INSERT INTO ciclo_cultivo (
+        ciclo_id, cultivo, variedad_id, variedad_otra, superficie_sembrada_ha,
+        fecha_siembra, fecha_cosecha_estimada, rendimiento_esperado,
+        superficie_cosechada_ha, destino, cantidad_producida, unidad_medida_produccion
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       ON CONFLICT (cycle_id) DO UPDATE SET
-         crop = EXCLUDED.crop,
-         variety_id = EXCLUDED.variety_id,
-         variety_other = EXCLUDED.variety_other,
-         area_sown_ha = EXCLUDED.area_sown_ha,
-         planting_date = EXCLUDED.planting_date,
-         estimated_harvest_date = EXCLUDED.estimated_harvest_date,
-         yield_expected = EXCLUDED.yield_expected,
-         area_harvested_ha = EXCLUDED.area_harvested_ha,
-         destination = EXCLUDED.destination,
-         production_qty = EXCLUDED.production_qty,
-         production_unit = EXCLUDED.production_unit
+       ON CONFLICT (ciclo_id) DO UPDATE SET
+         cultivo = EXCLUDED.cultivo,
+         variedad_id = EXCLUDED.variedad_id,
+         variedad_otra = EXCLUDED.variedad_otra,
+         superficie_sembrada_ha = EXCLUDED.superficie_sembrada_ha,
+         fecha_siembra = EXCLUDED.fecha_siembra,
+         fecha_cosecha_estimada = EXCLUDED.fecha_cosecha_estimada,
+         rendimiento_esperado = EXCLUDED.rendimiento_esperado,
+         superficie_cosechada_ha = EXCLUDED.superficie_cosechada_ha,
+         destino = EXCLUDED.destino,
+         cantidad_producida = EXCLUDED.cantidad_producida,
+         unidad_medida_produccion = EXCLUDED.unidad_medida_produccion
        RETURNING *`,
       [
         cycle_id, crop, variety_id, variety_other || null, area_sown_ha,
@@ -390,13 +390,13 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
     // capturó), y de paso trae area_sown_ha actual para validar
     // area_harvested_ha aunque no venga en este PATCH.
     const propio = await pool.query(
-      `SELECT cc.cycle_crop_id, cc.area_sown_ha, cy.up_id, cy.cycle_id, cy.cycle_year, cy.cycle_type
-       FROM cycle_crop cc
-       JOIN cycle cy ON cy.cycle_id = cc.cycle_id
+      `SELECT cc.ciclo_cultivo_id, cc.superficie_sembrada_ha, cy.up_id, cy.ciclo_id, cy.anio_ciclo, cy.tipo_ciclo
+       FROM ciclo_cultivo cc
+       JOIN ciclo cy ON cy.ciclo_id = cc.ciclo_id
        JOIN up u ON u.up_id = cy.up_id
-       JOIN producer p ON p.producer_id = u.producer_id
-       WHERE cc.cycle_crop_id = $1
-         AND cy.crop = 'maiz'
+       JOIN productor p ON p.productor_id = u.productor_id
+       WHERE cc.ciclo_cultivo_id = $1
+         AND cy.cultivo = 'maiz'
          AND (p.usuario_id = $2 OR ${tecnicoDeMaiz('p', '$2')})`,
       [id, req.user!.userId]
     );
@@ -428,7 +428,7 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
     // MED-13/MED-14 (auditoría Fase 4, 2026-09-22): mismas reglas que
     // POST /cycles/:cycle_id/crops, aplicadas también en edición.
     if (variety_id !== undefined) {
-      const existe = await pool.query('SELECT 1 FROM cat_crop_variety WHERE code = $1', [variety_id]);
+      const existe = await pool.query('SELECT 1 FROM cat_variedad_cultivo WHERE codigo = $1', [variety_id]);
       if (existe.rows.length === 0) {
         res.status(400).json({ error: 'La variedad seleccionada no es válida. Selecciona una variedad del catálogo.' });
         return;
@@ -458,16 +458,16 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
     const params: any[] = [];
     let idx = 1;
 
-    if (variety_id !== undefined) { sets.push(`variety_id = $${idx++}`); params.push(variety_id); }
-    if (variety_other !== undefined) { sets.push(`variety_other = $${idx++}`); params.push(variety_other); }
-    if (area_sown_ha !== undefined) { sets.push(`area_sown_ha = $${idx++}`); params.push(area_sown_ha); }
-    if (planting_date !== undefined) { sets.push(`planting_date = $${idx++}`); params.push(planting_date); }
-    if (estimated_harvest_date !== undefined) { sets.push(`estimated_harvest_date = $${idx++}`); params.push(estimated_harvest_date); }
-    if (yield_expected !== undefined) { sets.push(`yield_expected = $${idx++}`); params.push(yield_expected); }
-    if (area_harvested_ha !== undefined) { sets.push(`area_harvested_ha = $${idx++}`); params.push(area_harvested_ha); }
-    if (destination !== undefined) { sets.push(`destination = $${idx++}`); params.push(destination); }
-    if (production_qty !== undefined) { sets.push(`production_qty = $${idx++}`); params.push(production_qty); }
-    if (production_unit !== undefined) { sets.push(`production_unit = $${idx++}`); params.push(production_unit); }
+    if (variety_id !== undefined) { sets.push(`variedad_id = $${idx++}`); params.push(variety_id); }
+    if (variety_other !== undefined) { sets.push(`variedad_otra = $${idx++}`); params.push(variety_other); }
+    if (area_sown_ha !== undefined) { sets.push(`superficie_sembrada_ha = $${idx++}`); params.push(area_sown_ha); }
+    if (planting_date !== undefined) { sets.push(`fecha_siembra = $${idx++}`); params.push(planting_date); }
+    if (estimated_harvest_date !== undefined) { sets.push(`fecha_cosecha_estimada = $${idx++}`); params.push(estimated_harvest_date); }
+    if (yield_expected !== undefined) { sets.push(`rendimiento_esperado = $${idx++}`); params.push(yield_expected); }
+    if (area_harvested_ha !== undefined) { sets.push(`superficie_cosechada_ha = $${idx++}`); params.push(area_harvested_ha); }
+    if (destination !== undefined) { sets.push(`destino = $${idx++}`); params.push(destination); }
+    if (production_qty !== undefined) { sets.push(`cantidad_producida = $${idx++}`); params.push(production_qty); }
+    if (production_unit !== undefined) { sets.push(`unidad_medida_produccion = $${idx++}`); params.push(production_unit); }
 
     if (sets.length === 0) {
       res.status(400).json({ error: 'No hay campos para actualizar' });
@@ -476,7 +476,7 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
 
     params.push(id);
     const result = await pool.query(
-      `UPDATE cycle_crop SET ${sets.join(', ')} WHERE cycle_crop_id = $${idx} RETURNING *`,
+      `UPDATE ciclo_cultivo SET ${sets.join(', ')} WHERE ciclo_cultivo_id = $${idx} RETURNING *`,
       params
     );
 
@@ -513,11 +513,11 @@ router.patch('/cycles/:cycle_id/estado', authMiddleware, async (req: AuthRequest
     // técnico que creó el ciclo no podía cambiar su estado — se agrega la
     // rama usuario_capturista_id, mismo patrón usado en DELETE /cycles/:id.
     const check = await pool.query(
-      `SELECT c.cycle_id
-       FROM cycle c
+      `SELECT c.ciclo_id
+       FROM ciclo c
        JOIN up u ON u.up_id = c.up_id
-       JOIN producer p ON p.producer_id = u.producer_id
-       WHERE c.cycle_id = $1 AND c.crop = 'maiz' AND (p.usuario_id = $2 OR ${tecnicoDeMaiz('p', '$2')})`,
+       JOIN productor p ON p.productor_id = u.productor_id
+       WHERE c.ciclo_id = $1 AND c.cultivo = 'maiz' AND (p.usuario_id = $2 OR ${tecnicoDeMaiz('p', '$2')})`,
       [cycle_id, req.user?.userId]
     );
 
@@ -527,8 +527,8 @@ router.patch('/cycles/:cycle_id/estado', authMiddleware, async (req: AuthRequest
     }
 
     const result = await pool.query(
-      `UPDATE cycle SET estado_ciclo = $1 WHERE cycle_id = $2
-       RETURNING cycle_id, estado_ciclo`,
+      `UPDATE ciclo SET estado_ciclo = $1 WHERE ciclo_id = $2
+       RETURNING ciclo_id, estado_ciclo`,
       [estado, cycle_id]
     );
 

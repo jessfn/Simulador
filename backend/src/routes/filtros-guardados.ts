@@ -13,7 +13,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
        FROM filtros_guardados_bodega fg
        JOIN bodegas b ON b.id = fg.bodega_id
        WHERE fg.usuario_id = $1
-       ORDER BY fg.created_at DESC`,
+       ORDER BY fg.creado_en DESC`,
       [userId]
     );
     res.json(result.rows);

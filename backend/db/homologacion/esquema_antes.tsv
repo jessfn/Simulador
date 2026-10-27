@@ -1,0 +1,779 @@
+admin_permisos|id|integer|1
+admin_permisos|usuario_id|integer|2
+admin_permisos|vista|character varying|3
+admin_permisos|sub_accion|character varying|4
+admin_permisos|habilitado|boolean|5
+admin_permisos|actualizado_en|timestamp with time zone|6
+alertas|id|integer|1
+alertas|producer_id|bigint|2
+alertas|up_id|bigint|3
+alertas|ciclo_id|bigint|4
+alertas|tipo_alerta|character varying|5
+alertas|origen_alerta|character varying|6
+alertas|fecha_alerta|date|7
+alertas|nivel_alerta|character varying|8
+alertas|estado_alerta|character varying|9
+alertas|observaciones|text|10
+alertas|usuario_registro|integer|11
+alertas|created_at|timestamp with time zone|12
+alertas|updated_at|timestamp with time zone|13
+alertas|cycle_crop_id|bigint|14
+alertas_externas|id|integer|1
+alertas_externas|tipo_alerta|character varying|2
+alertas_externas|subtipo|character varying|3
+alertas_externas|nivel_riesgo|character varying|4
+alertas_externas|descripcion|text|5
+alertas_externas|recomendacion|text|6
+alertas_externas|cultivo_afectado|character varying|7
+alertas_externas|coordenada|USER-DEFINED|8
+alertas_externas|radio_km|integer|9
+alertas_externas|estado|character varying|10
+alertas_externas|municipio|character varying|11
+alertas_externas|fecha_deteccion|date|12
+alertas_externas|fecha_vigencia|date|13
+alertas_externas|fuente|character varying|14
+alertas_externas|id_alerta_origen|character varying|15
+alertas_externas|activa|boolean|16
+alertas_externas|importado_en|timestamp without time zone|17
+alertas_up|alerta_id|integer|1
+alertas_up|up_id|integer|2
+alertas_up|distancia_km|numeric|3
+alertas_up|notificado|boolean|4
+alertas_up|calculado_en|timestamp without time zone|5
+apoyos_ventanilla|id|integer|1
+apoyos_ventanilla|ventanilla_id|integer|2
+apoyos_ventanilla|nombre_apoyo|character varying|3
+apoyos_ventanilla|descripcion|text|4
+apoyos_ventanilla|requisitos|text|5
+apoyos_ventanilla|disponible|boolean|6
+apoyos_ventanilla|cupo_disponible|integer|7
+apoyos_ventanilla|vigencia_fin|date|8
+apoyos_ventanilla|created_at|timestamp without time zone|9
+bodegas|id|integer|1
+bodegas|clave|character varying|2
+bodegas|nombre|character varying|3
+bodegas|estado|character varying|4
+bodegas|municipio|character varying|5
+bodegas|region_id|integer|6
+bodegas|ddr|character varying|7
+bodegas|cader|character varying|8
+bodegas|ejido|character varying|9
+bodegas|direccion|character varying|10
+bodegas|localidad|character varying|11
+bodegas|codigo_postal|character varying|12
+bodegas|latitud|double precision|13
+bodegas|longitud|double precision|14
+bodegas|capacidad_toneladas|double precision|15
+bodegas|cvegeo|character varying|16
+bodegas|cve_ent|character varying|17
+bodegas|cve_mun|character varying|18
+bodegas|fecha_actualizacion|timestamp without time zone|19
+bodegas|activo|boolean|20
+bodegas|estatus|character varying|21
+bodegas|creado_por|integer|22
+bodegas|aprobado_por|integer|23
+bodegas|fecha_aprobacion|timestamp with time zone|24
+bodegas|fecha_creacion|timestamp with time zone|25
+bodegas|capacidad_ton|double precision|26
+bodegas|es_ventanilla|boolean|27
+bodegas|realiza_acopio|boolean|28
+bodegas|opera_incentivos|boolean|29
+bodegas|opera_coberturas|boolean|30
+bodegas|registra_inventario|boolean|31
+bodegas|estatus_operativo|character varying|32
+bodegas|semaforo_compra|character varying|33
+bodegas|semaforo_updated_at|timestamp without time zone|34
+bodegas|semaforo_usuario_id|integer|35
+bodegas|horario|character varying|36
+bodegas|telefono_contacto|character varying|37
+bodegas|observaciones|text|38
+bodeguero_bodegas|id|integer|1
+bodeguero_bodegas|usuario_id|integer|2
+bodeguero_bodegas|bodega_id|integer|3
+bodeguero_bodegas|estatus|character varying|4
+bodeguero_bodegas|fecha_solicitud|timestamp without time zone|5
+bodeguero_bodegas|aprobado_por|integer|6
+bodeguero_bodegas|fecha_aprobacion|timestamp without time zone|7
+cat_catalog|id|integer|1
+cat_catalog|catalog|character varying|2
+cat_catalog|code|character varying|3
+cat_catalog|label|character varying|4
+cat_catalog|sort_order|integer|5
+cat_catalog|is_active|boolean|6
+cat_conceptos_servicio|id|integer|1
+cat_conceptos_servicio|nombre|character varying|2
+cat_conceptos_servicio|icono|character varying|3
+cat_conceptos_servicio|unidad_default|character varying|4
+cat_conceptos_servicio|estatus|character varying|5
+cat_conceptos_servicio|propuesto_por|integer|6
+cat_crop_variety|id|integer|1
+cat_crop_variety|crop|character varying|2
+cat_crop_variety|code|character varying|3
+cat_crop_variety|label|character varying|4
+cat_crop_variety|sort_order|integer|5
+cat_crop_variety|is_active|boolean|6
+cat_crop_variety|tipo_maiz|character varying|7
+cat_programa|clave|character varying|1
+cat_programa|nombre|character varying|2
+cat_programa|cultivo|character varying|3
+cat_programa|activo|boolean|4
+cat_programas_gobierno|id|integer|1
+cat_programas_gobierno|clave|character varying|2
+cat_programas_gobierno|nombre|character varying|3
+cat_programas_gobierno|activo|boolean|4
+chat_conversaciones|id|integer|1
+chat_conversaciones|usuario_id|integer|2
+chat_conversaciones|rol_usuario|character varying|3
+chat_conversaciones|estatus|character varying|4
+chat_conversaciones|no_leidos_admin|integer|5
+chat_conversaciones|no_leidos_usuario|integer|6
+chat_conversaciones|ultimo_mensaje_at|timestamp with time zone|7
+chat_conversaciones|created_at|timestamp with time zone|8
+chat_conversaciones|usuario_leido_hasta|timestamp with time zone|9
+chat_conversaciones|admin_leido_hasta|timestamp with time zone|10
+chat_conversaciones|bot_activo|boolean|11
+chat_mensajes|id|integer|1
+chat_mensajes|conversacion_id|integer|2
+chat_mensajes|autor_id|integer|3
+chat_mensajes|autor_rol|character varying|4
+chat_mensajes|tipo|character varying|5
+chat_mensajes|contenido|text|6
+chat_mensajes|archivo_url|text|7
+chat_mensajes|archivo_mime|character varying|8
+chat_mensajes|archivo_nombre|character varying|9
+chat_mensajes|lat|numeric|10
+chat_mensajes|lng|numeric|11
+chat_mensajes|created_at|timestamp with time zone|12
+chat_mensajes|activo_hasta|timestamp with time zone|13
+cosecha_real|id|integer|1
+cosecha_real|producer_id|bigint|2
+cosecha_real|up_id|bigint|3
+cosecha_real|ciclo_id|bigint|4
+cosecha_real|fecha_cosecha|date|5
+cosecha_real|superficie_cosechada_ha|double precision|6
+cosecha_real|produccion_total_ton|double precision|7
+cosecha_real|rendimiento_real_ton_ha|double precision|8
+cosecha_real|observaciones|text|9
+cosecha_real|usuario_captura|integer|10
+cosecha_real|created_at|timestamp with time zone|11
+cosecha_real|cycle_crop_id|bigint|12
+costos_fira|id|integer|1
+costos_fira|estado|character varying|2
+costos_fira|modalidad|character varying|3
+costos_fira|ciclo|character varying|4
+costos_fira|costo_por_ha|numeric|5
+costos_fira|precio_fira|numeric|6
+costos_fira|pct_ganancia|numeric|7
+costos_fira|vigente_desde|date|8
+costos_fira|vigente_hasta|date|9
+costos_fira|activo|boolean|10
+costos_fira|updated_at|timestamp without time zone|11
+cycle|cycle_id|bigint|1
+cycle|up_id|bigint|2
+cycle|cycle_year|integer|3
+cycle|cycle_type|character varying|4
+cycle|created_at|timestamp with time zone|5
+cycle|declarado_por_productor|boolean|6
+cycle|hectareas_sembradas|numeric|7
+cycle|fecha_siembra|date|8
+cycle|variedad_nombre|text|9
+cycle|estado_ciclo|character varying|10
+cycle|fecha_cosecha_real|date|11
+cycle|produccion_real_ton|numeric|12
+cycle|observaciones_cosecha|text|13
+cycle|tipo_riego|character varying|14
+cycle|crop|character varying|15
+cycle_crop|cycle_crop_id|bigint|1
+cycle_crop|cycle_id|bigint|2
+cycle_crop|crop|character varying|3
+cycle_crop|variety_id|character varying|4
+cycle_crop|variety_other|character varying|5
+cycle_crop|area_sown_ha|numeric|6
+cycle_crop|area_harvested_ha|numeric|7
+cycle_crop|destination|character varying|8
+cycle_crop|production_qty|numeric|9
+cycle_crop|production_unit|character varying|10
+cycle_crop|created_at|timestamp with time zone|11
+cycle_crop|planting_date|date|12
+cycle_crop|estimated_harvest_date|date|13
+cycle_crop|yield_expected|numeric|14
+cycle_crop|tipo_maiz|character varying|15
+cycle_crop|ventana_venta|character varying|16
+cycle_crop|disponible_para_venta|boolean|17
+cycle_crop|fecha_disponibilidad|date|18
+discrepancias|id|integer|1
+discrepancias|tipo|character varying|2
+discrepancias|prioridad|character varying|3
+discrepancias|descripcion|text|4
+discrepancias|accion|character varying|5
+discrepancias|estado|character varying|6
+discrepancias|datos|jsonb|7
+discrepancias|creado_at|timestamp without time zone|8
+discrepancias|resuelto_at|timestamp without time zone|9
+discrepancias|resuelto_por|integer|10
+disponibilidad_productor|id|integer|1
+disponibilidad_productor|producer_id|bigint|2
+disponibilidad_productor|up_id|bigint|3
+disponibilidad_productor|tipo_maiz|character varying|4
+disponibilidad_productor|variedad_code|character varying|5
+disponibilidad_productor|volumen_estimado_ton|numeric|6
+disponibilidad_productor|ventana_venta|character varying|7
+disponibilidad_productor|fecha_disponible|date|8
+disponibilidad_productor|fecha_vencimiento|date|9
+disponibilidad_productor|activa|boolean|10
+disponibilidad_productor|created_at|timestamp without time zone|11
+disponibilidad_productor|updated_at|timestamp without time zone|12
+disponibilidad_productor|variedad_libre|text|13
+disponibilidad_productor|ciclo_id|bigint|14
+disponibilidad_productor|precio_minimo_ton|numeric|15
+disponibilidad_productor|humedad_pct|numeric|16
+disponibilidad_productor|impurezas_pct|numeric|17
+disponibilidad_productor|grano_quebrado_pct|numeric|18
+encuesta_alias|id|integer|1
+encuesta_alias|texto_busqueda|character varying|2
+encuesta_alias|producto_id|character varying|3
+encuesta_categorias|id|character varying|1
+encuesta_categorias|nombre|character varying|2
+encuesta_categorias|ayuda|text|3
+encuesta_contexto_territorial|id|integer|1
+encuesta_contexto_territorial|respuesta_id|integer|2
+encuesta_contexto_territorial|up_id|integer|3
+encuesta_contexto_territorial|municipality_id|character varying|4
+encuesta_contexto_territorial|municipality_name|character varying|5
+encuesta_ediciones|id|integer|1
+encuesta_ediciones|nombre|character varying|2
+encuesta_ediciones|horizonte_meses|integer|3
+encuesta_ediciones|version_catalogo|character varying|4
+encuesta_ediciones|habilitada|boolean|5
+encuesta_ediciones|created_at|timestamp with time zone|6
+encuesta_lineas|id|integer|1
+encuesta_lineas|respuesta_id|integer|2
+encuesta_lineas|producto_id|character varying|3
+encuesta_lineas|producto_nombre_otro|character varying|4
+encuesta_lineas|presentacion_id|character varying|5
+encuesta_lineas|presentacion_otro_envase|character varying|6
+encuesta_lineas|presentacion_otro_contenido|numeric|7
+encuesta_lineas|presentacion_otro_unidad|character varying|8
+encuesta_lineas|a_granel|boolean|9
+encuesta_lineas|cantidad|numeric|10
+encuesta_lineas|mes_compra|date|11
+encuesta_lineas|nombre_conocido|character varying|12
+encuesta_lineas|preferencia_marca|character varying|13
+encuesta_lineas|identificacion_pendiente|boolean|14
+encuesta_lineas|cantidad_base|numeric|15
+encuesta_lineas|unidad_base|character varying|16
+encuesta_lineas|created_at|timestamp with time zone|17
+encuesta_presentaciones|id|character varying|1
+encuesta_presentaciones|producto_id|character varying|2
+encuesta_presentaciones|envase|character varying|3
+encuesta_presentaciones|contenido|numeric|4
+encuesta_presentaciones|unidad|character varying|5
+encuesta_presentaciones|nombre_origen|character varying|6
+encuesta_presentaciones|activo|boolean|7
+encuesta_productos|id|character varying|1
+encuesta_productos|categoria_id|character varying|2
+encuesta_productos|nombre_visible|character varying|3
+encuesta_productos|requiere_nombre_conocido|boolean|4
+encuesta_productos|activo|boolean|5
+encuesta_productos|version_catalogo|character varying|6
+encuesta_productos|formula_referencia|character varying|7
+encuesta_productos|es_otro|boolean|8
+encuesta_productos|clasificacion_interna|text|9
+encuesta_productos|created_at|timestamp with time zone|10
+encuesta_respuestas|id|integer|1
+encuesta_respuestas|producer_id|integer|2
+encuesta_respuestas|edicion_id|integer|3
+encuesta_respuestas|respuesta|character varying|4
+encuesta_respuestas|periodo_inicio|date|5
+encuesta_respuestas|periodo_fin|date|6
+encuesta_respuestas|version_catalogo|character varying|7
+encuesta_respuestas|canal|character varying|8
+encuesta_respuestas|capturista_id|integer|9
+encuesta_respuestas|version|integer|10
+encuesta_respuestas|created_at|timestamp with time zone|11
+encuesta_respuestas|updated_at|timestamp with time zone|12
+estimacion_cosecha|id|integer|1
+estimacion_cosecha|producer_id|bigint|2
+estimacion_cosecha|up_id|bigint|3
+estimacion_cosecha|ciclo_id|bigint|4
+estimacion_cosecha|fecha_estimacion|date|5
+estimacion_cosecha|rendimiento_estimado_ton_ha|double precision|6
+estimacion_cosecha|produccion_estimada_ton|double precision|7
+estimacion_cosecha|observaciones|text|8
+estimacion_cosecha|usuario_captura|integer|9
+estimacion_cosecha|created_at|timestamp with time zone|10
+estimacion_cosecha|updated_at|timestamp with time zone|11
+estimacion_cosecha|cycle_crop_id|bigint|12
+filtros_guardados_bodega|id|integer|1
+filtros_guardados_bodega|bodega_id|integer|2
+filtros_guardados_bodega|usuario_id|integer|3
+filtros_guardados_bodega|nombre|character varying|4
+filtros_guardados_bodega|tipo_maiz|character varying|5
+filtros_guardados_bodega|volumen_min_ton|numeric|6
+filtros_guardados_bodega|radio_km|numeric|7
+filtros_guardados_bodega|humedad_max_pct|numeric|8
+filtros_guardados_bodega|impurezas_max_pct|numeric|9
+filtros_guardados_bodega|grano_quebrado_max_pct|numeric|10
+filtros_guardados_bodega|activo|boolean|11
+filtros_guardados_bodega|created_at|timestamp with time zone|12
+frijol_cultivo|cycle_crop_id|bigint|1
+frijol_cultivo|tipo_siembra|character varying|2
+frijol_cultivo|densidad_kg_ha|numeric|3
+frijol_cultivo|usa_fertilizante|boolean|4
+frijol_cultivo|tipos_fertilizante|ARRAY|5
+frijol_cultivo|rotacion|character varying|6
+frijol_cultivo|observaciones|text|7
+frijol_cultivo|sin_observaciones|boolean|8
+frijol_cultivo|capturado_en|timestamp with time zone|9
+frijol_cultivo|hubo_desconexion|boolean|10
+frijol_cultivo|creado_por|integer|11
+frijol_cultivo|created_at|timestamp with time zone|12
+frijol_cultivo|updated_at|timestamp with time zone|13
+frijol_exportaciones|id|bigint|1
+frijol_exportaciones|usuario_id|integer|2
+frijol_exportaciones|filtros|jsonb|3
+frijol_exportaciones|filas|integer|4
+frijol_exportaciones|created_at|timestamp with time zone|5
+frijol_productor|producer_id|bigint|1
+frijol_productor|total_ups_declaradas|integer|2
+frijol_productor|participa_programas_sader|boolean|3
+frijol_productor|programas_sader|ARRAY|4
+frijol_productor|programas_sader_otro|character varying|5
+frijol_productor|organizacion|character varying|6
+frijol_productor|seguro_agricola|character varying|7
+frijol_productor|seguro_agricola_nombre|character varying|8
+frijol_productor|creado_por|integer|9
+frijol_productor|created_at|timestamp with time zone|10
+frijol_productor|updated_at|timestamp with time zone|11
+frijol_semillas|up_id|bigint|1
+frijol_semillas|se_dedica_produccion_semillas|boolean|2
+frijol_semillas|trabajo_con_prosebien|boolean|3
+frijol_semillas|usara_prosebien_pv|boolean|4
+frijol_semillas|cumple_criterio_original|boolean|5
+frijol_semillas|superficie_evaluada_ha|numeric|6
+frijol_semillas|creado_por|integer|7
+frijol_semillas|created_at|timestamp with time zone|8
+frijol_semillas|updated_at|timestamp with time zone|9
+geo_municipality|municipality_id|character varying|1
+geo_municipality|state_id|character varying|2
+geo_municipality|name|character varying|3
+geo_state|state_id|character varying|1
+geo_state|name|character varying|2
+infraestructura_contactos|id|integer|1
+infraestructura_contactos|bodega_id|integer|2
+infraestructura_contactos|nombre|character varying|3
+infraestructura_contactos|cargo|character varying|4
+infraestructura_contactos|telefono|character varying|5
+infraestructura_contactos|correo|character varying|6
+infraestructura_contactos|es_principal|boolean|7
+infraestructura_contactos|created_at|timestamp with time zone|8
+inventarios|id|integer|1
+inventarios|bodega_id|integer|2
+inventarios|usuario_id|integer|3
+inventarios|ciclo|character varying|4
+inventarios|volumen_almacenamiento|double precision|5
+inventarios|volumen_problemas|double precision|6
+inventarios|fecha_registro|timestamp with time zone|7
+inventarios|tipo_maiz|character varying|8
+inventarios|origen|character varying|9
+inventarios|fecha|date|10
+inventarios|observaciones|text|11
+inventarios|volumen_problema|double precision|12
+inventarios|variedad_code|character varying|13
+inventarios|humedad_pct|numeric|14
+inventarios|calidad|character varying|15
+municipios_referencia|cve_geo|character varying|1
+municipios_referencia|nombre|character varying|2
+municipios_referencia|estado|character varying|3
+municipios_referencia|centroid|USER-DEFINED|4
+notificaciones|id|integer|1
+notificaciones|alerta_id|integer|2
+notificaciones|usuario_id|integer|3
+notificaciones|leida|boolean|4
+notificaciones|fecha_leida|timestamp with time zone|5
+notificaciones|created_at|timestamp with time zone|6
+notificaciones|tipo|character varying|7
+notificaciones|mensaje|text|8
+notificaciones|referencia_id|integer|9
+notificaciones|referencia_tipo|character varying|10
+notificaciones|titulo|character varying|11
+notificaciones|datos_extra|jsonb|12
+notificaciones|alerta_externa_id|integer|13
+oferta_interes|id|bigint|1
+oferta_interes|usuario_id|integer|2
+oferta_interes|bodega_id|integer|3
+oferta_interes|municipio|character varying|4
+oferta_interes|estado|character varying|5
+oferta_interes|tipo_maiz|character varying|6
+oferta_interes|created_at|timestamp with time zone|7
+ofertas_bodega|id|integer|1
+ofertas_bodega|propuesta_id|integer|2
+ofertas_bodega|bodega_id|integer|3
+ofertas_bodega|usuario_id|integer|4
+ofertas_bodega|precio_ofrecido_ton|numeric|5
+ofertas_bodega|costo_acondicionamiento_ton|numeric|6
+ofertas_bodega|modalidad_transporte|character varying|7
+ofertas_bodega|costo_transporte_ton|numeric|8
+ofertas_bodega|pago_final_estimado_ton|numeric|9
+ofertas_bodega|momento_pago|character varying|10
+ofertas_bodega|estatus|character varying|11
+ofertas_bodega|created_at|timestamp with time zone|12
+pgmigrations|id|integer|1
+pgmigrations|name|character varying|2
+pgmigrations|run_on|timestamp without time zone|3
+precio_parametros|id|integer|1
+precio_parametros|margen_pct|numeric|2
+precio_parametros|ventana_dias|integer|3
+precio_parametros|min_txns|integer|4
+precio_parametros|harineras_n|integer|5
+precio_parametros|servicios_default|numeric|6
+precio_parametros|flete_default|numeric|7
+precio_parametros|costo_fira|numeric|8
+precio_parametros|precio_garantia_sader|numeric|9
+precio_parametros|actualizado_por|integer|10
+precio_parametros|actualizado_at|timestamp without time zone|11
+precio_parametros|alerta_umbral_pct|numeric|12
+precio_referencias_externas|id|integer|1
+precio_referencias_externas|chicago_usd_bushel|numeric|2
+precio_referencias_externas|chicago_usd_ton|numeric|3
+precio_referencias_externas|chicago_mxn|numeric|4
+precio_referencias_externas|tc_banxico|numeric|5
+precio_referencias_externas|garantia_sader|numeric|6
+precio_referencias_externas|fuente|character varying|7
+precio_referencias_externas|error|boolean|8
+precio_referencias_externas|created_at|timestamp with time zone|9
+precios|id|integer|1
+precios|tipo_precio|character varying|2
+precios|fuente|character varying|3
+precios|precio|double precision|4
+precios|tipo_maiz|character varying|5
+precios|fecha|date|6
+precios|observaciones|text|7
+precios|bodega_id|integer|8
+precios|visita_id|integer|9
+precios|producer_id|bigint|10
+precios|up_id|bigint|11
+precios|ciclo_id|bigint|12
+precios|usuario_captura|integer|13
+precios|created_at|timestamp with time zone|14
+precios|estado|text|15
+precios|municipio|text|16
+precios|valor_origen|numeric|17
+precios|unidad_origen|text|18
+precios|tipo_cambio|numeric|19
+precios|programa|text|20
+precios|variedad_code|character varying|21
+precios|humedad_pct|numeric|22
+precios|calidad|character varying|23
+precios_maiz|id|integer|1
+precios_maiz|tipo|character varying|2
+precios_maiz|precio|double precision|3
+precios_maiz|unidad|character varying|4
+precios_maiz|tendencia|character varying|5
+precios_maiz|fecha_actualizacion|date|6
+producer|producer_id|bigint|1
+producer|curp|character|2
+producer|phone|character varying|3
+producer|privacy_consent|boolean|4
+producer|usuario_id|integer|5
+producer|created_at|timestamp with time zone|6
+producer|nombres|character varying|7
+producer|apellido_paterno|character varying|8
+producer|apellido_materno|character varying|9
+producer|sexo|character varying|10
+producer|correo_electronico|character varying|11
+producer|state_id|character varying|12
+producer|municipality_id|character varying|13
+producer|localidad|character varying|14
+producer|tecnico_asignado_id|integer|15
+producer|estatus_registro|character varying|16
+producer|observaciones|text|17
+producer|fecha_captura|timestamp with time zone|18
+producer|usuario_capturista_id|integer|19
+producer|programas_beneficiario|ARRAY|20
+producer|estado_validacion|character varying|21
+producer|tipo_registro|character|22
+producer|correo|text|23
+producer|nota_admin|text|24
+producer|aviso_privacidad_aceptado|boolean|25
+producer|aviso_privacidad_fecha|timestamp with time zone|26
+producer|aviso_privacidad_lat|numeric|27
+producer|aviso_privacidad_lng|numeric|28
+producer|aviso_privacidad_version|character varying|29
+producer|aviso_privacidad_foto_url|text|30
+producer|fecha_nacimiento|date|31
+producer|fuente_registro|character varying|32
+producer_cambios|id|bigint|1
+producer_cambios|producer_id|bigint|2
+producer_cambios|campo|character varying|3
+producer_cambios|valor_anterior|text|4
+producer_cambios|valor_nuevo|text|5
+producer_cambios|usuario_id|integer|6
+producer_cambios|programa|character varying|7
+producer_cambios|created_at|timestamp with time zone|8
+producer_cambios|consume_edicion|boolean|9
+producer_cambios|solicitud_id|bigint|10
+producer_cambios|aprobado_por|integer|11
+producer_profile|user_id|integer|1
+producer_profile|state_id|character varying|2
+producer_profile|municipality_id|character varying|3
+producer_profile|locality|character varying|4
+producer_profile|created_at|timestamp with time zone|5
+producer_programa|producer_id|bigint|1
+producer_programa|programa|character varying|2
+producer_programa|usuario_capturista_id|integer|3
+producer_programa|verificacion_identidad|character varying|4
+producer_programa|estatus_registro|character varying|5
+producer_programa|verificacion_intentos|integer|6
+producer_programa|verificacion_ultimo_intento|timestamp with time zone|7
+producer_programa|fecha_alta|timestamp with time zone|8
+producer_programa|updated_at|timestamp with time zone|9
+propuestas_negociacion|id|integer|1
+propuestas_negociacion|disponibilidad_id|integer|2
+propuestas_negociacion|producer_id|integer|3
+propuestas_negociacion|precio_solicitado_ton|numeric|4
+propuestas_negociacion|precio_referencia_ton|numeric|5
+propuestas_negociacion|volumen_ton|numeric|6
+propuestas_negociacion|volumen_minimo_comprador|numeric|7
+propuestas_negociacion|lugar_entrega|text|8
+propuestas_negociacion|estatus|character varying|9
+propuestas_negociacion|ganadora_oferta_id|integer|10
+propuestas_negociacion|vigencia_hasta|date|11
+propuestas_negociacion|created_at|timestamp with time zone|12
+regiones|id|integer|1
+regiones|nombre|character varying|2
+regiones|estado|character varying|3
+registro_idempotencia|clave|character varying|1
+registro_idempotencia|huella|character varying|2
+registro_idempotencia|resultado|jsonb|3
+registro_idempotencia|created_at|timestamp with time zone|4
+revoked_tokens|jti|text|1
+revoked_tokens|usuario_id|integer|2
+revoked_tokens|expira_en|timestamp with time zone|3
+revoked_tokens|creado_en|timestamp with time zone|4
+roles_panel|id|integer|1
+roles_panel|clave|character varying|2
+roles_panel|etiqueta|character varying|3
+roles_panel|permisos_totales|boolean|4
+roles_panel|aplica_filtro_estado|boolean|5
+roles_panel|redirect_post_login|character varying|6
+roles_panel|vistas_default|jsonb|7
+seguimiento_incidencias|id|integer|1
+seguimiento_incidencias|producer_id|bigint|2
+seguimiento_incidencias|up_id|bigint|3
+seguimiento_incidencias|ciclo_id|bigint|4
+seguimiento_incidencias|tipo_incidencia|character varying|5
+seguimiento_incidencias|severidad|character varying|6
+seguimiento_incidencias|fecha|date|7
+seguimiento_incidencias|observaciones|text|8
+seguimiento_incidencias|usuario_captura|integer|9
+seguimiento_incidencias|created_at|timestamp with time zone|10
+seguimiento_incidencias|cycle_crop_id|bigint|11
+seguimiento_visitas|id|integer|1
+seguimiento_visitas|producer_id|bigint|2
+seguimiento_visitas|up_id|bigint|3
+seguimiento_visitas|ciclo_id|bigint|4
+seguimiento_visitas|fecha_visita|date|5
+seguimiento_visitas|etapa_cultivo|character varying|6
+seguimiento_visitas|estado_cultivo|character varying|7
+seguimiento_visitas|observaciones|text|8
+seguimiento_visitas|precio_observado|double precision|9
+seguimiento_visitas|tipo_maiz|character varying|10
+seguimiento_visitas|usuario_captura|integer|11
+seguimiento_visitas|created_at|timestamp with time zone|12
+seguimiento_visitas|cycle_crop_id|bigint|13
+senal_interesados|id|bigint|1
+senal_interesados|senal_id|integer|2
+senal_interesados|producer_id|bigint|3
+senal_interesados|usuario_id|integer|4
+senal_interesados|municipio|character varying|5
+senal_interesados|estado|character varying|6
+senal_interesados|telefono|character varying|7
+senal_interesados|nombre_productor|character varying|8
+senal_interesados|created_at|timestamp with time zone|9
+senal_variedades|id|bigint|1
+senal_variedades|senal_id|bigint|2
+senal_variedades|variedad_code|character varying|3
+senal_variedades|variedad_libre|text|4
+senal_variedades|created_at|timestamp with time zone|5
+senales_compra|id|integer|1
+senales_compra|bodega_id|integer|2
+senales_compra|usuario_id|integer|3
+senales_compra|tipo_maiz|character varying|4
+senales_compra|variedad_code|character varying|5
+senales_compra|volumen_ton|numeric|6
+senales_compra|precio_ofrecido|numeric|7
+senales_compra|radio_km|integer|8
+senales_compra|vigencia|character varying|9
+senales_compra|fecha_vencimiento|date|10
+senales_compra|activa|boolean|11
+senales_compra|interesados_count|integer|12
+senales_compra|created_at|timestamp without time zone|13
+senales_compra|vigencia_inicio|date|14
+senales_compra|humedad_max_pct|numeric|15
+senales_compra|impurezas_max_pct|numeric|16
+senales_compra|grano_quebrado_max_pct|numeric|17
+senasica_cargas|id|integer|1
+senasica_cargas|nombre_archivo|character varying|2
+senasica_cargas|usuario_id|integer|3
+senasica_cargas|total_puntos|integer|4
+senasica_cargas|total_ups_afectadas|integer|5
+senasica_cargas|total_notificaciones|integer|6
+senasica_cargas|estado|character varying|7
+senasica_cargas|error_detalle|text|8
+senasica_cargas|created_at|timestamp with time zone|9
+senasica_cargas|completado_en|timestamp with time zone|10
+senasica_parametros|id|integer|1
+senasica_parametros|nivel_riesgo|character varying|2
+senasica_parametros|radio_km|integer|3
+senasica_parametros|activo|boolean|4
+senasica_parametros|updated_at|timestamp with time zone|5
+sesiones|id|integer|1
+sesiones|usuario_id|integer|2
+sesiones|token_hash|character varying|3
+sesiones|ip_address|character varying|4
+sesiones|user_agent|text|5
+sesiones|created_at|timestamp with time zone|6
+sesiones|expires_at|timestamp with time zone|7
+solicitud_cambio|id|bigint|1
+solicitud_cambio|producer_id|bigint|2
+solicitud_cambio|campo|character varying|3
+solicitud_cambio|valor_actual|text|4
+solicitud_cambio|valor_propuesto|text|5
+solicitud_cambio|motivo|text|6
+solicitud_cambio|solicitante_id|integer|7
+solicitud_cambio|programa_solicitante|character varying|8
+solicitud_cambio|asignado_tipo|character varying|9
+solicitud_cambio|asignado_a|integer|10
+solicitud_cambio|motivo_asignacion|text|11
+solicitud_cambio|estado|character varying|12
+solicitud_cambio|escalada|boolean|13
+solicitud_cambio|escalada_at|timestamp with time zone|14
+solicitud_cambio|asignado_original_id|integer|15
+solicitud_cambio|resuelto_por|integer|16
+solicitud_cambio|resuelto_at|timestamp with time zone|17
+solicitud_cambio|motivo_rechazo|text|18
+solicitud_cambio|visto_por_solicitante|boolean|19
+solicitud_cambio|vence_at|timestamp with time zone|20
+solicitud_cambio|created_at|timestamp with time zone|21
+solicitudes_apoyo|id|integer|1
+solicitudes_apoyo|ventanilla_id|integer|2
+solicitudes_apoyo|apoyo_id|integer|3
+solicitudes_apoyo|producer_id|bigint|4
+solicitudes_apoyo|estado|character varying|5
+solicitudes_apoyo|notas|text|6
+solicitudes_apoyo|created_at|timestamp without time zone|7
+solicitudes_apoyo|updated_at|timestamp without time zone|8
+supervisor_productores|id|integer|1
+supervisor_productores|supervisor_id|integer|2
+supervisor_productores|producer_id|integer|3
+supervisor_productores|fecha_vinculacion|timestamp without time zone|4
+tarifario_servicios|id|integer|1
+tarifario_servicios|bodega_id|integer|2
+tarifario_servicios|concepto_id|integer|3
+tarifario_servicios|precio|numeric|4
+tarifario_servicios|vigencia_inicio|date|5
+tarifario_servicios|vigencia_fin|date|6
+tarifario_servicios|activo|boolean|7
+tarifario_servicios|updated_at|timestamp without time zone|8
+tecnico_zona|id|integer|1
+tecnico_zona|usuario_id|integer|2
+tecnico_zona|state_id|character varying|3
+tecnico_zona|municipality_id|character varying|4
+transacciones|id|integer|1
+transacciones|bodega_id|integer|2
+transacciones|usuario_bodeguero|integer|3
+transacciones|producer_id|bigint|4
+transacciones|nombre_productor_libre|character varying|5
+transacciones|tipo_maiz|character varying|6
+transacciones|variedad_code|character varying|7
+transacciones|volumen_ton|numeric|8
+transacciones|precio_ton|numeric|9
+transacciones|fecha|date|10
+transacciones|confirmacion_productor|character varying|11
+transacciones|peso_precio_sistema|numeric|12
+transacciones|notas|text|13
+transacciones|created_at|timestamp without time zone|14
+transacciones|updated_at|timestamp without time zone|15
+transacciones|humedad_pct|numeric|16
+transacciones|impurezas_pct|numeric|17
+transacciones|grano_quebrado_pct|numeric|18
+transacciones|propuesta_id|integer|19
+up|up_id|bigint|1
+up|producer_id|bigint|2
+up|up_name|character varying|3
+up|up_type|character varying|4
+up|production_system|character varying|5
+up|water_regime|character varying|6
+up|geom|USER-DEFINED|7
+up|centroid|USER-DEFINED|8
+up|area_ha_calc|numeric|9
+up|state_name|character varying|10
+up|municipality_name|character varying|11
+up|state_id|character varying|12
+up|municipality_id|character varying|13
+up|location_confirmed|boolean|14
+up|location_correction_reason|character varying|15
+up|created_at|timestamp with time zone|16
+up|updated_at|timestamp with time zone|17
+up|coincide_superficie_calculada|boolean|18
+up|area_real_declarada_ha|double precision|19
+up|motivo_diferencia_superficie|text|20
+up|centroid_source|character varying|21
+up|area_ha_real|numeric|22
+up|coincide_area|boolean|23
+up|domicilio_actualizado_en|timestamp with time zone|24
+up|domicilio_actualizado_por|character varying|25
+up|posible_traslape_producer_id|integer|26
+up|traslape_revisado|boolean|27
+up|numero_up|integer|28
+up|localidad|character varying|29
+up|documento_propiedad|character varying|30
+up|documento_propiedad_otro|character varying|31
+up|programa_origen|character varying|32
+usuario_programa|usuario_id|integer|1
+usuario_programa|programa|character varying|2
+usuarios|id|integer|1
+usuarios|email|character varying|2
+usuarios|curp|character varying|3
+usuarios|nombre_completo|character varying|4
+usuarios|password_hash|character varying|5
+usuarios|telefono|character varying|6
+usuarios|activo|boolean|7
+usuarios|created_at|timestamp with time zone|8
+usuarios|updated_at|timestamp with time zone|9
+usuarios|rol|character varying|10
+usuarios|state_id|character varying|11
+usuarios|municipality_id|character varying|12
+usuarios|aviso_privacidad_aceptado|boolean|13
+usuarios|aviso_privacidad_fecha|timestamp with time zone|14
+usuarios|aviso_privacidad_lat|double precision|15
+usuarios|aviso_privacidad_lng|double precision|16
+usuarios|aviso_privacidad_version|character varying|17
+usuarios|aviso_privacidad_foto_url|text|18
+usuarios|push_endpoint|text|19
+usuarios|push_p256dh|text|20
+usuarios|push_auth|text|21
+usuarios|push_activo|boolean|22
+usuarios|reset_token|character varying|23
+usuarios|reset_token_expires|timestamp with time zone|24
+usuarios|reset_pin_forced|boolean|25
+usuarios|pin_texto|character varying|26
+usuarios|es_panel_usuario|boolean|27
+usuarios|estado_asignado|character varying|28
+usuarios|debe_cambiar_pass|boolean|29
+usuarios|ultimo_login|timestamp with time zone|30
+usuarios|intentos_fallidos|integer|31
+usuarios|bloqueado_hasta|timestamp with time zone|32
+usuarios|sesion_activa_jti|character varying|33
+usuarios|tipo_tecnico|character varying|34
+ventanillas|id|integer|1
+ventanillas|bodega_id|integer|2
+ventanillas|usuario_id|integer|3
+ventanillas|nombre_enlace_agricultura|character varying|4
+ventanillas|nombre_ventanilla|character varying|5
+ventanillas|telefono_responsable|character varying|6
+ventanillas|correo_responsable|character varying|7
+ventanillas|tipo|character varying|8
+ventanillas|estatus|character varying|9
+ventanillas|created_at|timestamp without time zone|10

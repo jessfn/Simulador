@@ -49,8 +49,8 @@ function responderError(res: Response, error: unknown, contexto: string): void {
 /** El técnico debe ser el responsable del productor en el programa frijol. Devuelve la fila de producer_programa o responde 403/404. */
 async function productorPropio(req: AuthRequest, res: Response, producerId: string | number, db: { query: Function } = pool) {
   const r = await db.query(
-    `SELECT pp.*, p.curp FROM producer_programa pp JOIN producer p ON p.producer_id = pp.producer_id
-      WHERE pp.producer_id = $1 AND pp.programa = $2`,
+    `SELECT pp.*, p.curp FROM productor_programa pp JOIN productor p ON p.productor_id = pp.productor_id
+      WHERE pp.productor_id = $1 AND pp.programa = $2`,
     [producerId, PROGRAMA_FRIJOL]
   );
   if (r.rows.length === 0) { res.status(404).json({ error: 'Productor no encontrado en Frijol' }); return null; }
@@ -61,21 +61,21 @@ async function productorPropio(req: AuthRequest, res: Response, producerId: stri
 // ─── Datos del productor y sus parcelas (para prellenar el registro) ────────
 async function datosProductor(producerId: number) {
   const p = await pool.query(
-    `SELECT p.producer_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo,
+    `SELECT p.productor_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo,
             to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento,
-            p.phone AS telefono, p.correo, p.usuario_id IS NOT NULL AS tiene_cuenta
-       FROM producer p WHERE p.producer_id = $1`, [producerId]);
-  const fp = await pool.query('SELECT * FROM frijol_productor WHERE producer_id = $1', [producerId]);
+            p.telefono AS telefono, p.correo, p.usuario_id IS NOT NULL AS tiene_cuenta
+       FROM productor p WHERE p.productor_id = $1`, [producerId]);
+  const fp = await pool.query('SELECT * FROM frijol_productor WHERE productor_id = $1', [producerId]);
   const parcelas = await pool.query(
-    `SELECT u.up_id::int AS up_id, u.up_name, u.numero_up, u.area_ha_calc::float AS area_ha_calc, u.area_ha_real::float AS area_ha_real, u.state_id, u.state_name, u.municipality_id,
-            u.municipality_name, u.localidad, u.documento_propiedad, u.documento_propiedad_otro,
-            ST_AsGeoJSON(u.geom)::json AS geom_geojson,
-            COALESCE((SELECT json_agg(CASE c.cycle_type
-                                        WHEN 'OI' THEN 'OI ' || c.cycle_year || '-' || LPAD(((c.cycle_year + 1) % 100)::text, 2, '0')
-                                        WHEN 'PV' THEN 'PV ' || c.cycle_year
-                                        ELSE 'Anual ' || c.cycle_year END ORDER BY c.cycle_year DESC)
-                       FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'frijol' AND COALESCE(c.estado_ciclo,'activo') <> 'cancelado'), '[]'::json) AS ciclos_frijol
-       FROM up u WHERE u.producer_id = $1 ORDER BY u.numero_up NULLS LAST, u.created_at`, [producerId]);
+    `SELECT u.up_id::int AS up_id, u.nombre_up, u.numero_up, u.superficie_ha_calculada::float AS area_ha_calc, u.superficie_ha_real::float AS area_ha_real, u.estado_id, u.nombre_estado, u.municipio_id,
+            u.nombre_municipio, u.localidad, u.documento_propiedad, u.documento_propiedad_otro,
+            ST_AsGeoJSON(u.geometria)::json AS geom_geojson,
+            COALESCE((SELECT json_agg(CASE c.tipo_ciclo
+                                        WHEN 'OI' THEN 'OI ' || c.anio_ciclo || '-' || LPAD(((c.anio_ciclo + 1) % 100)::text, 2, '0')
+                                        WHEN 'PV' THEN 'PV ' || c.anio_ciclo
+                                        ELSE 'Anual ' || c.anio_ciclo END ORDER BY c.anio_ciclo DESC)
+                       FROM ciclo c WHERE c.up_id = u.up_id AND c.cultivo = 'frijol' AND COALESCE(c.estado_ciclo,'activo') <> 'cancelado'), '[]'::json) AS ciclos_frijol
+       FROM up u WHERE u.productor_id = $1 ORDER BY u.numero_up NULLS LAST, u.creado_en`, [producerId]);
   return {
     datos: p.rows[0],
     frijol_productor: fp.rows[0] || null,
@@ -92,14 +92,14 @@ router.get('/catalogos', async (_req: AuthRequest, res: Response): Promise<void>
   try {
     const [variedades, generales, programas] = await Promise.all([
       pool.query(
-        `SELECT code, label FROM cat_crop_variety
-          WHERE crop = 'frijol' AND is_active = true
-          ORDER BY (code IN ('CRIOLLO_LOCAL','OTRA')), sort_order, label`
+        `SELECT codigo, etiqueta FROM cat_variedad_cultivo
+          WHERE cultivo = 'frijol' AND activo = true
+          ORDER BY (codigo IN ('CRIOLLO_LOCAL','OTRA')), orden, etiqueta`
       ),
       pool.query(
-        `SELECT catalog, code, label FROM cat_catalog
-          WHERE catalog = ANY($1::text[]) AND is_active = true
-          ORDER BY catalog, sort_order, label`,
+        `SELECT catalogo, codigo, etiqueta FROM cat_catalogo
+          WHERE catalogo = ANY($1::text[]) AND activo = true
+          ORDER BY catalogo, orden, etiqueta`,
         [CATALOGOS as unknown as string[]]
       ),
       pool.query(
@@ -131,8 +131,8 @@ router.get('/catalogos', async (_req: AuthRequest, res: Response): Promise<void>
 router.get('/estados', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const [estados, zona] = await Promise.all([
-      pool.query('SELECT state_id, name FROM geo_state ORDER BY name'),
-      pool.query('SELECT state_id, municipality_id FROM tecnico_zona WHERE usuario_id = $1', [req.user!.userId]),
+      pool.query('SELECT estado_id, nombre FROM geo_estado ORDER BY nombre'),
+      pool.query('SELECT estado_id, municipio_id FROM tecnico_zona WHERE usuario_id = $1', [req.user!.userId]),
     ]);
     res.json({ estados: estados.rows, zona: zona.rows });
   } catch (error) { responderError(res, error, 'GET /frijol/estados'); }
@@ -142,7 +142,7 @@ router.get('/municipios', async (req: AuthRequest, res: Response): Promise<void>
   try {
     const stateId = String(req.query.state_id || '');
     if (!stateId) { res.status(400).json({ error: 'Falta state_id' }); return; }
-    const r = await pool.query('SELECT municipality_id, name FROM geo_municipality WHERE state_id = $1 ORDER BY name', [stateId]);
+    const r = await pool.query('SELECT municipio_id, nombre FROM geo_municipio WHERE estado_id = $1 ORDER BY nombre', [stateId]);
     res.json({ municipios: r.rows });
   } catch (error) { responderError(res, error, 'GET /frijol/municipios'); }
 });
@@ -168,11 +168,11 @@ router.post('/consultar-curp', consultaCurpLimiter, async (req: AuthRequest, res
     const tecnicoId = req.user!.userId;
 
     const prod = await pool.query(
-      `SELECT p.producer_id,
+      `SELECT p.productor_id,
               (SELECT row_to_json(x) FROM (SELECT pp.usuario_capturista_id, u.nombre_completo AS tecnico
-                 FROM producer_programa pp LEFT JOIN usuarios u ON u.id = pp.usuario_capturista_id
-                WHERE pp.producer_id = p.producer_id AND pp.programa = $2) x) AS frijol
-         FROM producer p WHERE UPPER(p.curp) = $1`,
+                 FROM productor_programa pp LEFT JOIN usuarios u ON u.id = pp.usuario_capturista_id
+                WHERE pp.productor_id = p.productor_id AND pp.programa = $2) x) AS frijol
+         FROM productor p WHERE UPPER(p.curp) = $1`,
       [curp, PROGRAMA_FRIJOL]
     );
 
@@ -239,20 +239,20 @@ router.post('/registros', async (req: AuthRequest, res: Response): Promise<void>
 router.get('/registros/:cycle_crop_id/acuse', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const r = await pool.query(
-      `SELECT cc.cycle_crop_id::int AS id, cc.area_sown_ha::float AS sembrada, cc.yield_expected::float AS rendimiento, cc.variety_other,
-              cv.label AS variedad, c.cycle_year, c.cycle_type, u.up_id::int AS up_id, u.up_name, u.state_name, u.municipality_name, u.localidad,
-              COALESCE(u.area_ha_real, u.area_ha_calc)::float AS area_parcela,
-              p.producer_id, p.curp, TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)) AS nombre, p.phone,
-              pp.verificacion_identidad, pp.usuario_capturista_id, t.nombre_completo AS tecnico, fc.created_at
-         FROM cycle_crop cc
-         JOIN cycle c ON c.cycle_id = cc.cycle_id AND c.crop = 'frijol'
+      `SELECT cc.ciclo_cultivo_id::int AS id, cc.superficie_sembrada_ha::float AS sembrada, cc.rendimiento_esperado::float AS rendimiento, cc.variedad_otra,
+              cv.etiqueta AS variedad, c.anio_ciclo, c.tipo_ciclo, u.up_id::int AS up_id, u.nombre_up, u.nombre_estado, u.nombre_municipio, u.localidad,
+              COALESCE(u.superficie_ha_real, u.superficie_ha_calculada)::float AS area_parcela,
+              p.productor_id, p.curp, TRIM(CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno)) AS nombre, p.telefono,
+              pp.verificacion_identidad, pp.usuario_capturista_id, t.nombre_completo AS tecnico, fc.creado_en
+         FROM ciclo_cultivo cc
+         JOIN ciclo c ON c.ciclo_id = cc.ciclo_id AND c.cultivo = 'frijol'
          JOIN up u ON u.up_id = c.up_id
-         JOIN producer p ON p.producer_id = u.producer_id
-         JOIN producer_programa pp ON pp.producer_id = p.producer_id AND pp.programa = $2
+         JOIN productor p ON p.productor_id = u.productor_id
+         JOIN productor_programa pp ON pp.productor_id = p.productor_id AND pp.programa = $2
          LEFT JOIN usuarios t ON t.id = pp.usuario_capturista_id
-         LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id
-         LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.crop = 'frijol'
-        WHERE cc.cycle_crop_id = $1`,
+         LEFT JOIN frijol_cultivo fc ON fc.ciclo_cultivo_id = cc.ciclo_cultivo_id
+         LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = cc.variedad_id AND cv.cultivo = 'frijol'
+        WHERE cc.ciclo_cultivo_id = $1`,
       [req.params.cycle_crop_id, PROGRAMA_FRIJOL]
     );
     if (r.rows.length === 0) { res.status(404).json({ error: 'Registro no encontrado' }); return; }
@@ -287,14 +287,14 @@ router.get('/mis-registros', async (req: AuthRequest, res: Response): Promise<vo
     if (q) { params.push(`%${q}%`); cond.push(`(p.nombres ILIKE $${params.length} OR p.apellido_paterno ILIKE $${params.length} OR p.apellido_materno ILIKE $${params.length} OR p.curp ILIKE $${params.length})`); }
 
     const lista = await pool.query(
-      `SELECT p.producer_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, gm.name AS municipio,
+      `SELECT p.productor_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, gm.nombre AS municipio,
               pp.verificacion_identidad, pp.estatus_registro, pp.fecha_alta,
-              (SELECT COUNT(DISTINCT u.up_id) FROM up u JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'frijol' WHERE u.producer_id = p.producer_id)::int AS parcelas_frijol,
-              COALESCE((SELECT SUM(cc.area_sown_ha) FROM up u JOIN cycle c ON c.up_id = u.up_id AND c.crop = 'frijol'
-                          JOIN cycle_crop cc ON cc.cycle_id = c.cycle_id WHERE u.producer_id = p.producer_id), 0)::float AS ha_frijol
-         FROM producer_programa pp
-         JOIN producer p ON p.producer_id = pp.producer_id
-         LEFT JOIN geo_municipality gm ON gm.municipality_id = p.municipality_id
+              (SELECT COUNT(DISTINCT u.up_id) FROM up u JOIN ciclo c ON c.up_id = u.up_id AND c.cultivo = 'frijol' WHERE u.productor_id = p.productor_id)::int AS parcelas_frijol,
+              COALESCE((SELECT SUM(cc.superficie_sembrada_ha) FROM up u JOIN ciclo c ON c.up_id = u.up_id AND c.cultivo = 'frijol'
+                          JOIN ciclo_cultivo cc ON cc.ciclo_id = c.ciclo_id WHERE u.productor_id = p.productor_id), 0)::float AS ha_frijol
+         FROM productor_programa pp
+         JOIN productor p ON p.productor_id = pp.productor_id
+         LEFT JOIN geo_municipio gm ON gm.municipio_id = p.municipio_id
         WHERE ${cond.join(' AND ')}
         ORDER BY pp.fecha_alta DESC`,
       params
@@ -304,7 +304,7 @@ router.get('/mis-registros', async (req: AuthRequest, res: Response): Promise<vo
               COUNT(*) FILTER (WHERE estatus_registro = 'enviado' AND verificacion_identidad = 'verificada')::int AS enviados,
               COUNT(*) FILTER (WHERE verificacion_identidad = 'pendiente')::int AS pendientes_verificacion,
               COUNT(*) FILTER (WHERE estatus_registro = 'requiere_correccion')::int AS requieren_correccion
-         FROM producer_programa WHERE programa = $1 AND usuario_capturista_id = $2`,
+         FROM productor_programa WHERE programa = $1 AND usuario_capturista_id = $2`,
       [PROGRAMA_FRIJOL, req.user!.userId]
     );
     res.json({ registros: lista.rows, contadores: cont.rows[0] });
@@ -320,19 +320,19 @@ router.get('/productores/:producer_id', async (req: AuthRequest, res: Response):
     if (!pp) return;
     const base = await datosProductor(Number(req.params.producer_id));
     const cultivos = await pool.query(
-      `SELECT cc.cycle_crop_id::int AS cycle_crop_id, c.cycle_id::int AS cycle_id, c.up_id::int AS up_id, c.cycle_year, c.cycle_type, c.tipo_riego, cc.variety_id, cc.variety_other,
-              cv.label AS variedad, cc.area_sown_ha::float AS area_sown_ha, to_char(cc.planting_date,'YYYY-MM-DD') AS fecha_siembra,
-              to_char(cc.estimated_harvest_date,'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.yield_expected::float AS rendimiento_esperado_t_ha,
-              cc.destination AS destino, fc.tipo_siembra, fc.densidad_kg_ha::float AS densidad_kg_ha, fc.usa_fertilizante, fc.tipos_fertilizante, fc.rotacion,
-              fc.observaciones, fc.sin_observaciones, fc.capturado_en, fc.hubo_desconexion, fc.created_at
-         FROM cycle_crop cc
-         JOIN cycle c ON c.cycle_id = cc.cycle_id AND c.crop = 'frijol'
+      `SELECT cc.ciclo_cultivo_id::int AS cycle_crop_id, c.ciclo_id::int AS cycle_id, c.up_id::int AS up_id, c.anio_ciclo, c.tipo_ciclo, c.tipo_riego, cc.variedad_id, cc.variedad_otra,
+              cv.etiqueta AS variedad, cc.superficie_sembrada_ha::float AS area_sown_ha, to_char(cc.fecha_siembra,'YYYY-MM-DD') AS fecha_siembra,
+              to_char(cc.fecha_cosecha_estimada,'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.rendimiento_esperado::float AS rendimiento_esperado_t_ha,
+              cc.destino AS destino, fc.tipo_siembra, fc.densidad_kg_ha::float AS densidad_kg_ha, fc.usa_fertilizante, fc.tipos_fertilizante, fc.rotacion,
+              fc.observaciones, fc.sin_observaciones, fc.capturado_en, fc.hubo_desconexion, fc.creado_en
+         FROM ciclo_cultivo cc
+         JOIN ciclo c ON c.ciclo_id = cc.ciclo_id AND c.cultivo = 'frijol'
          JOIN up u ON u.up_id = c.up_id
-         LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id
-         LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.crop = 'frijol'
-        WHERE u.producer_id = $1 ORDER BY c.cycle_year DESC, cc.cycle_crop_id DESC`, [req.params.producer_id]);
+         LEFT JOIN frijol_cultivo fc ON fc.ciclo_cultivo_id = cc.ciclo_cultivo_id
+         LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = cc.variedad_id AND cv.cultivo = 'frijol'
+        WHERE u.productor_id = $1 ORDER BY c.anio_ciclo DESC, cc.ciclo_cultivo_id DESC`, [req.params.producer_id]);
     const semillas = await pool.query(
-      `SELECT s.* FROM frijol_semillas s JOIN up u ON u.up_id = s.up_id WHERE u.producer_id = $1`, [req.params.producer_id]);
+      `SELECT s.* FROM frijol_semillas s JOIN up u ON u.up_id = s.up_id WHERE u.productor_id = $1`, [req.params.producer_id]);
     res.json({
       ...base,
       verificacion_identidad: pp.verificacion_identidad, estatus_registro: pp.estatus_registro, fecha_alta: pp.fecha_alta,
@@ -384,7 +384,7 @@ router.patch('/productores/:producer_id', async (req: AuthRequest, res: Response
       const progs: string[] = Array.isArray(fp.programas_sader) ? fp.programas_sader : [];
       await client.query(
         `UPDATE frijol_productor SET total_ups_declaradas=$1, participa_programas_sader=$2, programas_sader=$3, programas_sader_otro=$4,
-                organizacion=$5, seguro_agricola=$6, seguro_agricola_nombre=$7, updated_at=NOW() WHERE producer_id=$8`,
+                organizacion=$5, seguro_agricola=$6, seguro_agricola_nombre=$7, actualizado_en=NOW() WHERE productor_id=$8`,
         [Number(fp.total_ups_declaradas), fp.participa_programas_sader, fp.participa_programas_sader ? progs : [],
          progs.includes('otro_sader') ? String(fp.programas_sader_otro).trim() : null, fp.organizacion ? String(fp.organizacion).trim() : null,
          fp.seguro_agricola || null, fp.seguro_agricola === 'otro' ? String(fp.seguro_agricola_nombre).trim() : null, id]
@@ -412,12 +412,12 @@ router.patch('/productores/:producer_id/curp', async (req: AuthRequest, res: Res
     const curp = String(req.body?.curp || '').toUpperCase().trim();
     if (!CURP_RE.test(curp)) { res.status(400).json({ error: 'CURP inválida. Verifica el formato (18 caracteres).', campo: 'curp' }); return; }
 
-    const p = (await client.query('SELECT curp, usuario_capturista_id, usuario_id FROM producer WHERE producer_id = $1', [id])).rows[0];
-    const otros = await client.query('SELECT 1 FROM producer_programa WHERE producer_id = $1 AND programa <> $2 LIMIT 1', [id, PROGRAMA_FRIJOL]);
+    const p = (await client.query('SELECT curp, usuario_capturista_id, usuario_id FROM productor WHERE productor_id = $1', [id])).rows[0];
+    const otros = await client.query('SELECT 1 FROM productor_programa WHERE productor_id = $1 AND programa <> $2 LIMIT 1', [id, PROGRAMA_FRIJOL]);
     if (p.usuario_capturista_id !== req.user!.userId || p.usuario_id || otros.rows.length > 0) {
       res.status(409).json({ error: 'No se puede corregir la CURP de este productor porque también está en SIMAC', codigo: 'CURP_NO_EDITABLE' }); return;
     }
-    const dup = await client.query('SELECT 1 FROM producer WHERE UPPER(curp) = $1 AND producer_id <> $2', [curp, id]);
+    const dup = await client.query('SELECT 1 FROM productor WHERE UPPER(curp) = $1 AND productor_id <> $2', [curp, id]);
     if (dup.rows.length > 0) { res.status(409).json({ error: 'Esa CURP ya está registrada con otro productor', codigo: 'CURP_DUPLICADA' }); return; }
 
     const ident = await verificarIdentidad(curp);
@@ -426,13 +426,13 @@ router.patch('/productores/:producer_id/curp', async (req: AuthRequest, res: Res
 
     const verificada = ident.tipo === 'PADRON_SADER' || ident.tipo === 'RENAPO';
     await client.query('BEGIN');
-    await client.query('UPDATE producer SET curp = $1 WHERE producer_id = $2', [curp, id]);
+    await client.query('UPDATE productor SET curp = $1 WHERE productor_id = $2', [curp, id]);
     await client.query(
-      `UPDATE producer_programa SET verificacion_identidad = $1, estatus_registro = 'enviado', updated_at = NOW() WHERE producer_id = $2 AND programa = $3`,
+      `UPDATE productor_programa SET verificacion_identidad = $1, estatus_registro = 'enviado', actualizado_en = NOW() WHERE productor_id = $2 AND programa = $3`,
       [verificada ? 'verificada' : 'pendiente', id, PROGRAMA_FRIJOL]
     );
     await client.query(
-      'INSERT INTO producer_cambios (producer_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)',
+      'INSERT INTO productor_cambios (productor_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,$5,$6)',
       [id, 'curp', p.curp, curp, req.user!.userId, PROGRAMA_FRIJOL]
     );
     await client.query('COMMIT');
@@ -450,9 +450,9 @@ router.patch('/cultivos/:cycle_crop_id', async (req: AuthRequest, res: Response)
   const client = await pool.connect();
   try {
     const dueno = await client.query(
-      `SELECT u.producer_id, u.up_id, u.area_ha_calc, u.area_ha_real, c.cycle_id, c.cycle_year, c.cycle_type, c.tipo_riego
-         FROM cycle_crop cc JOIN cycle c ON c.cycle_id = cc.cycle_id AND c.crop = 'frijol' JOIN up u ON u.up_id = c.up_id
-        WHERE cc.cycle_crop_id = $1`, [req.params.cycle_crop_id]);
+      `SELECT u.productor_id, u.up_id, u.superficie_ha_calculada, u.superficie_ha_real, c.ciclo_id, c.anio_ciclo, c.tipo_ciclo, c.tipo_riego
+         FROM ciclo_cultivo cc JOIN ciclo c ON c.ciclo_id = cc.ciclo_id AND c.cultivo = 'frijol' JOIN up u ON u.up_id = c.up_id
+        WHERE cc.ciclo_cultivo_id = $1`, [req.params.cycle_crop_id]);
     if (dueno.rows.length === 0) { res.status(404).json({ error: 'Cultivo de frijol no encontrado' }); return; }
     const d = dueno.rows[0];
     const pp = await productorPropio(req, res, d.producer_id, client);
@@ -460,11 +460,11 @@ router.patch('/cultivos/:cycle_crop_id', async (req: AuthRequest, res: Response)
     if (pp.estatus_registro === 'validado') { res.status(409).json({ error: 'Este registro ya fue validado y no se puede corregir', codigo: 'REGISTRO_VALIDADO' }); return; }
 
     const act = (await client.query(
-      `SELECT cc.variety_id, cc.variety_other, cc.area_sown_ha, to_char(cc.planting_date,'YYYY-MM-DD') AS fecha_siembra,
-              to_char(cc.estimated_harvest_date,'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.yield_expected AS rendimiento_esperado_t_ha,
-              cc.destination AS destino, fc.tipo_siembra, fc.densidad_kg_ha, fc.usa_fertilizante, fc.tipos_fertilizante, fc.rotacion,
+      `SELECT cc.variedad_id, cc.variedad_otra, cc.superficie_sembrada_ha, to_char(cc.fecha_siembra,'YYYY-MM-DD') AS fecha_siembra,
+              to_char(cc.fecha_cosecha_estimada,'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.rendimiento_esperado AS rendimiento_esperado_t_ha,
+              cc.destino AS destino, fc.tipo_siembra, fc.densidad_kg_ha, fc.usa_fertilizante, fc.tipos_fertilizante, fc.rotacion,
               fc.observaciones, fc.sin_observaciones
-         FROM cycle_crop cc LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id WHERE cc.cycle_crop_id = $1`, [req.params.cycle_crop_id])).rows[0];
+         FROM ciclo_cultivo cc LEFT JOIN frijol_cultivo fc ON fc.ciclo_cultivo_id = cc.ciclo_cultivo_id WHERE cc.ciclo_cultivo_id = $1`, [req.params.cycle_crop_id])).rows[0];
     const cu = { ...act, ...(req.body?.cultivo || {}) };
     validarCultivo(cu);
 
@@ -492,21 +492,21 @@ router.patch('/cultivos/:cycle_crop_id', async (req: AuthRequest, res: Response)
     await client.query('BEGIN');
     if (c.cycle_year !== d.cycle_year || c.cycle_type !== d.cycle_type) {
       const choque = await client.query(
-        `SELECT 1 FROM cycle WHERE up_id = $1 AND crop = 'frijol' AND cycle_year = $2 AND cycle_type = $3 AND cycle_id <> $4 AND COALESCE(estado_ciclo,'activo') = 'activo'`,
+        `SELECT 1 FROM ciclo WHERE up_id = $1 AND cultivo = 'frijol' AND anio_ciclo = $2 AND tipo_ciclo = $3 AND ciclo_id <> $4 AND COALESCE(estado_ciclo,'activo') = 'activo'`,
         [d.up_id, c.cycle_year, c.cycle_type, d.cycle_id]);
       if (choque.rows.length > 0) { await client.query('ROLLBACK'); res.status(409).json({ error: `Ya hay frijol registrado en esta parcela para ${c.etiqueta}`, codigo: 'FRIJOL_YA_REGISTRADO' }); return; }
-      await client.query('UPDATE cycle SET cycle_year = $1, cycle_type = $2 WHERE cycle_id = $3', [c.cycle_year, c.cycle_type, d.cycle_id]);
+      await client.query('UPDATE ciclo SET anio_ciclo = $1, tipo_ciclo = $2 WHERE ciclo_id = $3', [c.cycle_year, c.cycle_type, d.cycle_id]);
     }
     await client.query(
-      `UPDATE cycle_crop SET variety_id=$1, variety_other=$2, area_sown_ha=$3, planting_date=$4, estimated_harvest_date=$5, yield_expected=$6, destination=$7
-        WHERE cycle_crop_id = $8`,
+      `UPDATE ciclo_cultivo SET variedad_id=$1, variedad_otra=$2, superficie_sembrada_ha=$3, fecha_siembra=$4, fecha_cosecha_estimada=$5, rendimiento_esperado=$6, destino=$7
+        WHERE ciclo_cultivo_id = $8`,
       [cu.variety_id, cu.variety_other ? String(cu.variety_other).trim() : null, Number(cu.area_sown_ha), cu.fecha_siembra, cu.fecha_cosecha_estimada,
        Number(cu.rendimiento_esperado_t_ha), cu.destino || null, req.params.cycle_crop_id]);
-    await client.query('UPDATE cycle SET hectareas_sembradas = $1, fecha_siembra = $2, variedad_nombre = $3 WHERE cycle_id = $4',
+    await client.query('UPDATE ciclo SET hectareas_sembradas = $1, fecha_siembra = $2, variedad_nombre = $3 WHERE ciclo_id = $4',
       [Number(cu.area_sown_ha), cu.fecha_siembra, cu.variety_other || cu.variety_id, d.cycle_id]);
     await client.query(
       `UPDATE frijol_cultivo SET tipo_siembra=$1, densidad_kg_ha=$2, usa_fertilizante=$3, tipos_fertilizante=$4, rotacion=$5, observaciones=$6,
-              sin_observaciones=$7, updated_at=NOW() WHERE cycle_crop_id = $8`,
+              sin_observaciones=$7, actualizado_en=NOW() WHERE ciclo_cultivo_id = $8`,
       [cu.tipo_siembra || null, Number(cu.densidad_kg_ha), cu.usa_fertilizante, cu.usa_fertilizante ? cu.tipos_fertilizante : [], cu.rotacion,
        cu.sin_observaciones === true ? null : String(cu.observaciones).trim(), cu.sin_observaciones === true, req.params.cycle_crop_id]);
     await client.query('COMMIT');

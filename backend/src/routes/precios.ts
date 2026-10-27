@@ -53,7 +53,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
       FROM precios p
       LEFT JOIN infraestructura i ON p.bodega_id = i.id
       ${where}
-      ORDER BY p.fecha DESC, p.created_at DESC
+      ORDER BY p.fecha DESC, p.creado_en DESC
       LIMIT 500
     `, params);
 
@@ -118,7 +118,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
         tipo_precio, fuente, tipo_maiz, fecha, precio,
         estado, municipio, observaciones,
         valor_origen, unidad_origen, tipo_cambio,
-        programa, bodega_id, usuario_captura, created_at
+        programa, bodega_id, usuario_captura, creado_en
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8,

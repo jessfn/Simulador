@@ -24,37 +24,37 @@ const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 /** Una fila por cultivo registrado (cycle_crop de frijol). Los filtros llegan como parametros, nunca concatenados. */
 function condiciones(f: Filtros): { where: string; params: unknown[] } {
   const params: unknown[] = [PROGRAMA_FRIJOL];
-  const cond = ["c.crop = 'frijol'", 'pp.programa = $1'];
+  const cond = ["c.cultivo = 'frijol'", 'pp.programa = $1'];
   const igual = (col: string, v: unknown) => { params.push(v); cond.push(`${col} = $${params.length}`); };
   if (f.q) { params.push(`%${f.q}%`); const n = params.length; cond.push(`(p.nombres ILIKE $${n} OR p.apellido_paterno ILIKE $${n} OR p.apellido_materno ILIKE $${n} OR p.curp ILIKE $${n})`); }
-  if (f.estado) igual('u.state_id', f.estado);
-  if (f.municipio) igual('u.municipality_id', f.municipio);
+  if (f.estado) igual('u.estado_id', f.estado);
+  if (f.municipio) igual('u.municipio_id', f.municipio);
   if (f.verificacion) igual('pp.verificacion_identidad', f.verificacion);
   if (f.estatus) igual('pp.estatus_registro', f.estatus);
   if (f.tecnico && /^\d+$/.test(f.tecnico)) igual('pp.usuario_capturista_id', Number(f.tecnico));
   if (f.tipo_tecnico) igual('t.tipo_tecnico', f.tipo_tecnico);
-  if (f.ciclo) igual("(c.cycle_year::text || '-' || c.cycle_type)", f.ciclo);
-  if (f.variedad) igual('cc.variety_id', f.variedad);
-  if (f.destino) igual('cc.destination', f.destino);
+  if (f.ciclo) igual("(c.anio_ciclo::text || '-' || c.tipo_ciclo)", f.ciclo);
+  if (f.variedad) igual('cc.variedad_id', f.variedad);
+  if (f.destino) igual('cc.destino', f.destino);
   if (f.semillas === 'si') cond.push('s.cumple_criterio_original IS TRUE');
   if (f.semillas === 'no') cond.push('s.cumple_criterio_original IS NOT TRUE');
   if (f.pendiente14 === '1') cond.push("pp.verificacion_identidad = 'pendiente' AND pp.fecha_alta < NOW() - INTERVAL '14 days'");
-  if (f.desde && FECHA.test(f.desde)) { params.push(f.desde); cond.push(`cc.created_at >= $${params.length}::date`); }
-  if (f.hasta && FECHA.test(f.hasta)) { params.push(f.hasta); cond.push(`cc.created_at < ($${params.length}::date + 1)`); }
+  if (f.desde && FECHA.test(f.desde)) { params.push(f.desde); cond.push(`cc.creado_en >= $${params.length}::date`); }
+  if (f.hasta && FECHA.test(f.hasta)) { params.push(f.hasta); cond.push(`cc.creado_en < ($${params.length}::date + 1)`); }
   return { where: cond.join(' AND '), params };
 }
 
 const DESDE = `
-  FROM cycle_crop cc
-  JOIN cycle c ON c.cycle_id = cc.cycle_id
+  FROM ciclo_cultivo cc
+  JOIN ciclo c ON c.ciclo_id = cc.ciclo_id
   JOIN up u ON u.up_id = c.up_id
-  JOIN producer p ON p.producer_id = u.producer_id
-  JOIN producer_programa pp ON pp.producer_id = p.producer_id
-  LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id
-  LEFT JOIN frijol_productor fp ON fp.producer_id = p.producer_id
+  JOIN productor p ON p.productor_id = u.productor_id
+  JOIN productor_programa pp ON pp.productor_id = p.productor_id
+  LEFT JOIN frijol_cultivo fc ON fc.ciclo_cultivo_id = cc.ciclo_cultivo_id
+  LEFT JOIN frijol_productor fp ON fp.productor_id = p.productor_id
   LEFT JOIN frijol_semillas s ON s.up_id = u.up_id
   LEFT JOIN usuarios t ON t.id = pp.usuario_capturista_id
-  LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.crop = 'frijol'`;
+  LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = cc.variedad_id AND cv.cultivo = 'frijol'`;
 
 const filtrosDe = (q: AuthRequest['query']): Filtros => {
   const g = (k: string) => (q[k] ? String(q[k]).trim() : undefined);
@@ -64,34 +64,34 @@ const filtrosDe = (q: AuthRequest['query']): Filtros => {
 };
 
 /** Etiqueta legible de un valor de catalogo (no codigos en las pantallas ni en el Excel). */
-const etq = (catalogo: string, expr: string) => `(SELECT label FROM cat_catalog WHERE catalog = '${catalogo}' AND code = ${expr})`;
-const VARIEDAD = "COALESCE(cv.label, cc.variety_other, cc.variety_id)";
-const CICLO = "(c.cycle_year::text || '-' || c.cycle_type)";
+const etq = (catalogo: string, expr: string) => `(SELECT etiqueta FROM cat_catalogo WHERE catalogo = '${catalogo}' AND codigo = ${expr})`;
+const VARIEDAD = "COALESCE(cv.etiqueta, cc.variedad_otra, cc.variedad_id)";
+const CICLO = "(c.anio_ciclo::text || '-' || c.tipo_ciclo)";
 
 // GET /api/admin/frijol/resumen — tarjetas y desgloses (respetan los filtros)
 router.get('/resumen', authMiddleware, ver, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { where, params } = condiciones(filtrosDe(req.query));
     const tot = await pool.query(
-      `SELECT COUNT(DISTINCT p.producer_id)::int AS productores, COUNT(DISTINCT u.up_id)::int AS parcelas, COUNT(*)::int AS cultivos,
-              COALESCE(SUM(cc.area_sown_ha), 0)::float AS hectareas,
-              COALESCE(SUM(cc.area_sown_ha * cc.yield_expected), 0)::float AS produccion_estimada_t,
-              COUNT(DISTINCT p.producer_id) FILTER (WHERE pp.verificacion_identidad = 'pendiente')::int AS por_verificar,
-              COUNT(DISTINCT p.producer_id) FILTER (WHERE pp.verificacion_identidad = 'pendiente' AND pp.fecha_alta < NOW() - INTERVAL '14 days')::int AS pendientes_14_dias,
-              COUNT(DISTINCT p.producer_id) FILTER (WHERE pp.estatus_registro = 'requiere_correccion' OR pp.verificacion_identidad = 'no_valida')::int AS por_corregir,
+      `SELECT COUNT(DISTINCT p.productor_id)::int AS productores, COUNT(DISTINCT u.up_id)::int AS parcelas, COUNT(*)::int AS cultivos,
+              COALESCE(SUM(cc.superficie_sembrada_ha), 0)::float AS hectareas,
+              COALESCE(SUM(cc.superficie_sembrada_ha * cc.rendimiento_esperado), 0)::float AS produccion_estimada_t,
+              COUNT(DISTINCT p.productor_id) FILTER (WHERE pp.verificacion_identidad = 'pendiente')::int AS por_verificar,
+              COUNT(DISTINCT p.productor_id) FILTER (WHERE pp.verificacion_identidad = 'pendiente' AND pp.fecha_alta < NOW() - INTERVAL '14 days')::int AS pendientes_14_dias,
+              COUNT(DISTINCT p.productor_id) FILTER (WHERE pp.estatus_registro = 'requiere_correccion' OR pp.verificacion_identidad = 'no_valida')::int AS por_corregir,
               COUNT(DISTINCT u.up_id) FILTER (WHERE s.cumple_criterio_original)::int AS cumplen_criterio_semillas,
               COUNT(*) FILTER (WHERE fc.hubo_desconexion)::int AS capturados_sin_senal
          ${DESDE} WHERE ${where}`, params);
     const grupo = (sel: string, extra = '') => pool.query(
       `SELECT ${sel} ${DESDE} WHERE ${where} GROUP BY 1 ${extra}`, params);
     const [porEstado, porVariedad, porTecnico, porCiclo] = await Promise.all([
-      grupo(`COALESCE(u.state_name, 'Sin estado') AS estado, COUNT(DISTINCT p.producer_id)::int AS productores, COUNT(DISTINCT u.up_id)::int AS parcelas, COALESCE(SUM(cc.area_sown_ha), 0)::float AS hectareas`, 'ORDER BY hectareas DESC'),
-      grupo(`${VARIEDAD} AS variedad, COUNT(*)::int AS cultivos, COALESCE(SUM(cc.area_sown_ha), 0)::float AS hectareas`, 'ORDER BY hectareas DESC LIMIT 15'),
-      grupo(`COALESCE(t.nombre_completo, 'Sin técnico') AS tecnico, COUNT(DISTINCT p.producer_id)::int AS productores`, 'ORDER BY productores DESC'),
-      grupo(`${CICLO} AS ciclo, COUNT(*)::int AS cultivos, COALESCE(SUM(cc.area_sown_ha), 0)::float AS hectareas`, 'ORDER BY 1 DESC'),
+      grupo(`COALESCE(u.nombre_estado, 'Sin estado') AS estado, COUNT(DISTINCT p.productor_id)::int AS productores, COUNT(DISTINCT u.up_id)::int AS parcelas, COALESCE(SUM(cc.superficie_sembrada_ha), 0)::float AS hectareas`, 'ORDER BY hectareas DESC'),
+      grupo(`${VARIEDAD} AS variedad, COUNT(*)::int AS cultivos, COALESCE(SUM(cc.superficie_sembrada_ha), 0)::float AS hectareas`, 'ORDER BY hectareas DESC LIMIT 15'),
+      grupo(`COALESCE(t.nombre_completo, 'Sin técnico') AS tecnico, COUNT(DISTINCT p.productor_id)::int AS productores`, 'ORDER BY productores DESC'),
+      grupo(`${CICLO} AS ciclo, COUNT(*)::int AS cultivos, COALESCE(SUM(cc.superficie_sembrada_ha), 0)::float AS hectareas`, 'ORDER BY 1 DESC'),
     ]);
     const porDia = await pool.query(
-      `SELECT to_char(pp.fecha_alta::date, 'YYYY-MM-DD') AS dia, COUNT(*)::int AS registros FROM producer_programa pp
+      `SELECT to_char(pp.fecha_alta::date, 'YYYY-MM-DD') AS dia, COUNT(*)::int AS registros FROM productor_programa pp
         WHERE pp.programa = $1 AND pp.fecha_alta >= NOW() - INTERVAL '30 days' GROUP BY 1 ORDER BY 1`, [PROGRAMA_FRIJOL]);
     res.json({ totales: tot.rows[0], por_estado: porEstado.rows, por_variedad: porVariedad.rows, por_tecnico: porTecnico.rows, por_ciclo: porCiclo.rows, por_dia: porDia.rows });
   } catch (e) { fallo(res, e, 'GET /admin/frijol/resumen'); }
@@ -101,15 +101,15 @@ router.get('/resumen', authMiddleware, ver, async (req: AuthRequest, res: Respon
 router.get('/filtros', authMiddleware, ver, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const estado = req.query.estado ? String(req.query.estado) : null;
-    const frijol = `EXISTS (SELECT 1 FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'frijol')`;
+    const frijol = `EXISTS (SELECT 1 FROM ciclo c WHERE c.up_id = u.up_id AND c.cultivo = 'frijol')`;
     const [estados, municipios, tecnicos, ciclos, variedades, destinos, tipos] = await Promise.all([
-      pool.query(`SELECT DISTINCT u.state_id, u.state_name FROM up u WHERE ${frijol} AND u.state_id IS NOT NULL ORDER BY u.state_name`),
-      pool.query(`SELECT DISTINCT u.municipality_id, u.municipality_name FROM up u WHERE ${frijol} AND u.municipality_id IS NOT NULL AND ($1::text IS NULL OR u.state_id = $1) ORDER BY u.municipality_name`, [estado]),
-      pool.query(`SELECT DISTINCT t.id::int AS id, t.nombre_completo FROM producer_programa pp JOIN usuarios t ON t.id = pp.usuario_capturista_id WHERE pp.programa = $1 ORDER BY t.nombre_completo`, [PROGRAMA_FRIJOL]),
-      pool.query(`SELECT DISTINCT (cycle_year::text || '-' || cycle_type) AS ciclo FROM cycle WHERE crop = 'frijol' ORDER BY 1 DESC`),
-      pool.query(`SELECT code, label FROM cat_crop_variety WHERE crop = 'frijol' AND is_active ORDER BY (code IN ('CRIOLLO_LOCAL','OTRA')), sort_order, label`),
-      pool.query(`SELECT code, label FROM cat_catalog WHERE catalog = 'destino_frijol' AND is_active ORDER BY sort_order`),
-      pool.query(`SELECT code, label FROM cat_catalog WHERE catalog = 'tipo_tecnico' AND is_active ORDER BY sort_order`),
+      pool.query(`SELECT DISTINCT u.estado_id, u.nombre_estado FROM up u WHERE ${frijol} AND u.estado_id IS NOT NULL ORDER BY u.nombre_estado`),
+      pool.query(`SELECT DISTINCT u.municipio_id, u.nombre_municipio FROM up u WHERE ${frijol} AND u.municipio_id IS NOT NULL AND ($1::text IS NULL OR u.estado_id = $1) ORDER BY u.nombre_municipio`, [estado]),
+      pool.query(`SELECT DISTINCT t.id::int AS id, t.nombre_completo FROM productor_programa pp JOIN usuarios t ON t.id = pp.usuario_capturista_id WHERE pp.programa = $1 ORDER BY t.nombre_completo`, [PROGRAMA_FRIJOL]),
+      pool.query(`SELECT DISTINCT (anio_ciclo::text || '-' || tipo_ciclo) AS ciclo FROM ciclo WHERE cultivo = 'frijol' ORDER BY 1 DESC`),
+      pool.query(`SELECT codigo, etiqueta FROM cat_variedad_cultivo WHERE cultivo = 'frijol' AND activo ORDER BY (codigo IN ('CRIOLLO_LOCAL','OTRA')), orden, etiqueta`),
+      pool.query(`SELECT codigo, etiqueta FROM cat_catalogo WHERE catalogo = 'destino_frijol' AND activo ORDER BY orden`),
+      pool.query(`SELECT codigo, etiqueta FROM cat_catalogo WHERE catalogo = 'tipo_tecnico' AND activo ORDER BY orden`),
     ]);
     res.json({ estados: estados.rows, municipios: municipios.rows, tecnicos: tecnicos.rows, ciclos: ciclos.rows.map(r => r.ciclo),
       variedades: variedades.rows, destinos: destinos.rows, tipos_tecnico: tipos.rows });
@@ -117,8 +117,8 @@ router.get('/filtros', authMiddleware, ver, async (req: AuthRequest, res: Respon
 });
 
 const ORDENES: Record<string, string> = {
-  fecha: 'cc.created_at', productor: 'p.apellido_paterno, p.nombres', ha: 'cc.area_sown_ha', produccion: '(cc.area_sown_ha * cc.yield_expected)',
-  estado: 'u.state_name, u.municipality_name', ciclo: 'c.cycle_year, c.cycle_type', variedad: VARIEDAD,
+  fecha: 'cc.creado_en', productor: 'p.apellido_paterno, p.nombres', ha: 'cc.superficie_sembrada_ha', produccion: '(cc.superficie_sembrada_ha * cc.rendimiento_esperado)',
+  estado: 'u.nombre_estado, u.nombre_municipio', ciclo: 'c.anio_ciclo, c.tipo_ciclo', variedad: VARIEDAD,
 };
 
 // GET /api/admin/frijol/registros — un renglon por cultivo, de 50 en 50
@@ -131,17 +131,17 @@ router.get('/registros', authMiddleware, ver, async (req: AuthRequest, res: Resp
     const { where, params } = condiciones(filtrosDe(req.query));
     const total = await pool.query(`SELECT COUNT(*)::int AS n ${DESDE} WHERE ${where}`, params);
     const filas = await pool.query(
-      `SELECT cc.cycle_crop_id::int AS cycle_crop_id, p.producer_id::int AS producer_id, p.curp,
+      `SELECT cc.ciclo_cultivo_id::int AS cycle_crop_id, p.productor_id::int AS producer_id, p.curp,
               concat_ws(' ', p.nombres, p.apellido_paterno, p.apellido_materno) AS productor,
-              u.up_id::int AS up_id, u.up_name, u.numero_up, fp.total_ups_declaradas, u.area_ha_calc::float AS ha_parcela,
-              u.state_name AS estado, u.municipality_name AS municipio, u.localidad,
-              ${CICLO} AS ciclo, ${VARIEDAD} AS variedad, cc.area_sown_ha::float AS ha_sembradas,
-              cc.yield_expected::float AS rendimiento_esperado_t_ha, (cc.area_sown_ha * cc.yield_expected)::float AS produccion_estimada_t,
-              ${etq('destino_frijol', 'cc.destination')} AS destino, to_char(cc.planting_date, 'YYYY-MM-DD') AS fecha_siembra,
+              u.up_id::int AS up_id, u.nombre_up, u.numero_up, fp.total_ups_declaradas, u.superficie_ha_calculada::float AS ha_parcela,
+              u.nombre_estado AS estado, u.nombre_municipio AS municipio, u.localidad,
+              ${CICLO} AS ciclo, ${VARIEDAD} AS variedad, cc.superficie_sembrada_ha::float AS ha_sembradas,
+              cc.rendimiento_esperado::float AS rendimiento_esperado_t_ha, (cc.superficie_sembrada_ha * cc.rendimiento_esperado)::float AS produccion_estimada_t,
+              ${etq('destino_frijol', 'cc.destino')} AS destino, to_char(cc.fecha_siembra, 'YYYY-MM-DD') AS fecha_siembra,
               pp.verificacion_identidad, pp.estatus_registro, pp.fecha_alta, t.nombre_completo AS tecnico,
               CASE WHEN pp.verificacion_identidad = 'pendiente' THEN GREATEST(0, (CURRENT_DATE - pp.fecha_alta::date))::int END AS dias_pendiente,
-              s.cumple_criterio_original, fc.hubo_desconexion, cc.created_at
-         ${DESDE} WHERE ${where} ORDER BY ${orden} ${dir}, cc.cycle_crop_id DESC
+              s.cumple_criterio_original, fc.hubo_desconexion, cc.creado_en
+         ${DESDE} WHERE ${where} ORDER BY ${orden} ${dir}, cc.ciclo_cultivo_id DESC
         LIMIT ${limite} OFFSET ${(pagina - 1) * limite}`, params);
     res.json({ registros: filas.rows, total: total.rows[0].n, pagina, limite, paginas: Math.max(1, Math.ceil(total.rows[0].n / limite)) });
   } catch (e) { fallo(res, e, 'GET /admin/frijol/registros'); }
@@ -152,12 +152,12 @@ router.get('/mapa', authMiddleware, ver, async (req: AuthRequest, res: Response)
   try {
     const { where, params } = condiciones(filtrosDe(req.query));
     const r = await pool.query(
-      `SELECT u.up_id::int AS up_id, u.up_name, p.producer_id::int AS producer_id, concat_ws(' ', p.nombres, p.apellido_paterno) AS productor,
-              u.state_name AS estado, u.municipality_name AS municipio, u.area_ha_calc::float AS ha,
-              string_agg(DISTINCT ${VARIEDAD}, ', ' ORDER BY ${VARIEDAD}) AS variedad, SUM(cc.area_sown_ha)::float AS ha_sembradas,
+      `SELECT u.up_id::int AS up_id, u.nombre_up, p.productor_id::int AS producer_id, concat_ws(' ', p.nombres, p.apellido_paterno) AS productor,
+              u.nombre_estado AS estado, u.nombre_municipio AS municipio, u.superficie_ha_calculada::float AS ha,
+              string_agg(DISTINCT ${VARIEDAD}, ', ' ORDER BY ${VARIEDAD}) AS variedad, SUM(cc.superficie_sembrada_ha)::float AS ha_sembradas,
               MIN(pp.verificacion_identidad) AS verificacion_identidad, MIN(pp.estatus_registro) AS estatus_registro,
-              ST_AsGeoJSON(ST_Simplify(u.geom, 0.00001))::json AS geom
-         ${DESDE} WHERE ${where} AND u.geom IS NOT NULL GROUP BY u.up_id, p.producer_id LIMIT 5000`, params);
+              ST_AsGeoJSON(ST_Simplify(u.geometria, 0.00001))::json AS geom
+         ${DESDE} WHERE ${where} AND u.geometria IS NOT NULL GROUP BY u.up_id, p.productor_id LIMIT 5000`, params);
     res.json({ type: 'FeatureCollection', features: r.rows.map(x => ({
       type: 'Feature', geometry: x.geom,
       properties: { up_id: x.up_id, producer_id: x.producer_id, nombre: x.up_name, productor: x.productor, estado: x.estado, municipio: x.municipio,
@@ -172,43 +172,43 @@ router.get('/productores/:id', authMiddleware, ver, async (req: AuthRequest, res
     if (!/^\d+$/.test(req.params.id)) { res.status(400).json({ error: 'Identificador inválido' }); return; }
     const id = Number(req.params.id);
     const base = await pool.query(
-      `SELECT p.producer_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo,
-              to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.phone AS telefono, p.correo AS correo,
-              p.localidad, gs.name AS estado, gm.name AS municipio,
+      `SELECT p.productor_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo,
+              to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.telefono AS telefono, p.correo AS correo,
+              p.localidad, gs.nombre AS estado, gm.nombre AS municipio,
               pp.verificacion_identidad, pp.estatus_registro, pp.verificacion_intentos, pp.verificacion_ultimo_intento, pp.fecha_alta,
               t.nombre_completo AS tecnico, ${etq('tipo_tecnico', 't.tipo_tecnico')} AS tipo_tecnico,
               fp.total_ups_declaradas, fp.participa_programas_sader,
               (SELECT string_agg(g.nombre, ', ' ORDER BY g.nombre) FROM cat_programas_gobierno g WHERE g.clave = ANY(fp.programas_sader)) AS programas_sader,
               fp.programas_sader_otro, fp.organizacion, ${etq('seguro_agricola', 'fp.seguro_agricola')} AS seguro_agricola, fp.seguro_agricola_nombre
-         FROM producer p
-         JOIN producer_programa pp ON pp.producer_id = p.producer_id AND pp.programa = $2
-         LEFT JOIN frijol_productor fp ON fp.producer_id = p.producer_id
+         FROM productor p
+         JOIN productor_programa pp ON pp.productor_id = p.productor_id AND pp.programa = $2
+         LEFT JOIN frijol_productor fp ON fp.productor_id = p.productor_id
          LEFT JOIN usuarios t ON t.id = pp.usuario_capturista_id
-         LEFT JOIN geo_state gs ON gs.state_id = p.state_id
-         LEFT JOIN geo_municipality gm ON gm.municipality_id = p.municipality_id
-        WHERE p.producer_id = $1`, [id, PROGRAMA_FRIJOL]);
+         LEFT JOIN geo_estado gs ON gs.estado_id = p.estado_id
+         LEFT JOIN geo_municipio gm ON gm.municipio_id = p.municipio_id
+        WHERE p.productor_id = $1`, [id, PROGRAMA_FRIJOL]);
     if (!base.rows[0]) { res.status(404).json({ error: 'Productor de frijol no encontrado' }); return; }
     const parcelas = await pool.query(
-      `SELECT u.up_id::int AS up_id, u.numero_up, u.up_name, u.state_name AS estado, u.municipality_name AS municipio, u.localidad,
-              ${etq('documento_propiedad', 'u.documento_propiedad')} AS documento_propiedad, u.water_regime, u.area_ha_calc::float AS ha, u.area_ha_real::float AS ha_ajustada,
-              ST_Y(u.centroid)::float AS lat, ST_X(u.centroid)::float AS lng, ST_AsGeoJSON(u.geom)::json AS geom,
+      `SELECT u.up_id::int AS up_id, u.numero_up, u.nombre_up, u.nombre_estado AS estado, u.nombre_municipio AS municipio, u.localidad,
+              ${etq('documento_propiedad', 'u.documento_propiedad')} AS documento_propiedad, u.regimen_hidrico, u.superficie_ha_calculada::float AS ha, u.superficie_ha_real::float AS ha_ajustada,
+              ST_Y(u.centroide)::float AS lat, ST_X(u.centroide)::float AS lng, ST_AsGeoJSON(u.geometria)::json AS geom,
               s.cumple_criterio_original, s.se_dedica_produccion_semillas, s.trabajo_con_prosebien, s.usara_prosebien_pv
          FROM up u LEFT JOIN frijol_semillas s ON s.up_id = u.up_id
-        WHERE u.producer_id = $1 AND EXISTS (SELECT 1 FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'frijol') ORDER BY u.numero_up NULLS LAST, u.up_id`, [id]);
+        WHERE u.productor_id = $1 AND EXISTS (SELECT 1 FROM ciclo c WHERE c.up_id = u.up_id AND c.cultivo = 'frijol') ORDER BY u.numero_up NULLS LAST, u.up_id`, [id]);
     const cultivos = await pool.query(
-      `SELECT cc.cycle_crop_id::int AS cycle_crop_id, c.up_id::int AS up_id, ${CICLO} AS ciclo, c.tipo_riego, ${VARIEDAD} AS variedad,
-              cc.area_sown_ha::float AS ha_sembradas, to_char(cc.planting_date, 'YYYY-MM-DD') AS fecha_siembra,
-              to_char(cc.estimated_harvest_date, 'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.yield_expected::float AS rendimiento_esperado_t_ha,
-              (cc.area_sown_ha * cc.yield_expected)::float AS produccion_estimada_t, ${etq('destino_frijol', 'cc.destination')} AS destino,
+      `SELECT cc.ciclo_cultivo_id::int AS cycle_crop_id, c.up_id::int AS up_id, ${CICLO} AS ciclo, c.tipo_riego, ${VARIEDAD} AS variedad,
+              cc.superficie_sembrada_ha::float AS ha_sembradas, to_char(cc.fecha_siembra, 'YYYY-MM-DD') AS fecha_siembra,
+              to_char(cc.fecha_cosecha_estimada, 'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.rendimiento_esperado::float AS rendimiento_esperado_t_ha,
+              (cc.superficie_sembrada_ha * cc.rendimiento_esperado)::float AS produccion_estimada_t, ${etq('destino_frijol', 'cc.destino')} AS destino,
               ${etq('tipo_siembra_frijol', 'fc.tipo_siembra')} AS tipo_siembra, fc.densidad_kg_ha::float AS densidad_kg_ha, fc.usa_fertilizante,
-              (SELECT string_agg(label, ', ' ORDER BY sort_order, label) FROM cat_catalog WHERE catalog = 'tipo_fertilizante' AND code = ANY(fc.tipos_fertilizante)) AS tipos_fertilizante,
-              ${etq('rotacion_cultivo', 'fc.rotacion')} AS rotacion, fc.observaciones, fc.hubo_desconexion, fc.capturado_en, cc.created_at
-         FROM cycle_crop cc JOIN cycle c ON c.cycle_id = cc.cycle_id AND c.crop = 'frijol' JOIN up u ON u.up_id = c.up_id
-         LEFT JOIN frijol_cultivo fc ON fc.cycle_crop_id = cc.cycle_crop_id LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id AND cv.crop = 'frijol'
-        WHERE u.producer_id = $1 ORDER BY c.cycle_year DESC, cc.cycle_crop_id DESC`, [id]);
+              (SELECT string_agg(etiqueta, ', ' ORDER BY orden, etiqueta) FROM cat_catalogo WHERE catalogo = 'tipo_fertilizante' AND codigo = ANY(fc.tipos_fertilizante)) AS tipos_fertilizante,
+              ${etq('rotacion_cultivo', 'fc.rotacion')} AS rotacion, fc.observaciones, fc.hubo_desconexion, fc.capturado_en, cc.creado_en
+         FROM ciclo_cultivo cc JOIN ciclo c ON c.ciclo_id = cc.ciclo_id AND c.cultivo = 'frijol' JOIN up u ON u.up_id = c.up_id
+         LEFT JOIN frijol_cultivo fc ON fc.ciclo_cultivo_id = cc.ciclo_cultivo_id LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = cc.variedad_id AND cv.cultivo = 'frijol'
+        WHERE u.productor_id = $1 ORDER BY c.anio_ciclo DESC, cc.ciclo_cultivo_id DESC`, [id]);
     const cambios = await pool.query(
-      `SELECT pc.id::int AS id, pc.campo, pc.valor_anterior, pc.valor_nuevo, COALESCE(t.nombre_completo, 'Sistema') AS quien, pc.programa, pc.created_at
-         FROM producer_cambios pc LEFT JOIN usuarios t ON t.id = pc.usuario_id WHERE pc.producer_id = $1 ORDER BY pc.created_at DESC, pc.id DESC`, [id]);
+      `SELECT pc.id::int AS id, pc.campo, pc.valor_anterior, pc.valor_nuevo, COALESCE(t.nombre_completo, 'Sistema') AS quien, pc.programa, pc.creado_en
+         FROM productor_cambios pc LEFT JOIN usuarios t ON t.id = pc.usuario_id WHERE pc.productor_id = $1 ORDER BY pc.creado_en DESC, pc.id DESC`, [id]);
     res.json({ ...base.rows[0], parcelas: parcelas.rows, cultivos: cultivos.rows, cambios: cambios.rows });
   } catch (e) { fallo(res, e, 'GET /admin/frijol/productores/:id'); }
 });
@@ -219,27 +219,27 @@ router.get('/exportar', authMiddleware, exportar, async (req: AuthRequest, res: 
     const filtros = filtrosDe(req.query);
     const { where, params } = condiciones(filtros);
     const r = await pool.query(
-      `SELECT cc.cycle_crop_id::int AS cycle_crop_id, p.producer_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno,
-              p.sexo, to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.phone AS telefono, p.correo AS correo,
+      `SELECT cc.ciclo_cultivo_id::int AS cycle_crop_id, p.productor_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno,
+              p.sexo, to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.telefono AS telefono, p.correo AS correo,
               ${etq('verificacion_identidad', 'pp.verificacion_identidad')} AS verificacion, pp.verificacion_intentos,
               ${etq('estatus_registro_frijol', 'pp.estatus_registro')} AS estatus,
               t.nombre_completo AS tecnico, ${etq('tipo_tecnico', 't.tipo_tecnico')} AS tipo_tecnico,
               fp.total_ups_declaradas, fp.participa_programas_sader,
               (SELECT string_agg(g.nombre, ', ' ORDER BY g.nombre) FROM cat_programas_gobierno g WHERE g.clave = ANY(fp.programas_sader)) AS programas_sader,
               fp.programas_sader_otro, fp.organizacion, ${etq('seguro_agricola', 'fp.seguro_agricola')} AS seguro_agricola, fp.seguro_agricola_nombre,
-              u.up_id::int AS up_id, u.numero_up, u.up_name, u.state_name AS estado, u.municipality_name AS municipio, u.localidad,
-              ${etq('documento_propiedad', 'u.documento_propiedad')} AS documento_propiedad, u.documento_propiedad_otro, u.water_regime,
-              u.area_ha_calc::float AS ha_calculada, u.area_ha_real::float AS ha_ajustada, ST_Y(u.centroid)::float AS latitud, ST_X(u.centroid)::float AS longitud,
+              u.up_id::int AS up_id, u.numero_up, u.nombre_up, u.nombre_estado AS estado, u.nombre_municipio AS municipio, u.localidad,
+              ${etq('documento_propiedad', 'u.documento_propiedad')} AS documento_propiedad, u.documento_propiedad_otro, u.regimen_hidrico,
+              u.superficie_ha_calculada::float AS ha_calculada, u.superficie_ha_real::float AS ha_ajustada, ST_Y(u.centroide)::float AS latitud, ST_X(u.centroide)::float AS longitud,
               s.se_dedica_produccion_semillas, s.trabajo_con_prosebien, s.usara_prosebien_pv, s.cumple_criterio_original,
-              ${CICLO} AS ciclo, ${VARIEDAD} AS variedad, cc.area_sown_ha::float AS ha_sembradas, to_char(cc.planting_date, 'YYYY-MM-DD') AS fecha_siembra,
-              to_char(cc.estimated_harvest_date, 'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.yield_expected::float AS rendimiento_esperado_t_ha,
-              (cc.area_sown_ha * cc.yield_expected)::float AS produccion_estimada_t, ${etq('destino_frijol', 'cc.destination')} AS destino,
+              ${CICLO} AS ciclo, ${VARIEDAD} AS variedad, cc.superficie_sembrada_ha::float AS ha_sembradas, to_char(cc.fecha_siembra, 'YYYY-MM-DD') AS fecha_siembra,
+              to_char(cc.fecha_cosecha_estimada, 'YYYY-MM-DD') AS fecha_cosecha_estimada, cc.rendimiento_esperado::float AS rendimiento_esperado_t_ha,
+              (cc.superficie_sembrada_ha * cc.rendimiento_esperado)::float AS produccion_estimada_t, ${etq('destino_frijol', 'cc.destino')} AS destino,
               ${etq('tipo_siembra_frijol', 'fc.tipo_siembra')} AS tipo_siembra, fc.densidad_kg_ha::float AS densidad_kg_ha, fc.usa_fertilizante,
-              (SELECT string_agg(label, ', ' ORDER BY sort_order, label) FROM cat_catalog WHERE catalog = 'tipo_fertilizante' AND code = ANY(fc.tipos_fertilizante)) AS tipos_fertilizante,
+              (SELECT string_agg(etiqueta, ', ' ORDER BY orden, etiqueta) FROM cat_catalogo WHERE catalogo = 'tipo_fertilizante' AND codigo = ANY(fc.tipos_fertilizante)) AS tipos_fertilizante,
               ${etq('rotacion_cultivo', 'fc.rotacion')} AS rotacion, fc.observaciones,
               to_char(fc.capturado_en AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI') AS capturado_en,
-              to_char(cc.created_at AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI') AS enviado_en, fc.hubo_desconexion
-         ${DESDE} WHERE ${where} ORDER BY p.apellido_paterno, p.nombres, u.numero_up NULLS LAST, cc.cycle_crop_id`, params);
+              to_char(cc.creado_en AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI') AS enviado_en, fc.hubo_desconexion
+         ${DESDE} WHERE ${where} ORDER BY p.apellido_paterno, p.nombres, u.numero_up NULLS LAST, cc.ciclo_cultivo_id`, params);
 
     const cols: Array<{ key: string; header: string; desc: string; width?: number }> = [
       { key: 'cycle_crop_id', header: 'ID cultivo', desc: 'Identificador del cultivo registrado en el ciclo', width: 11 },

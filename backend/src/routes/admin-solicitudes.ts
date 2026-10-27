@@ -31,8 +31,8 @@ router.get('/', ver, async (req: AuthRequest, res: Response) => {
     const limite = Math.min(Math.max(Number(q.limite) || 50, 1), 200);
     const pagina = Math.max(Number(q.pagina) || 1, 1);
     const where = w.length ? `WHERE ${w.join(' AND ')}` : '';
-    const total = (await pool.query(`SELECT COUNT(*)::int AS n FROM solicitud_cambio s JOIN producer p ON p.producer_id = s.producer_id ${where}`, v)).rows[0].n;
-    const filas = (await pool.query(`${SELECT_LISTA} ${where} ORDER BY (s.estado = 'pendiente') DESC, s.created_at DESC LIMIT ${limite} OFFSET ${(pagina - 1) * limite}`, v)).rows;
+    const total = (await pool.query(`SELECT COUNT(*)::int AS n FROM solicitud_cambio s JOIN productor p ON p.productor_id = s.productor_id ${where}`, v)).rows[0].n;
+    const filas = (await pool.query(`${SELECT_LISTA} ${where} ORDER BY (s.estado = 'pendiente') DESC, s.creado_en DESC LIMIT ${limite} OFFSET ${(pagina - 1) * limite}`, v)).rows;
     const contadores = (await pool.query(
       `SELECT COUNT(*) FILTER (WHERE estado = 'pendiente' AND asignado_tipo = 'admin')::int AS por_resolver_admin,
               COUNT(*) FILTER (WHERE estado = 'pendiente' AND escalada)::int AS escaladas,
@@ -63,12 +63,12 @@ router.get('/:id', ver, async (req: AuthRequest, res: Response) => {
     const s = (await pool.query(`${SELECT_LISTA} WHERE s.id = $1`, [id])).rows[0];
     if (!s) { res.status(404).json({ error: 'La solicitud no existe' }); return; }
     const cambio = (await pool.query(
-      `SELECT pc.valor_anterior, pc.valor_nuevo, pc.created_at, ua.nombre_completo AS aprobado_por_nombre
-         FROM producer_cambios pc LEFT JOIN usuarios ua ON ua.id = pc.aprobado_por WHERE pc.solicitud_id = $1`, [id])).rows[0] || null;
+      `SELECT pc.valor_anterior, pc.valor_nuevo, pc.creado_en, ua.nombre_completo AS aprobado_por_nombre
+         FROM productor_cambios pc LEFT JOIN usuarios ua ON ua.id = pc.aprobado_por WHERE pc.solicitud_id = $1`, [id])).rows[0] || null;
     const actual = (await pool.query(
       `SELECT CASE $2 WHEN 'nombres' THEN nombres WHEN 'apellido_paterno' THEN apellido_paterno WHEN 'apellido_materno' THEN apellido_materno
-                      WHEN 'sexo' THEN sexo WHEN 'fecha_nacimiento' THEN to_char(fecha_nacimiento, 'YYYY-MM-DD') WHEN 'correo' THEN correo WHEN 'telefono' THEN phone END AS valor
-         FROM producer WHERE producer_id = $1`, [s.producer_id, s.campo])).rows[0];
+                      WHEN 'sexo' THEN sexo WHEN 'fecha_nacimiento' THEN to_char(fecha_nacimiento, 'YYYY-MM-DD') WHEN 'correo' THEN correo WHEN 'telefono' THEN telefono END AS valor
+         FROM productor WHERE productor_id = $1`, [s.producer_id, s.campo])).rows[0];
     res.json({ solicitud: s, cambio_aplicado: cambio, valor_ahora: actual?.valor ?? null });
   } catch (e) { responderErrorEdicion(res, e, 'GET admin solicitud'); }
 });

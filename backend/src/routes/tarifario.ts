@@ -48,7 +48,7 @@ router.put('/:bodegaId/:tarifaId', authMiddleware, async (req: AuthRequest, res:
        SET precio = COALESCE($1, precio),
            vigencia_inicio = COALESCE($2, vigencia_inicio),
            vigencia_fin = $3,
-           updated_at = NOW()
+           actualizado_en = NOW()
        WHERE id = $4 AND bodega_id = $5 RETURNING *`,
       [precio, vigencia_inicio, vigencia_fin || null, req.params.tarifaId, req.params.bodegaId]
     );

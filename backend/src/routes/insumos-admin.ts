@@ -16,7 +16,7 @@ router.use(authMiddleware);
 // GET /api/admin/insumos/ediciones — para el selector de periodo
 router.get('/ediciones', checkPermiso('insumos', 'ver'), async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const r = await pool.query(`SELECT id, nombre, version_catalogo, horizonte_meses, habilitada, created_at FROM encuesta_ediciones ORDER BY id DESC`);
+    const r = await pool.query(`SELECT id, nombre, version_catalogo, horizonte_meses, habilitada, creado_en FROM encuesta_ediciones ORDER BY id DESC`);
     res.json({ ediciones: r.rows });
   } catch (e) {
     console.error('Error al listar ediciones:', e);
@@ -36,7 +36,7 @@ async function filtroTerritorialAdmin(req: AuthRequest): Promise<{ sql: string; 
     if (!estado) return { sql: '', val: null };
     return {
       sql: `AND EXISTS (SELECT 1 FROM encuesta_contexto_territorial ectf JOIN up uf ON uf.up_id = ectf.up_id
-              WHERE ectf.respuesta_id = r.id AND UPPER(uf.state_name) = UPPER($`,
+              WHERE ectf.respuesta_id = r.id AND UPPER(uf.nombre_estado) = UPPER($`,
       val: estado,
     };
   } catch {
@@ -56,7 +56,7 @@ function armarFiltros(query: any, params: any[], startIdx: number): { where: str
   if (f.edicion_id) { clauses.push(`r.edicion_id = $${idx++}`); params.push(Number(f.edicion_id)); }
   if (f.respuesta === 'si' || f.respuesta === 'no') { clauses.push(`r.respuesta = $${idx++}`); params.push(f.respuesta); }
   if (f.municipio) {
-    clauses.push(`EXISTS (SELECT 1 FROM encuesta_contexto_territorial ect WHERE ect.respuesta_id = r.id AND ect.municipality_id = $${idx++})`);
+    clauses.push(`EXISTS (SELECT 1 FROM encuesta_contexto_territorial ect WHERE ect.respuesta_id = r.id AND ect.municipio_id = $${idx++})`);
     params.push(f.municipio);
   }
   return { where: clauses.length ? clauses.join(' AND ') : '1=1', params };
@@ -79,7 +79,7 @@ router.get('/resumen', checkPermiso('insumos', 'ver'), async (req: AuthRequest, 
     const municipioParam = req.query.municipio ? String(req.query.municipio) : null;
     let filtroMuni = '';
     if (municipioParam) {
-      filtroMuni = `AND EXISTS (SELECT 1 FROM encuesta_contexto_territorial ectm WHERE ectm.respuesta_id = r.id AND ectm.municipality_id = $${params.length + 1})`;
+      filtroMuni = `AND EXISTS (SELECT 1 FROM encuesta_contexto_territorial ectm WHERE ectm.respuesta_id = r.id AND ectm.municipio_id = $${params.length + 1})`;
       params.push(municipioParam);
     }
 
@@ -88,9 +88,9 @@ router.get('/resumen', checkPermiso('insumos', 'ver'), async (req: AuthRequest, 
 
     const conteos = await pool.query(
       `SELECT
-         COUNT(DISTINCT r.producer_id) AS productores_con_respuesta,
-         COUNT(DISTINCT r.producer_id) FILTER (WHERE r.respuesta = 'si') AS productores_si,
-         COUNT(DISTINCT r.producer_id) FILTER (WHERE r.respuesta = 'no') AS productores_no
+         COUNT(DISTINCT r.productor_id) AS productores_con_respuesta,
+         COUNT(DISTINCT r.productor_id) FILTER (WHERE r.respuesta = 'si') AS productores_si,
+         COUNT(DISTINCT r.productor_id) FILTER (WHERE r.respuesta = 'no') AS productores_no
        FROM encuesta_respuestas r
        WHERE r.edicion_id = $1 ${filtroTerr} ${filtroMuni}`,
       params
@@ -99,13 +99,13 @@ router.get('/resumen', checkPermiso('insumos', 'ver'), async (req: AuthRequest, 
     // Elegibles (UP en Sinaloa) que aún no responden esta edición.
     const pendientesParams: any[] = [edicion.id];
     let pendFiltroTerr = '';
-    if (territorial.val) { pendFiltroTerr = `AND UPPER(u.state_name) = UPPER($2)`; pendientesParams.push(territorial.val); }
+    if (territorial.val) { pendFiltroTerr = `AND UPPER(u.nombre_estado) = UPPER($2)`; pendientesParams.push(territorial.val); }
     const pendientes = await pool.query(
-      `SELECT COUNT(DISTINCT p.producer_id) AS n
-       FROM producer p JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
-       WHERE u.state_id = '25' ${pendFiltroTerr}
+      `SELECT COUNT(DISTINCT p.productor_id) AS n
+       FROM productor p JOIN up u ON u.productor_id = p.productor_id AND ${parcelaDeMaiz('u')}
+       WHERE u.estado_id = '25' ${pendFiltroTerr}
          AND ${soloMaiz('p')}
-         AND NOT EXISTS (SELECT 1 FROM encuesta_respuestas er WHERE er.producer_id = p.producer_id AND er.edicion_id = $1)`,
+         AND NOT EXISTS (SELECT 1 FROM encuesta_respuestas er WHERE er.productor_id = p.productor_id AND er.edicion_id = $1)`,
       pendientesParams
     );
 
@@ -114,7 +114,7 @@ router.get('/resumen', checkPermiso('insumos', 'ver'), async (req: AuthRequest, 
     let filtroLineasTerr = '';
     if (territorial.val) { filtroLineasTerr = territorial.sql + `${idx})`; lineasParams.push(territorial.val); idx++; }
     let filtroLineasMuni = '';
-    if (municipioParam) { filtroLineasMuni = `AND EXISTS (SELECT 1 FROM encuesta_contexto_territorial ectm2 WHERE ectm2.respuesta_id = r.id AND ectm2.municipality_id = $${idx})`; lineasParams.push(municipioParam); idx++; }
+    if (municipioParam) { filtroLineasMuni = `AND EXISTS (SELECT 1 FROM encuesta_contexto_territorial ectm2 WHERE ectm2.respuesta_id = r.id AND ectm2.municipio_id = $${idx})`; lineasParams.push(municipioParam); idx++; }
     let filtroCategoria = '';
     if (categoriaParam) { filtroCategoria = `AND pr.categoria_id = $${idx}`; lineasParams.push(categoriaParam); idx++; }
     let filtroProducto = '';
@@ -130,7 +130,7 @@ router.get('/resumen', checkPermiso('insumos', 'ver'), async (req: AuthRequest, 
 
     const porProducto = await pool.query(
       `SELECT pr.id AS producto_id, pr.nombre_visible, l.producto_nombre_otro, l.unidad_base, l.mes_compra,
-              SUM(l.cantidad_base) AS cantidad_total, COUNT(DISTINCT r.producer_id) AS productores
+              SUM(l.cantidad_base) AS cantidad_total, COUNT(DISTINCT r.productor_id) AS productores
        FROM encuesta_lineas l
        JOIN encuesta_respuestas r ON r.id = l.respuesta_id
        JOIN encuesta_productos pr ON pr.id = l.producto_id
@@ -162,13 +162,13 @@ router.get('/municipios', checkPermiso('insumos', 'ver'), async (req: AuthReques
     const territorial = await filtroTerritorialAdmin(req);
     const params: any[] = [];
     let filtroTerr = '';
-    if (territorial.val) { filtroTerr = `AND UPPER(u.state_name) = UPPER($1)`; params.push(territorial.val); }
+    if (territorial.val) { filtroTerr = `AND UPPER(u.nombre_estado) = UPPER($1)`; params.push(territorial.val); }
     const r = await pool.query(
-      `SELECT DISTINCT ect.municipality_id, ect.municipality_name
+      `SELECT DISTINCT ect.municipio_id, ect.nombre_municipio
        FROM encuesta_contexto_territorial ect
        JOIN up u ON u.up_id = ect.up_id
-       WHERE ect.municipality_id IS NOT NULL ${filtroTerr}
-       ORDER BY ect.municipality_name`,
+       WHERE ect.municipio_id IS NOT NULL ${filtroTerr}
+       ORDER BY ect.nombre_municipio`,
       params
     );
     res.json({ municipios: r.rows });
@@ -186,22 +186,22 @@ router.get('/lineas', checkPermiso('insumos', 'ver'), async (req: AuthRequest, r
     const territorial = await filtroTerritorialAdmin(req);
     const params: any[] = [];
     const { where, params: paramsConFiltros } = armarFiltros(req.query, params, 1);
-    let sql = `SELECT l.id AS linea_id, l.respuesta_id, r.producer_id, p.nombres, p.apellido_paterno, p.apellido_materno,
+    let sql = `SELECT l.id AS linea_id, l.respuesta_id, r.productor_id, p.nombres, p.apellido_paterno, p.apellido_materno,
                       r.edicion_id, r.version_catalogo, pr.categoria_id, pr.nombre_visible AS producto,
                       l.producto_nombre_otro, l.presentacion_id, l.presentacion_otro_envase,
                       l.presentacion_otro_contenido, l.presentacion_otro_unidad, l.a_granel,
                       l.cantidad, l.cantidad_base, l.unidad_base, l.mes_compra,
-                      l.identificacion_pendiente, l.nombre_conocido, r.updated_at,
-                      (SELECT STRING_AGG(DISTINCT ect.municipality_name, ', ' ORDER BY ect.municipality_name)
+                      l.identificacion_pendiente, l.nombre_conocido, r.actualizado_en,
+                      (SELECT STRING_AGG(DISTINCT ect.nombre_municipio, ', ' ORDER BY ect.nombre_municipio)
                        FROM encuesta_contexto_territorial ect WHERE ect.respuesta_id = r.id) AS municipios_asociados
                FROM encuesta_lineas l
                JOIN encuesta_respuestas r ON r.id = l.respuesta_id
-               JOIN producer p ON p.producer_id = r.producer_id
+               JOIN productor p ON p.productor_id = r.productor_id
                JOIN encuesta_productos pr ON pr.id = l.producto_id
                WHERE ${where}`;
     if (req.query.categoria) { sql += ` AND pr.categoria_id = $${paramsConFiltros.length + 1}`; paramsConFiltros.push(req.query.categoria); }
     if (territorial.val) { sql += ` ${territorial.sql}${paramsConFiltros.length + 1})`; paramsConFiltros.push(territorial.val); }
-    sql += ' ORDER BY r.updated_at DESC LIMIT 500';
+    sql += ' ORDER BY r.actualizado_en DESC LIMIT 500';
 
     const r = await pool.query(sql, paramsConFiltros);
     res.json({ lineas: r.rows });
@@ -231,12 +231,12 @@ router.get('/export', checkPermiso('insumos', 'exportar'), async (req: AuthReque
     if (tipo === 'no') {
       const params: any[] = [];
       const { where, params: p2 } = armarFiltros({ ...req.query, respuesta: 'no' }, params, 1);
-      let sql = `SELECT r.producer_id, p.nombres, p.apellido_paterno, p.apellido_materno, r.edicion_id, r.updated_at,
-                        (SELECT STRING_AGG(DISTINCT ect.municipality_name, ', ') FROM encuesta_contexto_territorial ect WHERE ect.respuesta_id = r.id) AS municipios
-                 FROM encuesta_respuestas r JOIN producer p ON p.producer_id = r.producer_id
+      let sql = `SELECT r.productor_id, p.nombres, p.apellido_paterno, p.apellido_materno, r.edicion_id, r.actualizado_en,
+                        (SELECT STRING_AGG(DISTINCT ect.nombre_municipio, ', ') FROM encuesta_contexto_territorial ect WHERE ect.respuesta_id = r.id) AS municipios
+                 FROM encuesta_respuestas r JOIN productor p ON p.productor_id = r.productor_id
                  WHERE ${where}`;
       if (territorial.val) { sql += ` ${territorial.sql}${p2.length + 1})`; p2.push(territorial.val); }
-      sql += ' ORDER BY r.updated_at DESC';
+      sql += ' ORDER BY r.actualizado_en DESC';
       const r = await pool.query(sql, p2);
       const header = ['producer_id', 'nombre', 'edicion_id', 'municipios_asociados', 'fecha_actualizacion'];
       const filas = r.rows.map(row => [
@@ -252,15 +252,15 @@ router.get('/export', checkPermiso('insumos', 'exportar'), async (req: AuthReque
 
     const params: any[] = [];
     const { where, params: p2 } = armarFiltros(req.query, params, 1);
-    let sql = `SELECT l.id AS linea_id, r.id AS respuesta_id, r.producer_id, r.edicion_id, r.version_catalogo,
+    let sql = `SELECT l.id AS linea_id, r.id AS respuesta_id, r.productor_id, r.edicion_id, r.version_catalogo,
                       pr.categoria_id AS categoria, pr.nombre_visible AS producto, l.producto_nombre_otro AS producto_otro,
                       COALESCE(pre.envase, l.presentacion_otro_envase, CASE WHEN l.a_granel THEN 'A granel' END) AS envase,
                       COALESCE(pre.contenido, l.presentacion_otro_contenido) AS contenido_envase,
                       COALESCE(pre.unidad, l.presentacion_otro_unidad) AS unidad_envase,
                       l.cantidad AS cantidad_capturada, l.cantidad_base, l.unidad_base, l.mes_compra,
                       l.identificacion_pendiente, l.nombre_conocido,
-                      (SELECT STRING_AGG(DISTINCT ect.municipality_name, ', ') FROM encuesta_contexto_territorial ect WHERE ect.respuesta_id = r.id) AS municipios_asociados,
-                      r.updated_at AS fecha_actualizacion
+                      (SELECT STRING_AGG(DISTINCT ect.nombre_municipio, ', ') FROM encuesta_contexto_territorial ect WHERE ect.respuesta_id = r.id) AS municipios_asociados,
+                      r.actualizado_en AS fecha_actualizacion
                FROM encuesta_lineas l
                JOIN encuesta_respuestas r ON r.id = l.respuesta_id
                JOIN encuesta_productos pr ON pr.id = l.producto_id
@@ -268,7 +268,7 @@ router.get('/export', checkPermiso('insumos', 'exportar'), async (req: AuthReque
                WHERE ${where}`;
     if (req.query.categoria) { sql += ` AND pr.categoria_id = $${p2.length + 1}`; p2.push(req.query.categoria); }
     if (territorial.val) { sql += ` ${territorial.sql}${p2.length + 1})`; p2.push(territorial.val); }
-    sql += ' ORDER BY r.updated_at DESC';
+    sql += ' ORDER BY r.actualizado_en DESC';
     const r = await pool.query(sql, p2);
 
     const header = ['linea_id', 'respuesta_id', 'producer_id', 'edicion_id', 'version_catalogo', 'categoria',

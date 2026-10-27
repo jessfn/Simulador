@@ -24,23 +24,23 @@ router.get('/mercado/mapa', authMiddleware, async (req: AuthRequest, res: Respon
       pool.query(`
         SELECT
           d.id,
-          ST_Y(u.centroid)       AS lat,
-          ST_X(u.centroid)       AS lng,
-          u.municipality_name    AS municipio,
-          u.state_name           AS estado,
+          ST_Y(u.centroide)       AS lat,
+          ST_X(u.centroide)       AS lng,
+          u.nombre_municipio    AS municipio,
+          u.nombre_estado           AS estado,
           COALESCE(d.tipo_maiz, 'maiz_blanco') AS tipo_maiz,
-          d.variedad_code,
+          d.variedad_codigo,
           COALESCE(d.volumen_estimado_ton, 0)  AS volumen_estimado_ton,
           d.fecha_disponible,
           d.precio_minimo_ton,
           p.nombres || ' ' || p.apellido_paterno AS nombre_productor
         FROM disponibilidad_productor d
         JOIN up u ON d.up_id = u.up_id
-        JOIN producer p ON p.producer_id = u.producer_id
+        JOIN productor p ON p.productor_id = u.productor_id
         WHERE d.activa = true
           AND (d.fecha_vencimiento IS NULL OR d.fecha_vencimiento > NOW())
-          AND u.centroid IS NOT NULL
-        ORDER BY d.created_at DESC
+          AND u.centroide IS NOT NULL
+        ORDER BY d.creado_en DESC
         LIMIT 1000
       `),
       pool.query(`
@@ -52,7 +52,7 @@ router.get('/mercado/mapa', authMiddleware, async (req: AuthRequest, res: Respon
           b.estado,
           b.nombre               AS nombre_bodega,
           s.tipo_maiz,
-          s.variedad_code,
+          s.variedad_codigo,
           s.volumen_ton,
           s.precio_ofrecido,
           COALESCE(s.radio_km, 50) AS radio_km
@@ -61,7 +61,7 @@ router.get('/mercado/mapa', authMiddleware, async (req: AuthRequest, res: Respon
         WHERE s.activa = true
           AND (s.fecha_vencimiento IS NULL OR s.fecha_vencimiento > NOW())
           AND b.latitud IS NOT NULL AND b.longitud IS NOT NULL
-        ORDER BY s.created_at DESC
+        ORDER BY s.creado_en DESC
         LIMIT 500
       `),
       pool.query(`
@@ -70,7 +70,7 @@ router.get('/mercado/mapa', authMiddleware, async (req: AuthRequest, res: Respon
                     FROM disponibilidad_productor WHERE activa = true), 0)::numeric(12,2) AS ofertadas,
           COALESCE((SELECT SUM(volumen_ton) FROM senales_compra WHERE activa = true), 0)::numeric(12,2) AS demandadas,
           COALESCE((SELECT AVG(precio_ofrecido) FROM senales_compra WHERE activa = true AND precio_ofrecido > 0), 0)::numeric(10,2) AS precio_promedio,
-          COALESCE((SELECT COUNT(DISTINCT producer_id) FROM disponibilidad_productor WHERE activa = true), 0)::int AS productores_con_disponibilidad,
+          COALESCE((SELECT COUNT(DISTINCT productor_id) FROM disponibilidad_productor WHERE activa = true), 0)::int AS productores_con_disponibilidad,
           COALESCE((SELECT COUNT(DISTINCT bodega_id) FROM senales_compra WHERE activa = true), 0)::int AS bodegas_buscando
       `),
     ]);
@@ -120,19 +120,19 @@ router.get('/bodegas/stats-inventario', authMiddleware, async (req: AuthRequest,
       `),
       pool.query(`
         SELECT
-          COALESCE(i.variedad_code, 'Sin clasificar') AS variedad,
+          COALESCE(i.variedad_codigo, 'Sin clasificar') AS variedad,
           COALESCE(SUM(i.volumen_almacenamiento), 0)::numeric(12,2) AS stock_ton,
           COUNT(*)::int AS registros
         FROM inventarios i
         JOIN bodegas b ON b.id = i.bodega_id
-        GROUP BY i.variedad_code
+        GROUP BY i.variedad_codigo
         ORDER BY stock_ton DESC
         LIMIT 10
       `),
       pool.query(`
         SELECT COUNT(DISTINCT bodega_id)::int AS total
         FROM tarifario_servicios
-        WHERE activo = true AND updated_at >= NOW() - INTERVAL '60 days'
+        WHERE activo = true AND actualizado_en >= NOW() - INTERVAL '60 days'
       `).catch(() => ({ rows: [{ total: 0 }] })),
       pool.query(`SELECT COUNT(*)::int AS total FROM ventanillas`).catch(() => ({ rows: [{ total: 0 }] })),
     ]);

@@ -37,15 +37,15 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 1. Productores ───────────────────────────────────────────────────
     const { rows: productores } = await pool.query(`
       SELECT
-        p.producer_id, p.curp,
+        p.productor_id, p.curp,
         p.nombres, p.apellido_paterno, p.apellido_materno,
-        p.sexo, p.phone AS telefono, p.correo_electronico AS correo,
-        s.name AS estado, m.name AS municipio,
+        p.sexo, p.telefono AS telefono, p.correo_electronico AS correo,
+        s.nombre AS estado, m.nombre AS municipio,
         p.localidad, p.estatus_registro, p.tipo_registro,
-        p.created_at
-      FROM producer p
-      LEFT JOIN geo_state s ON s.state_id = p.state_id
-      LEFT JOIN geo_municipality m ON m.municipality_id = p.municipality_id
+        p.creado_en
+      FROM productor p
+      LEFT JOIN geo_estado s ON s.estado_id = p.estado_id
+      LEFT JOIN geo_municipio m ON m.municipio_id = p.municipio_id
       WHERE ${soloMaiz('p')}
       ORDER BY p.apellido_paterno, p.nombres
     `);
@@ -69,19 +69,19 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 2. Unidades de Producción (Parcelas) ─────────────────────────────
     const { rows: ups } = await pool.query(`
       SELECT
-        u.up_id, u.producer_id,
+        u.up_id, u.productor_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        u.up_name, u.up_type, u.production_system, u.water_regime,
-        ST_Y(u.centroid) AS latitud,
-        ST_X(u.centroid) AS longitud,
-        u.area_ha_calc, u.area_ha_real, u.area_real_declarada_ha,
-        u.coincide_area, u.motivo_diferencia_superficie,
-        u.state_name AS estado, u.municipality_name AS municipio,
-        u.state_id, u.municipality_id,
-        u.location_confirmed, u.location_correction_reason,
-        u.centroid_source, u.created_at, u.updated_at
+        u.nombre_up, u.tipo_up, u.sistema_produccion, u.regimen_hidrico,
+        ST_Y(u.centroide) AS latitud,
+        ST_X(u.centroide) AS longitud,
+        u.superficie_ha_calculada, u.superficie_ha_real, u.superficie_real_declarada_ha,
+        u.coincide_superficie, u.motivo_diferencia_superficie,
+        u.nombre_estado AS estado, u.nombre_municipio AS municipio,
+        u.estado_id, u.municipio_id,
+        u.ubicacion_confirmada, u.motivo_correccion_ubicacion,
+        u.origen_centroide, u.creado_en, u.actualizado_en
       FROM up u
-      LEFT JOIN producer p ON p.producer_id = u.producer_id
+      LEFT JOIN productor p ON p.productor_id = u.productor_id
       WHERE ${soloMaizDeUp('u')}
       ORDER BY u.up_id
     `);
@@ -112,35 +112,35 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 3. Ciclos ────────────────────────────────────────────────────────
     const { rows: ciclos } = await pool.query(`
       SELECT
-        c.cycle_id, c.up_id,
-        u.up_name, u.state_name AS estado, u.municipality_name AS municipio,
+        c.ciclo_id, c.up_id,
+        u.nombre_up, u.nombre_estado AS estado, u.nombre_municipio AS municipio,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        c.cycle_year AS anio, c.cycle_type AS tipo,
+        c.anio_ciclo AS anio, c.tipo_ciclo AS tipo,
         COALESCE(c.hectareas_sembradas::text,
-          (SELECT ROUND(SUM(cc2.area_sown_ha)::numeric, 4)::text FROM cycle_crop cc2 WHERE cc2.cycle_id = c.cycle_id)
+          (SELECT ROUND(SUM(cc2.superficie_sembrada_ha)::numeric, 4)::text FROM ciclo_cultivo cc2 WHERE cc2.ciclo_id = c.ciclo_id)
         ) AS hectareas_sembradas,
         c.fecha_siembra,
         -- MED-13 (auditoría Fase 4): variety_other (texto libre real) tiene
         -- prioridad sobre la etiqueta genérica del catálogo ("Otra variedad").
         COALESCE(NULLIF(c.variedad_nombre,''),
-          (SELECT STRING_AGG(DISTINCT COALESCE(NULLIF(cc2.variety_other,''), cv2.label, cc2.variety_id), ', ')
-           FROM cycle_crop cc2
-           LEFT JOIN cat_crop_variety cv2 ON cv2.code = cc2.variety_id
-           WHERE cc2.cycle_id = c.cycle_id)
+          (SELECT STRING_AGG(DISTINCT COALESCE(NULLIF(cc2.variedad_otra,''), cv2.etiqueta, cc2.variedad_id), ', ')
+           FROM ciclo_cultivo cc2
+           LEFT JOIN cat_variedad_cultivo cv2 ON cv2.codigo = cc2.variedad_id
+           WHERE cc2.ciclo_id = c.ciclo_id)
         ) AS variedad_nombre,
         (SELECT STRING_AGG(DISTINCT COALESCE(cv2.tipo_maiz, ''), ', ')
-         FROM cycle_crop cc2
-         LEFT JOIN cat_crop_variety cv2 ON cv2.code = cc2.variety_id
-         WHERE cc2.cycle_id = c.cycle_id AND COALESCE(cv2.tipo_maiz,'') <> ''
+         FROM ciclo_cultivo cc2
+         LEFT JOIN cat_variedad_cultivo cv2 ON cv2.codigo = cc2.variedad_id
+         WHERE cc2.ciclo_id = c.ciclo_id AND COALESCE(cv2.tipo_maiz,'') <> ''
         ) AS tipo_maiz,
         c.tipo_riego, c.estado_ciclo,
         c.fecha_cosecha_real, c.produccion_real_ton,
-        c.observaciones_cosecha, c.declarado_por_productor, c.created_at
-      FROM cycle c
+        c.observaciones_cosecha, c.declarado_por_productor, c.creado_en
+      FROM ciclo c
       LEFT JOIN up u ON u.up_id = c.up_id
-      LEFT JOIN producer p ON p.producer_id = u.producer_id
-      WHERE c.crop = 'maiz' AND (u.up_id IS NULL OR ${soloMaizDeUp('u')})
-      ORDER BY c.cycle_year DESC, c.cycle_id
+      LEFT JOIN productor p ON p.productor_id = u.productor_id
+      WHERE c.cultivo = 'maiz' AND (u.up_id IS NULL OR ${soloMaizDeUp('u')})
+      ORDER BY c.anio_ciclo DESC, c.ciclo_id
     `);
     addSheet('Ciclos', ciclos, [
       { key: 'cycle_id',              header: 'ID Ciclo',         width: 10 },
@@ -167,24 +167,24 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 4. Cultivos por Ciclo (cycle_crop) ───────────────────────────────
     const { rows: cycleCrop } = await pool.query(`
       SELECT
-        cc.cycle_crop_id, cc.cycle_id, c.up_id,
-        u.up_name, u.state_name AS estado,
+        cc.ciclo_cultivo_id, cc.ciclo_id, c.up_id,
+        u.nombre_up, u.nombre_estado AS estado,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        cc.variety_id AS variedad_code,
-        COALESCE(NULLIF(cc.variety_other,''), cv.label, cc.variety_id) AS variedad_nombre,
+        cc.variedad_id AS variedad_code,
+        COALESCE(NULLIF(cc.variedad_otra,''), cv.etiqueta, cc.variedad_id) AS variedad_nombre,
         COALESCE(cv.tipo_maiz, cc.tipo_maiz) AS tipo_maiz,
-        cc.area_sown_ha, cc.area_harvested_ha, cc.destination,
-        cc.production_qty, cc.production_unit,
-        cc.planting_date, cc.estimated_harvest_date,
-        cc.yield_expected, cc.ventana_venta,
-        cc.disponible_para_venta, cc.fecha_disponibilidad, cc.created_at
-      FROM cycle_crop cc
-      LEFT JOIN cycle c ON c.cycle_id = cc.cycle_id
+        cc.superficie_sembrada_ha, cc.superficie_cosechada_ha, cc.destino,
+        cc.cantidad_producida, cc.unidad_medida_produccion,
+        cc.fecha_siembra, cc.fecha_cosecha_estimada,
+        cc.rendimiento_esperado, cc.ventana_venta,
+        cc.disponible_para_venta, cc.fecha_disponibilidad, cc.creado_en
+      FROM ciclo_cultivo cc
+      LEFT JOIN ciclo c ON c.ciclo_id = cc.ciclo_id
       LEFT JOIN up u ON u.up_id = c.up_id
-      LEFT JOIN producer p ON p.producer_id = u.producer_id
-      LEFT JOIN cat_crop_variety cv ON cv.code = cc.variety_id
-      WHERE (c.cycle_id IS NULL OR c.crop = 'maiz') AND (u.up_id IS NULL OR ${soloMaizDeUp('u')})
-      ORDER BY cc.cycle_crop_id DESC
+      LEFT JOIN productor p ON p.productor_id = u.productor_id
+      LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = cc.variedad_id
+      WHERE (c.ciclo_id IS NULL OR c.cultivo = 'maiz') AND (u.up_id IS NULL OR ${soloMaizDeUp('u')})
+      ORDER BY cc.ciclo_cultivo_id DESC
     `);
     addSheet('Cultivos Ciclo', cycleCrop, [
       { key: 'cycle_crop_id',        header: 'ID',               width: 10 },
@@ -213,16 +213,16 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 5. Cosecha Real ──────────────────────────────────────────────────
     const { rows: cosechaReal } = await pool.query(`
       SELECT
-        cr.id, cr.producer_id, cr.up_id, cr.ciclo_id,
+        cr.id, cr.productor_id, cr.up_id, cr.ciclo_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        u.up_name, u.state_name AS estado,
+        u.nombre_up, u.nombre_estado AS estado,
         cr.fecha_cosecha, cr.superficie_cosechada_ha,
         cr.produccion_total_ton, cr.rendimiento_real_ton_ha,
-        cr.observaciones, cr.created_at
+        cr.observaciones, cr.creado_en
       FROM cosecha_real cr
-      LEFT JOIN producer p ON p.producer_id = cr.producer_id
+      LEFT JOIN productor p ON p.productor_id = cr.productor_id
       LEFT JOIN up u ON u.up_id = cr.up_id
-      WHERE (p.producer_id IS NULL OR ${soloMaiz('p')})
+      WHERE (p.productor_id IS NULL OR ${soloMaiz('p')})
       ORDER BY cr.fecha_cosecha DESC
     `);
     addSheet('Cosecha Real', cosechaReal, [
@@ -244,15 +244,15 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 6. Estimación Cosecha ────────────────────────────────────────────
     const { rows: estimacion } = await pool.query(`
       SELECT
-        ec.id, ec.producer_id, ec.up_id, ec.ciclo_id,
+        ec.id, ec.productor_id, ec.up_id, ec.ciclo_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        u.up_name, u.state_name AS estado,
+        u.nombre_up, u.nombre_estado AS estado,
         ec.fecha_estimacion, ec.rendimiento_estimado_ton_ha,
-        ec.produccion_estimada_ton, ec.observaciones, ec.created_at
+        ec.produccion_estimada_ton, ec.observaciones, ec.creado_en
       FROM estimacion_cosecha ec
-      LEFT JOIN producer p ON p.producer_id = ec.producer_id
+      LEFT JOIN productor p ON p.productor_id = ec.productor_id
       LEFT JOIN up u ON u.up_id = ec.up_id
-      WHERE (p.producer_id IS NULL OR ${soloMaiz('p')})
+      WHERE (p.productor_id IS NULL OR ${soloMaiz('p')})
       ORDER BY ec.fecha_estimacion DESC
     `);
     addSheet('Estimación Cosecha', estimacion, [
@@ -273,15 +273,15 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 7. Seguimiento Visitas ───────────────────────────────────────────
     const { rows: seguimiento } = await pool.query(`
       SELECT
-        sv.id, sv.producer_id, sv.up_id, sv.ciclo_id,
+        sv.id, sv.productor_id, sv.up_id, sv.ciclo_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        u.up_name, u.state_name AS estado,
+        u.nombre_up, u.nombre_estado AS estado,
         sv.fecha_visita, sv.etapa_cultivo, sv.estado_cultivo,
-        sv.tipo_maiz, sv.precio_observado, sv.observaciones, sv.created_at
+        sv.tipo_maiz, sv.precio_observado, sv.observaciones, sv.creado_en
       FROM seguimiento_visitas sv
-      LEFT JOIN producer p ON p.producer_id = sv.producer_id
+      LEFT JOIN productor p ON p.productor_id = sv.productor_id
       LEFT JOIN up u ON u.up_id = sv.up_id
-      WHERE (p.producer_id IS NULL OR ${soloMaiz('p')})
+      WHERE (p.productor_id IS NULL OR ${soloMaiz('p')})
       ORDER BY sv.fecha_visita DESC
     `);
     addSheet('Seguimiento Visitas', seguimiento, [
@@ -304,15 +304,15 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 8. Seguimiento Incidencias ───────────────────────────────────────
     const { rows: incidencias } = await pool.query(`
       SELECT
-        si.id, si.producer_id, si.up_id, si.ciclo_id,
+        si.id, si.productor_id, si.up_id, si.ciclo_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        u.up_name, u.state_name AS estado,
+        u.nombre_up, u.nombre_estado AS estado,
         si.tipo_incidencia, si.severidad, si.fecha,
-        si.observaciones, si.created_at
+        si.observaciones, si.creado_en
       FROM seguimiento_incidencias si
-      LEFT JOIN producer p ON p.producer_id = si.producer_id
+      LEFT JOIN productor p ON p.productor_id = si.productor_id
       LEFT JOIN up u ON u.up_id = si.up_id
-      WHERE (p.producer_id IS NULL OR ${soloMaiz('p')})
+      WHERE (p.productor_id IS NULL OR ${soloMaiz('p')})
       ORDER BY si.fecha DESC
     `);
     addSheet('Incidencias', incidencias, [
@@ -363,13 +363,13 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         t.id,
         COALESCE(p.nombres || ' ' || p.apellido_paterno, t.nombre_productor_libre) AS productor,
         b.nombre AS bodega,
-        t.tipo_maiz, t.variedad_code,
+        t.tipo_maiz, t.variedad_codigo,
         t.volumen_ton, t.precio_ton,
         ROUND((t.volumen_ton * t.precio_ton)::numeric, 2) AS total,
         t.confirmacion_productor AS estatus,
-        t.fecha, t.created_at
+        t.fecha, t.creado_en
       FROM transacciones t
-      LEFT JOIN producer p ON p.producer_id = t.producer_id
+      LEFT JOIN productor p ON p.productor_id = t.productor_id
       LEFT JOIN bodegas b ON b.id = t.bodega_id
       ORDER BY t.fecha DESC
     `);
@@ -429,12 +429,12 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 13. Alertas ──────────────────────────────────────────────────────
     const { rows: alertas } = await pool.query(`
       SELECT
-        a.id, a.producer_id, a.up_id, a.ciclo_id,
+        a.id, a.productor_id, a.up_id, a.ciclo_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
         a.tipo_alerta, a.origen_alerta, a.nivel_alerta,
-        a.estado_alerta, a.observaciones, a.fecha_alerta, a.created_at
+        a.estado_alerta, a.observaciones, a.fecha_alerta, a.creado_en
       FROM alertas a
-      LEFT JOIN producer p ON p.producer_id = a.producer_id
+      LEFT JOIN productor p ON p.productor_id = a.productor_id
       ORDER BY a.fecha_alerta DESC
     `);
     addSheet('Alertas', alertas, [
@@ -455,18 +455,18 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 14. Disponibilidad Productor ─────────────────────────────────────
     const { rows: disponibilidad } = await pool.query(`
       SELECT
-        d.id, d.producer_id, d.up_id,
+        d.id, d.productor_id, d.up_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        d.tipo_maiz, d.variedad_code,
-        COALESCE(cv.label, d.variedad_libre, d.variedad_code) AS variedad_nombre,
+        d.tipo_maiz, d.variedad_codigo,
+        COALESCE(cv.etiqueta, d.variedad_libre, d.variedad_codigo) AS variedad_nombre,
         d.variedad_libre,
         d.volumen_estimado_ton, d.precio_minimo_ton,
         d.ventana_venta, d.fecha_disponible, d.fecha_vencimiento,
-        d.activa, d.created_at
+        d.activa, d.creado_en
       FROM disponibilidad_productor d
-      LEFT JOIN producer p ON p.producer_id = d.producer_id
-      LEFT JOIN cat_crop_variety cv ON cv.code = d.variedad_code
-      ORDER BY d.created_at DESC
+      LEFT JOIN productor p ON p.productor_id = d.productor_id
+      LEFT JOIN cat_variedad_cultivo cv ON cv.codigo = d.variedad_codigo
+      ORDER BY d.creado_en DESC
     `);
     addSheet('Disponibilidad', disponibilidad, [
       { key: 'id',                   header: 'ID',            width: 8  },
@@ -490,13 +490,13 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     const { rows: senales } = await pool.query(`
       SELECT
         sc.id, sc.bodega_id, b.nombre AS bodega,
-        sc.tipo_maiz, sc.variedad_code, sc.volumen_ton,
+        sc.tipo_maiz, sc.variedad_codigo, sc.volumen_ton,
         sc.precio_ofrecido, sc.radio_km, sc.vigencia,
         sc.vigencia_inicio, sc.fecha_vencimiento,
-        sc.interesados_count, sc.activa, sc.created_at
+        sc.interesados_count, sc.activa, sc.creado_en
       FROM senales_compra sc
       LEFT JOIN bodegas b ON b.id = sc.bodega_id
-      ORDER BY sc.created_at DESC
+      ORDER BY sc.creado_en DESC
     `);
     addSheet('Señales Compra', senales, [
       { key: 'id',                header: 'ID',           width: 8  },
@@ -518,11 +518,11 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 16. Señal Interesados ────────────────────────────────────────────
     const { rows: senalInteresados } = await pool.query(`
       SELECT
-        si.id, si.senal_id, si.producer_id,
+        si.id, si.senal_id, si.productor_id,
         si.nombre_productor, si.municipio, si.estado,
-        si.telefono, si.created_at
+        si.telefono, si.creado_en
       FROM senal_interesados si
-      ORDER BY si.created_at DESC
+      ORDER BY si.creado_en DESC
     `);
     addSheet('Señal Interesados', senalInteresados, [
       { key: 'id',               header: 'ID',             width: 8  },
@@ -537,7 +537,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
 
     // ── 17. Señal Variedades ─────────────────────────────────────────────
     const { rows: senalVariedades } = await pool.query(`
-      SELECT id, senal_id, variedad_code, variedad_libre, created_at
+      SELECT id, senal_id, variedad_codigo, variedad_libre, creado_en
       FROM senal_variedades
       ORDER BY senal_id
     `);
@@ -554,10 +554,10 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       SELECT
         oi.id, oi.usuario_id, oi.bodega_id,
         b.nombre AS bodega, oi.municipio, oi.estado,
-        oi.tipo_maiz, oi.created_at
+        oi.tipo_maiz, oi.creado_en
       FROM oferta_interes oi
       LEFT JOIN bodegas b ON b.id = oi.bodega_id
-      ORDER BY oi.created_at DESC
+      ORDER BY oi.creado_en DESC
     `);
     addSheet('Oferta Interés', ofertaInteres, [
       { key: 'id',         header: 'ID',         width: 8  },
@@ -573,12 +573,12 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 19. Solicitudes de Apoyo ─────────────────────────────────────────
     const { rows: solicitudes } = await pool.query(`
       SELECT
-        sa.id, sa.ventanilla_id, sa.apoyo_id, sa.producer_id,
+        sa.id, sa.ventanilla_id, sa.apoyo_id, sa.productor_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
-        sa.estado, sa.notas, sa.created_at
+        sa.estado, sa.notas, sa.creado_en
       FROM solicitudes_apoyo sa
-      LEFT JOIN producer p ON p.producer_id = sa.producer_id
-      ORDER BY sa.created_at DESC
+      LEFT JOIN productor p ON p.productor_id = sa.productor_id
+      ORDER BY sa.creado_en DESC
     `);
     addSheet('Solicitudes Apoyo', solicitudes, [
       { key: 'id',            header: 'ID',           width: 8  },
@@ -596,7 +596,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       SELECT
         id, ventanilla_id, nombre_apoyo, descripcion,
         requisitos, disponible, cupo_disponible,
-        vigencia_fin, created_at
+        vigencia_fin, creado_en
       FROM apoyos_ventanilla
       ORDER BY ventanilla_id, nombre_apoyo
     `);
@@ -618,7 +618,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         v.id, v.bodega_id, b.nombre AS bodega,
         v.nombre_ventanilla, v.nombre_enlace_agricultura,
         v.telefono_responsable, v.correo_responsable,
-        v.tipo, v.estatus, v.created_at
+        v.tipo, v.estatus, v.creado_en
       FROM ventanillas v
       LEFT JOIN bodegas b ON b.id = v.bodega_id
       ORDER BY v.estatus, b.nombre
@@ -641,9 +641,9 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       SELECT
         id, nombre_archivo, usuario_id,
         total_puntos, total_ups_afectadas, total_notificaciones,
-        estado, error_detalle, created_at, completado_en
+        estado, error_detalle, creado_en, completado_en
       FROM senasica_cargas
-      ORDER BY created_at DESC
+      ORDER BY creado_en DESC
     `);
     addSheet('SENASICA Cargas', senasica, [
       { key: 'id',                    header: 'ID',           width: 8  },
@@ -663,7 +663,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       SELECT
         ts.id, ts.bodega_id, b.nombre AS bodega,
         ts.concepto_id, cs.nombre AS concepto,
-        ts.precio, ts.vigencia_inicio, ts.vigencia_fin, ts.activo, ts.updated_at
+        ts.precio, ts.vigencia_inicio, ts.vigencia_fin, ts.activo, ts.actualizado_en
       FROM tarifario_servicios ts
       LEFT JOIN bodegas b ON b.id = ts.bodega_id
       LEFT JOIN cat_conceptos_servicio cs ON cs.id = ts.concepto_id
@@ -705,11 +705,11 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 25. Supervisor-Productores ───────────────────────────────────────
     const { rows: supervisores } = await pool.query(`
       SELECT
-        sp.id, sp.supervisor_id, sp.producer_id,
+        sp.id, sp.supervisor_id, sp.productor_id,
         p.nombres || ' ' || p.apellido_paterno AS productor,
         sp.fecha_vinculacion
       FROM supervisor_productores sp
-      LEFT JOIN producer p ON p.producer_id = sp.producer_id
+      LEFT JOIN productor p ON p.productor_id = sp.productor_id
       ORDER BY sp.supervisor_id, p.apellido_paterno
     `);
     addSheet('Supervisores', supervisores, [
@@ -725,7 +725,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       SELECT
         id, estado, modalidad, ciclo,
         costo_por_ha, precio_fira, pct_ganancia,
-        vigente_desde, vigente_hasta, activo, updated_at
+        vigente_desde, vigente_hasta, activo, actualizado_en
       FROM costos_fira
       ORDER BY estado, ciclo
     `);
@@ -747,9 +747,9 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     const { rows: discrepancias } = await pool.query(`
       SELECT
         id, tipo, prioridad, descripcion, accion, estado,
-        datos::text AS datos, creado_at, resuelto_at
+        datos::text AS datos, creado_en, resuelto_en
       FROM discrepancias
-      ORDER BY creado_at DESC
+      ORDER BY creado_en DESC
     `);
     addSheet('Discrepancias', discrepancias, [
       { key: 'id',          header: 'ID',           width: 8  },
@@ -780,9 +780,9 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
 
     // ── 29. Catálogo Variedades ──────────────────────────────────────────
     const { rows: variedades } = await pool.query(`
-      SELECT id, crop, code, label, sort_order, is_active, tipo_maiz
-      FROM cat_crop_variety
-      ORDER BY crop, sort_order
+      SELECT id, cultivo, codigo, etiqueta, orden, activo, tipo_maiz
+      FROM cat_variedad_cultivo
+      ORDER BY cultivo, orden
     `);
     addSheet('Cat. Variedades', variedades, [
       { key: 'id',         header: 'ID',       width: 8  },
@@ -797,12 +797,12 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     // ── 30. Usuarios Productores ─────────────────────────────────────────
     const { rows: usuarios } = await pool.query(`
       SELECT
-        u.id, u.curp, u.nombre_completo, u.email, u.telefono,
-        s.name AS estado, m.name AS municipio,
-        u.activo, u.created_at
+        u.id, u.curp, u.nombre_completo, u.correo_electronico, u.telefono,
+        s.nombre AS estado, m.nombre AS municipio,
+        u.activo, u.creado_en
       FROM usuarios u
-      LEFT JOIN geo_state s ON s.state_id = u.state_id
-      LEFT JOIN geo_municipality m ON m.municipality_id = u.municipality_id
+      LEFT JOIN geo_estado s ON s.estado_id = u.estado_id
+      LEFT JOIN geo_municipio m ON m.municipio_id = u.municipio_id
       WHERE u.rol = 'productor'
       ORDER BY u.nombre_completo
     `);
@@ -822,9 +822,9 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     const { rows: notificaciones } = await pool.query(`
       SELECT
         id, usuario_id, tipo, titulo, mensaje,
-        leida, fecha_leida, referencia_tipo, referencia_id, created_at
+        leida, fecha_leida, referencia_tipo, referencia_id, creado_en
       FROM notificaciones
-      ORDER BY created_at DESC
+      ORDER BY creado_en DESC
       LIMIT 5000
     `);
     addSheet('Notificaciones', notificaciones, [

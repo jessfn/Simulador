@@ -22,7 +22,7 @@ router.get('/productores', authMiddleware, async (req: AuthRequest, res: Respons
 
     const result = await pool.query(`
       SELECT
-        p.producer_id,
+        p.productor_id,
         p.curp,
         p.nombres,
         p.apellido_paterno,
@@ -31,32 +31,32 @@ router.get('/productores', authMiddleware, async (req: AuthRequest, res: Respons
         json_agg(
           json_build_object(
             'up_id', u.up_id,
-            'up_name', u.up_name,
-            'area_ha_calc', u.area_ha_calc,
-            'state_name', u.state_name,
-            'municipality_name', u.municipality_name,
+            'up_name', u.nombre_up,
+            'area_ha_calc', u.superficie_ha_calculada,
+            'state_name', u.nombre_estado,
+            'municipality_name', u.nombre_municipio,
             'ciclos', (
               SELECT json_agg(json_build_object(
-                'cycle_id', c.cycle_id,
-                'cycle_year', c.cycle_year,
-                'cycle_type', c.cycle_type,
+                'cycle_id', c.ciclo_id,
+                'cycle_year', c.anio_ciclo,
+                'cycle_type', c.tipo_ciclo,
                 'crops', (
                   SELECT COALESCE(json_agg(json_build_object(
-                    'cycle_crop_id', cc.cycle_crop_id,
-                    'crop', cc.crop,
-                    'variety_id', cc.variety_id
-                  ) ORDER BY cc.cycle_crop_id), '[]'::json)
-                  FROM cycle_crop cc WHERE cc.cycle_id = c.cycle_id
+                    'cycle_crop_id', cc.ciclo_cultivo_id,
+                    'crop', cc.cultivo,
+                    'variety_id', cc.variedad_id
+                  ) ORDER BY cc.ciclo_cultivo_id), '[]'::json)
+                  FROM ciclo_cultivo cc WHERE cc.ciclo_id = c.ciclo_id
                 )
-              ) ORDER BY c.cycle_id)
-              FROM cycle c WHERE c.up_id = u.up_id AND c.crop = 'maiz'
+              ) ORDER BY c.ciclo_id)
+              FROM ciclo c WHERE c.up_id = u.up_id AND c.cultivo = 'maiz'
             )
           ) ORDER BY u.up_id
         ) FILTER (WHERE u.up_id IS NOT NULL) as ups
-      FROM producer p
-      LEFT JOIN up u ON u.producer_id = p.producer_id AND ${parcelaDeMaiz('u')}
+      FROM productor p
+      LEFT JOIN up u ON u.productor_id = p.productor_id AND ${parcelaDeMaiz('u')}
       ${whereClause}
-      GROUP BY p.producer_id
+      GROUP BY p.productor_id
       ORDER BY p.apellido_paterno, p.nombres
       LIMIT 100
     `, params);
@@ -80,7 +80,7 @@ router.get('/visitas', authMiddleware, async (req: AuthRequest, res: Response): 
 
     if (up_id) { conditions.push(`v.up_id = $${idx++}`); params.push(Number(up_id)); }
     if (ciclo_id) { conditions.push(`v.ciclo_id = $${idx++}`); params.push(Number(ciclo_id)); }
-    if (producer_id) { conditions.push(`v.producer_id = $${idx++}`); params.push(Number(producer_id)); }
+    if (producer_id) { conditions.push(`v.productor_id = $${idx++}`); params.push(Number(producer_id)); }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -134,7 +134,7 @@ router.post('/visitas', authMiddleware, async (req: AuthRequest, res: Response):
 
     const result = await pool.query(`
       INSERT INTO seguimiento_visitas
-        (producer_id, up_id, ciclo_id, cycle_crop_id, fecha_visita, etapa_cultivo, estado_cultivo,
+        (productor_id, up_id, ciclo_id, ciclo_cultivo_id, fecha_visita, etapa_cultivo, estado_cultivo,
          observaciones, precio_observado, tipo_maiz, usuario_captura)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       RETURNING *
@@ -149,7 +149,7 @@ router.post('/visitas', authMiddleware, async (req: AuthRequest, res: Response):
     if (precio_observado && tipo_maiz) {
       await pool.query(`
         INSERT INTO precios (tipo_precio, fuente, precio, tipo_maiz, fecha, observaciones,
-                             visita_id, producer_id, up_id, ciclo_id, usuario_captura)
+                             visita_id, productor_id, up_id, ciclo_id, usuario_captura)
         VALUES ('observado','campo',$1,$2,$3,$4,$5,$6,$7,$8,$9)
       `, [
         precio_observado, tipo_maiz, fecha_visita, observaciones || null,
@@ -176,7 +176,7 @@ router.get('/incidencias', authMiddleware, async (req: AuthRequest, res: Respons
 
     if (up_id) { conditions.push(`i.up_id = $${idx++}`); params.push(Number(up_id)); }
     if (ciclo_id) { conditions.push(`i.ciclo_id = $${idx++}`); params.push(Number(ciclo_id)); }
-    if (producer_id) { conditions.push(`i.producer_id = $${idx++}`); params.push(Number(producer_id)); }
+    if (producer_id) { conditions.push(`i.productor_id = $${idx++}`); params.push(Number(producer_id)); }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -215,7 +215,7 @@ router.post('/incidencias', authMiddleware, async (req: AuthRequest, res: Respon
 
     const result = await pool.query(`
       INSERT INTO seguimiento_incidencias
-        (producer_id, up_id, ciclo_id, cycle_crop_id, tipo_incidencia, severidad, fecha, observaciones, usuario_captura)
+        (productor_id, up_id, ciclo_id, ciclo_cultivo_id, tipo_incidencia, severidad, fecha, observaciones, usuario_captura)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
       RETURNING *
     `, [producer_id, up_id, ciclo_id, cycle_crop_id || null, tipo_incidencia, severidad, fecha, observaciones || null, req.user?.userId]);
@@ -271,13 +271,13 @@ router.post('/estimacion', authMiddleware, async (req: AuthRequest, res: Respons
     }
 
     // Obtener área sembrada de la UP para calcular producción estimada
-    const upResult = await pool.query('SELECT area_ha_calc FROM up WHERE up_id = $1', [up_id]);
+    const upResult = await pool.query('SELECT superficie_ha_calculada FROM up WHERE up_id = $1', [up_id]);
     const area = upResult.rows[0]?.area_ha_calc || 0;
     const produccion_estimada_ton = area > 0 ? rendimiento_estimado_ton_ha * area : null;
 
     const result = await pool.query(`
       INSERT INTO estimacion_cosecha
-        (producer_id, up_id, ciclo_id, cycle_crop_id, fecha_estimacion, rendimiento_estimado_ton_ha,
+        (productor_id, up_id, ciclo_id, ciclo_cultivo_id, fecha_estimacion, rendimiento_estimado_ton_ha,
          produccion_estimada_ton, observaciones, usuario_captura)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
       RETURNING *
@@ -341,7 +341,7 @@ router.post('/cosecha', authMiddleware, async (req: AuthRequest, res: Response):
     }
 
     // Validar que superficie cosechada <= superficie sembrada
-    const upResult = await pool.query('SELECT area_ha_calc FROM up WHERE up_id = $1', [up_id]);
+    const upResult = await pool.query('SELECT superficie_ha_calculada FROM up WHERE up_id = $1', [up_id]);
     const area_sembrada = upResult.rows[0]?.area_ha_calc || 0;
     if (area_sembrada > 0 && superficie_cosechada_ha > area_sembrada) {
       res.status(400).json({ error: `La superficie cosechada (${superficie_cosechada_ha} ha) no puede superar la sembrada (${area_sembrada} ha)` });
@@ -352,7 +352,7 @@ router.post('/cosecha', authMiddleware, async (req: AuthRequest, res: Response):
 
     const result = await pool.query(`
       INSERT INTO cosecha_real
-        (producer_id, up_id, ciclo_id, cycle_crop_id, fecha_cosecha, superficie_cosechada_ha,
+        (productor_id, up_id, ciclo_id, ciclo_cultivo_id, fecha_cosecha, superficie_cosechada_ha,
          produccion_total_ton, rendimiento_real_ton_ha, observaciones, usuario_captura)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       RETURNING *
@@ -378,19 +378,19 @@ router.get('/resumen/:producer_id/:up_id/:ciclo_id', authMiddleware, async (req:
 
     const [visitas, incidencias, estimaciones, cosechas] = await Promise.all([
       pool.query(
-        'SELECT * FROM seguimiento_visitas WHERE producer_id=$1 AND up_id=$2 AND ciclo_id=$3 ORDER BY fecha_visita DESC',
+        'SELECT * FROM seguimiento_visitas WHERE productor_id=$1 AND up_id=$2 AND ciclo_id=$3 ORDER BY fecha_visita DESC',
         [producer_id, up_id, ciclo_id]
       ),
       pool.query(
-        'SELECT * FROM seguimiento_incidencias WHERE producer_id=$1 AND up_id=$2 AND ciclo_id=$3 ORDER BY fecha DESC',
+        'SELECT * FROM seguimiento_incidencias WHERE productor_id=$1 AND up_id=$2 AND ciclo_id=$3 ORDER BY fecha DESC',
         [producer_id, up_id, ciclo_id]
       ),
       pool.query(
-        'SELECT * FROM estimacion_cosecha WHERE producer_id=$1 AND up_id=$2 AND ciclo_id=$3 ORDER BY fecha_estimacion DESC',
+        'SELECT * FROM estimacion_cosecha WHERE productor_id=$1 AND up_id=$2 AND ciclo_id=$3 ORDER BY fecha_estimacion DESC',
         [producer_id, up_id, ciclo_id]
       ),
       pool.query(
-        'SELECT * FROM cosecha_real WHERE producer_id=$1 AND up_id=$2 AND ciclo_id=$3 ORDER BY fecha_cosecha DESC',
+        'SELECT * FROM cosecha_real WHERE productor_id=$1 AND up_id=$2 AND ciclo_id=$3 ORDER BY fecha_cosecha DESC',
         [producer_id, up_id, ciclo_id]
       ),
     ]);

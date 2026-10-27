@@ -11,7 +11,7 @@ export const PROGRAMA_FRIJOL = 'frijol_afb';
  * Uso:  WHERE ... AND ${soloMaiz('p')}     (alias de la tabla producer)
  */
 export function soloMaiz(aliasProducer: string): string {
-  return `EXISTS (SELECT 1 FROM producer_programa _pm WHERE _pm.producer_id = ${aliasProducer}.producer_id AND _pm.programa = '${PROGRAMA_MAIZ}')`;
+  return `EXISTS (SELECT 1 FROM productor_programa _pm WHERE _pm.productor_id = ${aliasProducer}.productor_id AND _pm.programa = '${PROGRAMA_MAIZ}')`;
 }
 
 /**
@@ -21,12 +21,12 @@ export function soloMaiz(aliasProducer: string): string {
  * (No mira al productor: para eso está soloMaiz / soloMaizDeUp.)
  */
 export function parcelaDeMaiz(aliasUp: string): string {
-  return `(${aliasUp}.programa_origen = '${PROGRAMA_MAIZ}' OR EXISTS (SELECT 1 FROM cycle _cm WHERE _cm.up_id = ${aliasUp}.up_id AND _cm.crop = 'maiz'))`;
+  return `(${aliasUp}.programa_origen = '${PROGRAMA_MAIZ}' OR EXISTS (SELECT 1 FROM ciclo _cm WHERE _cm.up_id = ${aliasUp}.up_id AND _cm.cultivo = 'maiz'))`;
 }
 
 /** Parcelas de SIMAC Maíz: el productor está en maíz Y la parcela cuenta en maíz (ver parcelaDeMaiz). Alias de la tabla up. */
 export function soloMaizDeUp(aliasUp: string): string {
-  return `(EXISTS (SELECT 1 FROM producer_programa _pm WHERE _pm.producer_id = ${aliasUp}.producer_id AND _pm.programa = '${PROGRAMA_MAIZ}') AND ${parcelaDeMaiz(aliasUp)})`;
+  return `(EXISTS (SELECT 1 FROM productor_programa _pm WHERE _pm.productor_id = ${aliasUp}.productor_id AND _pm.programa = '${PROGRAMA_MAIZ}') AND ${parcelaDeMaiz(aliasUp)})`;
 }
 
 /**
@@ -35,7 +35,7 @@ export function soloMaizDeUp(aliasUp: string): string {
  * `paramTecnico` es el parámetro SQL con el id del técnico, p. ej. '$2'.
  */
 export function tecnicoDeMaiz(aliasProducer: string, paramTecnico: string): string {
-  return `EXISTS (SELECT 1 FROM producer_programa _tm WHERE _tm.producer_id = ${aliasProducer}.producer_id AND _tm.programa = '${PROGRAMA_MAIZ}' AND _tm.usuario_capturista_id = ${paramTecnico})`;
+  return `EXISTS (SELECT 1 FROM productor_programa _tm WHERE _tm.productor_id = ${aliasProducer}.productor_id AND _tm.programa = '${PROGRAMA_MAIZ}' AND _tm.usuario_capturista_id = ${paramTecnico})`;
 }
 
 export interface ZonaTecnico { state_id: string; municipality_id: string | null; state_name?: string | null; municipality_name?: string | null }
@@ -54,19 +54,19 @@ export async function perfilProgramasDeTecnico(usuarioId: number, db: Consultabl
   const [progs, usr, zona] = await Promise.all([
     db.query('SELECT programa FROM usuario_programa WHERE usuario_id = $1 ORDER BY programa', [usuarioId]),
     db.query(
-      `SELECT u.tipo_tecnico, c.label AS etiqueta
+      `SELECT u.tipo_tecnico, c.etiqueta AS etiqueta
          FROM usuarios u
-         LEFT JOIN cat_catalog c ON c.catalog = 'tipo_tecnico' AND c.code = u.tipo_tecnico
+         LEFT JOIN cat_catalogo c ON c.catalogo = 'tipo_tecnico' AND c.codigo = u.tipo_tecnico
         WHERE u.id = $1`,
       [usuarioId]
     ),
     db.query(
-      `SELECT z.state_id, z.municipality_id, gs.name AS state_name, gm.name AS municipality_name
+      `SELECT z.estado_id, z.municipio_id, gs.nombre AS state_name, gm.nombre AS municipality_name
          FROM tecnico_zona z
-         LEFT JOIN geo_state gs ON gs.state_id = z.state_id
-         LEFT JOIN geo_municipality gm ON gm.municipality_id = z.municipality_id
+         LEFT JOIN geo_estado gs ON gs.estado_id = z.estado_id
+         LEFT JOIN geo_municipio gm ON gm.municipio_id = z.municipio_id
         WHERE z.usuario_id = $1
-        ORDER BY gs.name, gm.name`,
+        ORDER BY gs.nombre, gm.nombre`,
       [usuarioId]
     ),
   ]);

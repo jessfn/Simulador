@@ -126,7 +126,7 @@ async function obtenerUltimoDeDB() {
     const res = await pool.query(`
       SELECT chicago_usd_bushel, tc_banxico, garantia_sader
       FROM precio_referencias_externas
-      ORDER BY created_at DESC LIMIT 1
+      ORDER BY creado_en DESC LIMIT 1
     `);
     if (res.rows.length > 0) {
       return res.rows[0];

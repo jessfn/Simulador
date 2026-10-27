@@ -57,9 +57,9 @@ export async function determinarContextoTerritorial(
 ): Promise<{ elegible: boolean; ups: { up_id: number; municipality_id: string | null; municipality_name: string | null }[] }> {
   const r = await client.query(
     // La encuesta de insumos es de SIMAC Maíz: solo aplica si el productor está en ese programa
-    `SELECT up_id, state_id, municipality_id, municipality_name
-     FROM up WHERE producer_id = $1 AND ${parcelaDeMaiz('up')}
-       AND EXISTS (SELECT 1 FROM producer_programa pm WHERE pm.producer_id = $1 AND pm.programa = 'simac_maiz')`,
+    `SELECT up_id, estado_id, municipio_id, nombre_municipio
+     FROM up WHERE productor_id = $1 AND ${parcelaDeMaiz('up')}
+       AND EXISTS (SELECT 1 FROM productor_programa pm WHERE pm.productor_id = $1 AND pm.programa = 'simac_maiz')`,
     [producerId]
   );
   const deSinaloa = r.rows.filter((row: any) => row.state_id === SINALOA_STATE_ID);
@@ -349,7 +349,7 @@ export async function guardarEncuestaEnTransaccion(
   // Upsert de la respuesta (una por productor/edición). Si ya existía, se
   // reemplazan sus líneas dentro de la misma transacción.
   const existente = await client.query(
-    `SELECT id, version FROM encuesta_respuestas WHERE producer_id = $1 AND edicion_id = $2`,
+    `SELECT id, version FROM encuesta_respuestas WHERE productor_id = $1 AND edicion_id = $2`,
     [producerId, edicion.id]
   );
 
@@ -357,7 +357,7 @@ export async function guardarEncuestaEnTransaccion(
   if (existente.rows.length > 0) {
     respuestaId = existente.rows[0].id;
     await client.query(
-      `UPDATE encuesta_respuestas SET respuesta = $1, updated_at = NOW(), version = version + 1,
+      `UPDATE encuesta_respuestas SET respuesta = $1, actualizado_en = NOW(), version = version + 1,
               canal = $2, capturista_id = $3
        WHERE id = $4`,
       [entrada.respuesta, opts.canal, opts.capturistaId || null, respuestaId]
@@ -367,7 +367,7 @@ export async function guardarEncuestaEnTransaccion(
   } else {
     const r = await client.query(
       `INSERT INTO encuesta_respuestas
-         (producer_id, edicion_id, respuesta, periodo_inicio, periodo_fin, version_catalogo, canal, capturista_id)
+         (productor_id, edicion_id, respuesta, periodo_inicio, periodo_fin, version_catalogo, canal, capturista_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
       [producerId, edicion.id, entrada.respuesta, edicion.periodo_inicio, edicion.periodo_fin,
        edicion.version_catalogo, opts.canal, opts.capturistaId || null]
@@ -377,7 +377,7 @@ export async function guardarEncuestaEnTransaccion(
 
   for (const up of contexto.ups) {
     await client.query(
-      `INSERT INTO encuesta_contexto_territorial (respuesta_id, up_id, municipality_id, municipality_name)
+      `INSERT INTO encuesta_contexto_territorial (respuesta_id, up_id, municipio_id, nombre_municipio)
        VALUES ($1,$2,$3,$4) ON CONFLICT (respuesta_id, up_id) DO NOTHING`,
       [respuestaId, up.up_id, up.municipality_id, up.municipality_name]
     );
@@ -409,7 +409,7 @@ export async function obtenerRespuestaProductor(producerId: number) {
   if (!contexto.elegible) return { elegible: false };
 
   const r = await pool.query(
-    `SELECT * FROM encuesta_respuestas WHERE producer_id = $1 AND edicion_id = $2`,
+    `SELECT * FROM encuesta_respuestas WHERE productor_id = $1 AND edicion_id = $2`,
     [producerId, edicion.id]
   );
   if (r.rows.length === 0) {

@@ -31,7 +31,7 @@ def parcelas_en_panel(apellido):
     return sorted(u for u, nombre in hoja_parcelas() if apellido in nombre)
 
 def ups_de(pid):
-    return [int(x) for x in [l.strip() for l in sql(f"select up_id from up where producer_id={pid} order by up_id").splitlines()[2:] if l.strip() and not l.startswith('(')]]
+    return [int(x) for x in [l.strip() for l in sql(f"select up_id from up where productor_id={pid} order by up_id").splitlines()[2:] if l.strip() and not l.startswith('(')]]
 
 def maiz_con(apellido, n_parcelas):
     curp = curp_nueva('REN')
@@ -88,7 +88,7 @@ ok('las parcelas de maíz del mismo productor NO cambian de origen', all(val(f"s
 ap_b = 'OrigenB' + suf
 curp_b, Bp = maiz_con(ap_b, 1); UP_B = ups_de(Bp)[0]
 http(f'/ups/{UP_B}/cycles', tm, 'POST', {'cycle_year': 2031, 'cycle_type': 'PV', 'tipo_riego': 'temporal'})
-cid_b = val(f"select cycle_id from cycle where up_id={UP_B} and crop='maiz'")
+cid_b = val(f"select ciclo_id from ciclo where up_id={UP_B} and crop='maiz'")
 http(f'/cycles/{cid_b}/crops', tm, 'POST', {'crop': 'maiz', 'variety_id': 'SB-101', 'area_sown_ha': 1, 'planting_date': '2031-07-01', 'yield_expected': 6})
 st, rb = frijol_sobre_maiz(curp_b, parcela_existente=UP_B, numero=1, total=1, ha=0.5)
 ok('frijol sobre una parcela EXISTENTE de maíz', st == 201 and str(rb.get('up_id')) == str(UP_B), f'{st} {(rb or {}).get("error", "")}')
@@ -100,7 +100,7 @@ st, rc = registrar(t1, cuerpo(curp_c, token=cc_.get('verificacion_token')))
 UP_C = int(rc.get('up_id') or 0); C = rc.get('producer_id')
 http(f'/frijol/productores/{C}', t1, 'PATCH', {'productor': {'apellido_paterno': ap_c}})
 ok('productor solo de frijol: su parcela nace con origen frijol', st == 201 and val(f"select programa_origen from up where up_id={UP_C}") == 'frijol_afb')
-ok('el productor solo de frijol NO está en el programa de maíz', val(f"select count(*) from producer_programa where producer_id={C} and programa='simac_maiz'") == '0')
+ok('el productor solo de frijol NO está en el programa de maíz', val(f"select count(*) from productor_programa where productor_id={C} and programa='simac_maiz'") == '0')
 
 print('--- 11.2 · el origen no se modifica por ninguna ruta de usuario')
 asignan = []
@@ -120,7 +120,7 @@ ups_fin = total_ups_maiz(); hoja_fin = filas_hoja('Parcelas (UP)')
 ok('"parcelas" del tablero de maíz sube solo por las de maíz (+3, no +5)', ups_fin - ups_ini == 3, f'{ups_ini} -> {ups_fin}')
 ok('la exportación de maíz (hoja Parcelas) sube solo por las de maíz (+3)', hoja_fin - hoja_ini == 3, f'{hoja_ini} -> {hoja_fin}')
 st, mc = http(f'/cycles/{cid_b}/crops', tm, 'POST', {'crop': 'maiz', 'variety_id': 'SB-101', 'area_sown_ha': 1, 'planting_date': '2031-07-01', 'yield_expected': 6})
-ok('las hectáreas sembradas de maíz de esa parcela salen solo del ciclo de maíz (1 ha, no 1.5)', val(f"select sum(cc.area_sown_ha) from cycle_crop cc join cycle c using(cycle_id) where c.up_id={UP_B} and c.crop='maiz'") in ('1', '1.0', '1.00'))
+ok('las hectáreas sembradas de maíz de esa parcela salen solo del ciclo de maíz (1 ha, no 1.5)', val(f"select sum(cc.superficie_sembrada_ha) from ciclo_cultivo cc join ciclo c using(ciclo_id) where c.up_id={UP_B} and c.crop='maiz'") in ('1', '1.0', '1.00'))
 
 print('--- 11.3.4 · pantallas de maíz que listan las parcelas de un productor')
 st, l = http(f'/tecnico/productor/{A}/ups', tm)
