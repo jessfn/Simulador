@@ -40,7 +40,6 @@ export default function FrijolEntradaPage() {
         <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-[#092213] to-transparent z-10 pointer-events-none" />
         <CampoVivo />
         <div className="relative z-20 flex flex-col h-full px-10 py-10">
-          <div className="flex items-center gap-3 flex-wrap"><BotonVolver onClick={volver} /></div>
           <div className="mt-auto">
             <div style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(20px)', transition: 'opacity 0.7s ease 0.15s, transform 0.7s ease 0.15s' }}>
               <h2 className="text-[38px] xl:text-[46px] font-bold text-white leading-tight tracking-tight" style={{ fontFamily: 'Patria, Georgia, serif' }}>
@@ -62,11 +61,7 @@ export default function FrijolEntradaPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#092213]/80 via-[#092213]/15 to-[#092213]/15" />
         </div>
 
-        <BotonVolver
-          onClick={volver}
-          className="lg:hidden absolute z-20"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 14 }}
-        />
+        <BotonVolver onClick={volver} className="atras-flotante" />
 
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16 max-lg:pt-[calc(env(safe-area-inset-top,0px)+76px)]">
           <div

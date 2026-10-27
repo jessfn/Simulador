@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  ChevronLeft, Shield, MapPin, CheckCircle2, Camera, Loader2,
+  Shield, MapPin, CheckCircle2, Camera, Loader2,
   RefreshCw, AlertTriangle, Check, FileText, Eye, Mail, ChevronRight,
   Fingerprint,
 } from 'lucide-react';
 
+import BotonAtras from '../../components/BotonAtras';
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 export const AVISO_VERSION = '1.0';
 
@@ -134,12 +135,7 @@ export default function AvisoPrivacidadStep({
     >
       {/* Header */}
       <div className="flex-shrink-0 z-10 flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-black/20 backdrop-blur-md">
-        <button
-          onClick={fase === 'verificacion' ? () => setFase('texto') : onBack}
-          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
-        >
-          <ChevronLeft size={20} className="text-white" />
-        </button>
+        <BotonAtras onClick={fase === 'verificacion' ? () => setFase('texto') : onBack} tono="oscuro" />
         <div className="flex-1">
           <p className="text-[10px] font-bold text-green-300 uppercase tracking-widest">
             {fase === 'texto' ? 'Aviso de Privacidad' : 'Verificación de Identidad'}

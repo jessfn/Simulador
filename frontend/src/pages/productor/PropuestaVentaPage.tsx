@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import BotonAtras from '../../components/BotonAtras';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Sprout, Wheat, Check } from 'lucide-react';
+import { ChevronRight, Sprout, Wheat, Check } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -159,15 +160,11 @@ export default function PropuestaVentaPage() {
   return (
     <div className="min-h-screen bg-white pb-8">
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button
-          onClick={() => {
+        <BotonAtras onClick={() => {
             if (paso === 'datos' && ciclos.length > 1) setPaso('sel_ciclo');
             else if (paso === 'datos' || paso === 'sel_ciclo') setPaso(ups.filter(u => (u.ciclos_activos?.length || 0) > 0).length > 1 ? 'sel_up' : 'datos');
             else navigate(-1);
-          }}
-          className="p-2 rounded-lg hover:bg-[#eef8f2]">
-          <ChevronLeft size={20} />
-        </button>
+          }} tono="claro" />
         <div>
           <h1 className="font-semibold text-gray-900">Propuesta de venta</h1>
           <p className="text-xs text-gray-500">

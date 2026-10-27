@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVolver } from '../../hooks/useVolver';
+import BotonAtras from '../../components/BotonAtras';
 import {
-  Eye, EyeOff, ChevronLeft, AlertCircle, Loader2, Info,
+  Eye, EyeOff, AlertCircle, Loader2, Info,
   ClipboardCheck, MapPin, UserCheck, Wheat,
 } from 'lucide-react';
 import { api } from '../../services/api';
@@ -63,13 +64,8 @@ export default function LoginTecnicoPage({ cultivo = 'maiz' }: { cultivo?: 'maiz
       </div>
 
       {/* Header */}
-      <div className="relative flex items-center px-4 py-3 flex-shrink-0">
-        <button
-          onClick={volver}
-          className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors flex items-center gap-1 text-white/70"
-        >
-          <ChevronLeft size={22} /> <span className="text-sm font-medium">Volver</span>
-        </button>
+      <div className="relative fila-atras flex-shrink-0">
+        <BotonAtras onClick={volver} />
       </div>
 
       {/* Content */}

@@ -1,8 +1,9 @@
 import { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, UserPlus, LogOut, ShieldCheck, ChevronLeft, UserCircle, ClipboardList } from 'lucide-react';
+import { Home, UserPlus, LogOut, ShieldCheck, UserCircle, ClipboardList } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import ChatBubble from './ChatBubble';
+import BotonAtras from './BotonAtras';
 
 const NAV_MAIZ = [
   { path: '/maiz/tecnico', icon: Home, label: 'Inicio' },
@@ -106,13 +107,7 @@ export function PageHeaderTecnico({
     <div className={`sticky top-0 z-20 w-full px-4 sm:px-6 pt-3.5 pb-4 shadow-sm ${esFrijol ? 'bg-[#14532d] border-b border-emerald-950 text-white' : 'bg-white/95 backdrop-blur-md border-b border-slate-200/60'}`}>
       <div className="max-w-[700px] mx-auto">
         {back !== undefined && (
-          <button
-            onClick={() => typeof back === 'number' ? navigate(back) : navigate(back)}
-            className={`flex items-center gap-0.5 text-[14px] font-bold mb-2 hover:opacity-70 transition-opacity min-h-[36px] ${esFrijol ? 'text-emerald-100' : 'text-[#1A5C38]'}`}
-          >
-            <ChevronLeft size={18} strokeWidth={2.5} className="-ml-1" />
-            Volver
-          </button>
+          <div className="mb-2.5"><BotonAtras onClick={() => navigate(back as never)} tono={esFrijol ? 'oscuro' : 'claro'} /></div>
         )}
         <h1 className={`text-[20px] font-bold leading-tight ${esFrijol ? 'text-white break-words' : 'text-slate-900 truncate'}`}>{title}</h1>
         {subtitle && <p className={`text-[12px] font-medium mt-0.5 ${esFrijol ? 'text-emerald-100 break-words' : 'text-slate-500 truncate'}`}>{subtitle}</p>}

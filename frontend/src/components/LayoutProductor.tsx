@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Map, TrendingUp, Award, User, Bell, X, LogOut, ChevronRight, ChevronLeft, CalendarCheck } from 'lucide-react';
+import { Home, Map, TrendingUp, Award, User, Bell, X, LogOut, ChevronRight, CalendarCheck } from 'lucide-react';
+import BotonAtras from './BotonAtras';
 import { useAuthStore } from '../store/auth';
 import AppHeader from './AppHeader';
 import PushPrompt from './PushPrompt';
@@ -211,13 +212,7 @@ export function PageHeaderProductor({
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             {back !== undefined && (
-              <button
-                onClick={() => typeof back === 'number' ? navigate(back) : navigate(back)}
-                className="flex items-center gap-0.5 text-[#1A5C38] text-[14px] font-bold mb-2 hover:opacity-70 transition-opacity"
-              >
-                <ChevronLeft size={18} strokeWidth={2.5} className="-ml-1" />
-                Volver
-              </button>
+              <div className="mb-2.5"><BotonAtras onClick={() => navigate(back as never)} tono="claro" /></div>
             )}
             <h1 className="text-[20px] font-bold text-slate-900 leading-tight truncate">{title}</h1>
             {subtitle && <p className="text-[12px] text-slate-500 font-medium mt-0.5 truncate">{subtitle}</p>}

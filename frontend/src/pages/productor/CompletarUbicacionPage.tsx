@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  ChevronLeft, MapPin, Undo2, Pencil, Trash2, CheckCircle2, Loader2, Footprints,
+  MapPin, Undo2, Pencil, Trash2, CheckCircle2, Loader2, Footprints,
 } from 'lucide-react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -13,6 +13,7 @@ import type { DibujarPoligonoHandle, DrawMode } from '../../components/productor
 import ParcelasExistentesLayer from '../../components/productor/ParcelasExistentesLayer';
 import SearchPinMarker from '../../components/productor/SearchPinMarker';
 
+import BotonAtras from '../../components/BotonAtras';
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -138,12 +139,7 @@ export default function CompletarUbicacionPage() {
     >
       {/* Header */}
       <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-black/50 backdrop-blur-md border-b border-white/5">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
-        >
-          <ChevronLeft size={20} className="text-white" />
-        </button>
+        <BotonAtras onClick={() => navigate(-1)} tono="oscuro" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <MapPin size={13} className="text-green-300/80 flex-shrink-0" />

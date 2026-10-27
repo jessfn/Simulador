@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useVolver } from '../../hooks/useVolver';
+import BotonAtras from '../../components/BotonAtras';
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -511,9 +512,7 @@ export default function RegistroNuevoPage() {
         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="bg-[#0c2e1a] px-4 py-3 flex items-center gap-3 z-10 shadow-md">
-          <button onClick={handleBack} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
-            <ChevronLeft size={20} />
-          </button>
+          <BotonAtras onClick={handleBack} />
           <div>
             <p className="text-[10px] font-bold text-green-300 uppercase tracking-wider">Geolocalización</p>
             <p className="text-xs text-white/80 mt-0.5">Parcela {ups.length + 1} — {upActual.municipio}, {upActual.estado}</p>
@@ -973,9 +972,7 @@ export default function RegistroNuevoPage() {
         {/* Header: back + stepper */}
         {paso < 99 && (
           <div className="flex-shrink-0 flex items-center gap-3 px-4 sm:px-6 lg:px-10 py-3.5 border-b border-white/[0.06]">
-            <button onClick={handleBack} className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors flex-shrink-0">
-              <ChevronLeft size={20} className="text-white/55" />
-            </button>
+            <BotonAtras onClick={handleBack} />
 
             {/* Stepper mobile/tablet — oculto en lg (sidebar) */}
             <div className="flex items-center gap-1 lg:hidden flex-1 justify-center">
