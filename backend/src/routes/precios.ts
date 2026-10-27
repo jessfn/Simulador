@@ -51,7 +51,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
         p.*,
         i.nombre AS infraestructura_nombre
       FROM precios p
-      LEFT JOIN infraestructura i ON p.bodega_id = i.id
+      LEFT JOIN bodegas i ON p.bodega_id = i.id
       ${where}
       ORDER BY p.fecha DESC, p.creado_en DESC
       LIMIT 500

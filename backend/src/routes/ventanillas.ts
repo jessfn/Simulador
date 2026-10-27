@@ -68,11 +68,11 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
               JOIN productor p ON p.curp = u.curp
               JOIN up ON up.productor_id = p.productor_id
               WHERE u.rol = 'productor' AND u.activo = TRUE
-                AND up.latitud IS NOT NULL AND up.longitud IS NOT NULL
+                AND up.centroide IS NOT NULL
                 AND (6371 * acos(LEAST(1.0,
-                    cos(radians($1)) * cos(radians(up.latitud))
-                    * cos(radians(up.longitud) - radians($2))
-                    + sin(radians($1)) * sin(radians(up.latitud))
+                    cos(radians($1)) * cos(radians(ST_Y(up.centroide::geometry)))
+                    * cos(radians(ST_X(up.centroide::geometry)) - radians($2))
+                    + sin(radians($1)) * sin(radians(ST_Y(up.centroide::geometry)))
                   ))) <= 50
               LIMIT 500
             `, [b.latitud, b.longitud]);
@@ -165,11 +165,12 @@ router.get('/:id/solicitudes', authMiddleware, async (req: AuthRequest, res: Res
 
     const result = await pool.query(
       `SELECT sa.*, av.nombre_apoyo,
-              p.nombre_completo AS productor_nombre,
-              p.municipio_nombre AS municipio
+              CONCAT_WS(' ', p.nombres, p.apellido_paterno, p.apellido_materno) AS productor_nombre,
+              gm.nombre AS municipio
        FROM solicitudes_apoyo sa
        JOIN apoyos_ventanilla av ON av.id = sa.apoyo_id
        LEFT JOIN productor p ON p.productor_id = sa.productor_id
+       LEFT JOIN geo_municipio gm ON gm.municipio_id = p.municipio_id
        ${where}
        ORDER BY sa.creado_en DESC`,
       params

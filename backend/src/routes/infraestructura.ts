@@ -251,7 +251,7 @@ router.put('/:id', authMiddleware, BODEGA_WRITE, async (req: AuthRequest, res: R
         opera_incentivos = CASE WHEN $10 = TRUE THEN TRUE ELSE COALESCE($12, opera_incentivos) END,
         opera_coberturas = CASE WHEN $10 = TRUE THEN TRUE ELSE COALESCE($13, opera_coberturas) END,
         registra_inventario = COALESCE($14, registra_inventario),
-        actualizado_en = CURRENT_TIMESTAMP
+        fecha_actualizacion = CURRENT_TIMESTAMP
       WHERE id = $15
       RETURNING *
     `, [

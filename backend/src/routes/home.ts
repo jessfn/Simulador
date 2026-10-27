@@ -257,9 +257,9 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response): Pr
                   SELECT 1 FROM bodegas b
                   JOIN bodeguero_bodegas bb ON bb.bodega_id = b.id
                   WHERE bb.usuario_id = $1 AND bb.estatus = 'aprobada'
-                    AND b.latitud IS NOT NULL
+                    AND b.latitud IS NOT NULL AND u.centroide IS NOT NULL
                     AND ST_DWithin(
-                      ST_SetSRID(ST_Point(COALESCE(u.longitud,0), COALESCE(u.latitud,0)), 4326)::geography,
+                      u.centroide::geography,
                       ST_SetSRID(ST_Point(b.longitud, b.latitud), 4326)::geography,
                       50000
                     )
