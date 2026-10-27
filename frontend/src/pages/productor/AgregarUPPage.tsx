@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  ChevronLeft, Undo2, CheckCircle2, Footprints, Loader2,
+  Undo2, CheckCircle2, Footprints, Loader2,
   AlertTriangle, Ruler, MapPin, Map, Check, Pencil, Route,
 } from 'lucide-react';
 import DibujarPoligonoUP from '../../components/productor/DibujarPoligonoUP';
@@ -14,6 +14,7 @@ import CoordenadasGPSInput from '../../components/productor/CoordenadasGPSInput'
 import SearchPinMarker from '../../components/productor/SearchPinMarker';
 import * as turf from '@turf/turf';
 
+import BotonAtras from '../../components/BotonAtras';
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export default function AgregarUPPage() {
@@ -238,12 +239,7 @@ export default function AgregarUPPage() {
       >
         {/* Header oscuro */}
         <div className="bg-[#0c2e1a] px-4 py-2.5 flex items-center gap-3 z-10 shadow-md flex-shrink-0">
-          <button
-            onClick={() => setPaso('info')}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-          >
-            <ChevronLeft size={20} />
-          </button>
+          <BotonAtras onClick={() => setPaso('info')} tono="oscuro" />
           <div>
             <p className="text-[10px] font-bold text-green-300 uppercase tracking-wider">Geolocalización</p>
             <p className="text-xs text-white/80 mt-0.5">{municipioUp}, {estadoUp}</p>
@@ -570,13 +566,7 @@ export default function AgregarUPPage() {
 
       {/* Mini-header con botón atrás — visible debajo del AppHeader blanco */}
       <div className="relative flex-shrink-0 flex items-center px-4 h-11 border-b border-white/[0.07]">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-white/70 hover:text-white active:text-white/50 transition-colors"
-        >
-          <ChevronLeft size={18} />
-          <span className="text-sm font-semibold">Volver</span>
-        </button>
+        <BotonAtras onClick={() => navigate(-1)} tono="oscuro" />
         <div className="flex-1 flex justify-center items-center gap-2">
           <div className="w-5 h-5 bg-green-400/15 rounded-md flex items-center justify-center ring-1 ring-green-400/20">
             <MapPin size={11} className="text-green-300" />

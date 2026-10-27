@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useVolver } from '../../hooks/useVolver';
-import { ChevronLeft, Wheat, Phone, KeyRound, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import BotonAtras from '../../components/BotonAtras';
+import { Wheat, Phone, KeyRound, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -101,12 +102,10 @@ export default function RecuperarNipPage() {
       </div>
 
       {/* Header */}
-      <div className="relative flex-shrink-0 flex items-center px-4 h-12 sm:h-14">
+      <div className="relative flex-shrink-0 fila-atras">
         {step !== 'exito' ? (
           <>
-            <button onClick={handleBack} className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors">
-              <ChevronLeft size={22} className="text-white/70" />
-            </button>
+            <BotonAtras onClick={handleBack} />
             <div className="flex-1 flex justify-center gap-1.5">
               {[1, 2, 3].map(n => (
                 <div key={n} className={`h-1 rounded-full transition-all duration-300 ${n === stepActual ? 'w-8 bg-white' : n < stepActual ? 'w-8 bg-green-400' : 'w-5 bg-white/25'}`} />

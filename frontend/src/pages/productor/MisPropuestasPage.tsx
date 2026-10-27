@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Wheat, Check, X } from 'lucide-react';
+import { Wheat, Check, X } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatNum } from '../../utils/format';
 import { useToast } from '../../components/Toast';
 
+import BotonAtras from '../../components/BotonAtras';
 interface Propuesta {
   id: number;
   precio_solicitado_ton: number;
@@ -105,9 +106,7 @@ export default function MisPropuestasPage() {
   return (
     <div className="min-h-screen bg-white pb-8">
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-[#eef8f2]">
-          <ChevronLeft size={20} />
-        </button>
+        <BotonAtras onClick={() => navigate(-1)} tono="claro" />
         <div>
           <h1 className="font-semibold text-gray-900">Mis propuestas</h1>
           <p className="text-xs text-gray-500">Compara ofertas de bodegas y acepta la mejor</p>

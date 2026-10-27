@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVolver } from '../../hooks/useVolver';
-import { ChevronLeft, Wheat, AlertCircle, Loader2, UserPlus, KeyRound, Building2, ChevronRight, LayoutDashboard, MapPin, BarChart3 } from 'lucide-react';
+import BotonAtras from '../../components/BotonAtras';
+import { Wheat, AlertCircle, Loader2, UserPlus, KeyRound, Building2, ChevronRight, LayoutDashboard, MapPin, BarChart3 } from 'lucide-react';
 import PinInput from '../../components/productor/PinInput';
 import { useAuthStore } from '../../store/auth';
 
@@ -82,13 +83,8 @@ export default function LoginPinPage() {
       </div>
 
       {/* Header */}
-      <div className="relative flex items-center px-4 py-3 sm:py-4 pt-safe">
-        <button
-          onClick={() => step === 'pin' ? (setStep('curp'), setPin(''), setError('')) : volver()}
-          className="p-2 -ml-1 rounded-xl hover:bg-white/10 active:bg-white/15 transition-colors"
-        >
-          <ChevronLeft size={22} className="text-white/70" />
-        </button>
+      <div className="relative fila-atras">
+        <BotonAtras onClick={() => step === 'pin' ? (setStep('curp'), setPin(''), setError('')) : volver()} />
         {/* Step indicator */}
         <div className="flex-1 flex justify-center gap-2">
           <div className={`h-1 w-8 rounded-full transition-all duration-300 ${step === 'curp' ? 'bg-white' : 'bg-white/30'}`} />

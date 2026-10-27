@@ -92,10 +92,6 @@ export default function WelcomePage() {
 
         {/* Overlay content */}
         <div className="relative z-20 flex flex-col h-full px-10 py-10">
-          {/* Fila superior: volver */}
-          <div className="flex items-center gap-3 flex-wrap">
-          <BotonVolver onClick={volver} />
-          </div>
 
           {/* Bottom text */}
           <div className="mt-auto">
@@ -130,11 +126,7 @@ export default function WelcomePage() {
         </div>
 
         {/* Volver (móvil y tablet): flotante, respeta la barra de estado */}
-        <BotonVolver
-          onClick={volver}
-          className="lg:hidden absolute z-20"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 14 }}
-        />
+        <BotonVolver onClick={volver} className="atras-flotante" />
 
         {/* Right panel content */}
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16 max-lg:pt-[calc(env(safe-area-inset-top,0px)+76px)] lg:bg-[#040f08]/0">

@@ -6,6 +6,7 @@ import {
   CloudRain, Droplets, X, Pencil, Calendar, CheckCircle2
 } from 'lucide-react';
 
+import BotonAtras from '../../components/BotonAtras';
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const AÑO_ACTUAL = new Date().getFullYear();
 
@@ -355,10 +356,7 @@ export default function CicloProductivoPage() {
         {/* Slim header */}
         <div className="shrink-0 z-20 w-full backdrop-blur-md border-b border-white/10" style={{ background: 'linear-gradient(135deg, rgba(20,72,44,0.88) 0%, rgba(26,92,56,0.82) 60%, rgba(34,115,63,0.76) 100%)' }}>
           <div className="max-w-xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-            <button onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-white/15 text-white hover:bg-white/25 transition-all active:scale-95">
-              <ChevronLeft size={20} strokeWidth={2.5} />
-            </button>
+            <BotonAtras onClick={() => navigate(-1)} tono="oscuro" />
             <div className="flex-1 min-w-0">
               <h1 className="text-[15px] font-black text-white tracking-tight leading-none">Ciclo productivo</h1>
               <p className="text-[11px] text-white/60 font-bold mt-1">¿En qué parcela es este ciclo?</p>
@@ -423,10 +421,7 @@ export default function CicloProductivoPage() {
         {/* Slim header */}
         <div className="shrink-0 z-20 w-full backdrop-blur-md border-b border-white/10" style={{ background: 'linear-gradient(135deg, rgba(20,72,44,0.88) 0%, rgba(26,92,56,0.82) 60%, rgba(34,115,63,0.76) 100%)' }}>
           <div className="max-w-xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-            <button onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-white/15 text-white hover:bg-white/25 transition-all active:scale-95">
-              <ChevronLeft size={20} strokeWidth={2.5} />
-            </button>
+            <BotonAtras onClick={() => navigate(-1)} tono="oscuro" />
             <div className="flex-1 min-w-0">
               <h1 className="text-[15px] font-black text-white tracking-tight leading-none">Ciclos productivos</h1>
               <p className="text-[11px] text-white/60 font-bold mt-1">Tu siembra registrada en Maíz</p>
@@ -664,14 +659,11 @@ export default function CicloProductivoPage() {
       <div className="shrink-0 z-20 w-full backdrop-blur-md border-b border-white/10" style={{ background: 'linear-gradient(135deg, rgba(20,72,44,0.88) 0%, rgba(26,92,56,0.82) 60%, rgba(34,115,63,0.76) 100%)' }}>
         <div className="max-w-xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3 mb-2.5">
-            <button onClick={() => {
+            <BotonAtras onClick={() => {
                 if (paso > 1) { setPaso(paso - 1); return; }
                 if (ciclosExistentes.length > 0) setMostrarFormulario(false);
                 else navigate(-1);
-              }}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-white/15 text-white hover:bg-white/25 transition-all active:scale-95">
-              <ChevronLeft size={20} strokeWidth={2.5} />
-            </button>
+              }} tono="oscuro" />
             <div className="flex-1 min-w-0">
               <h1 className="text-[15px] font-black text-white tracking-tight leading-none">Registrar ciclo</h1>
               <p className="text-[11px] text-white/60 font-bold mt-1">Paso {paso} de 4</p>

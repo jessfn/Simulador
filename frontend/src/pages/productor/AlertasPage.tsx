@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   Bell, BellRing, ShieldAlert, CloudRain, ShoppingCart, Receipt, Heart,
   MapPin, ChevronDown, Check, Loader2, X, ClipboardCheck,
-  Clock, ArrowRight, AlertCircle, ChevronLeft,
-} from 'lucide-react';
+  Clock, ArrowRight, AlertCircle, } from 'lucide-react';
 
+import BotonAtras from '../../components/BotonAtras';
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 interface Notif {
@@ -195,10 +195,7 @@ export default function AlertasPage() {
         <div className="absolute -top-8 -left-8 w-40 h-40 rounded-full bg-white/[0.03] pointer-events-none" />
 
         <div className="relative z-10 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-3 pb-5">
-          <button onClick={() => navigate(-1)}
-            className="flex items-center gap-0.5 text-green-200/80 text-[13px] font-medium mb-2 active:opacity-60 transition-opacity">
-            <ChevronLeft size={16} strokeWidth={2.5} className="-ml-1" /> Volver
-          </button>
+          <BotonAtras onClick={() => navigate(-1)} tono="claro" />
 
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">

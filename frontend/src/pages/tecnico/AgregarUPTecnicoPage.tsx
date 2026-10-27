@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { ChevronLeft, Undo2, CheckCircle2, Footprints, Loader2, ChevronDown } from 'lucide-react';
+import { Undo2, CheckCircle2, Footprints, Loader2, ChevronDown } from 'lucide-react';
 import DibujarPoligonoUP from '../../components/productor/DibujarPoligonoUP';
 import type { DibujarPoligonoHandle, DrawMode } from '../../components/productor/DibujarPoligonoUP';
 import NominatimSearch from '../../components/productor/NominatimSearch';
 import { api } from '../../services/api';
 
+import BotonAtras from '../../components/BotonAtras';
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export default function AgregarUPTecnicoPage() {
@@ -248,9 +249,7 @@ export default function AgregarUPTecnicoPage() {
   return (
     <div className="min-h-screen bg-[#eef8f2]">
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-[1100]">
-        <button onClick={() => paso === 'mapa' ? setPaso('info') : navigate(-1)} className="p-2 rounded-lg hover:bg-[#eef8f2]">
-          <ChevronLeft size={20} />
-        </button>
+        <BotonAtras onClick={() => paso === 'mapa' ? setPaso('info') : navigate(-1)} tono="claro" />
         <div>
           <h1 className="font-semibold text-gray-900">{modoAdicional ? 'Agregar parcela' : 'Registrar parcela'}</h1>
           <p className="text-xs text-gray-500">Unidad productiva (UP)</p>

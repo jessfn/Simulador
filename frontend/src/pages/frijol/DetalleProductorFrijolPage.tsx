@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Loader2, Pencil, Plus, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Loader2, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import { api } from '../../services/api';
 import MapaUP from '../../components/productor/MapaUP';
 import { PageHeaderTecnico } from '../../components/LayoutTecnico';
 import { Aviso, Campo, Tarjeta, Texto } from './ui';
 import { EtiquetaEstado } from './RegistrosPage';
+import BotonAtras from '../../components/BotonAtras';
 import { FichaDatosPersonales } from '../../components/solicitudes/SolicitudesCambio';
 import Paso2Productor from './pasos/Paso2Productor';
 import Paso3Complementaria from './pasos/Paso3Complementaria';
@@ -148,7 +149,7 @@ export default function DetalleProductorFrijolPage() {
     return (
       <div className="pb-24">
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-4 pt-3.5 pb-3.5 flex items-center gap-3">
-          <button onClick={() => setModo('ver')} aria-label="Volver" className="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center"><ArrowLeft size={19} /></button>
+          <BotonAtras onClick={() => setModo('ver')} tono="claro" />
           <h1 className="text-[20px] font-bold text-slate-900">{titulo}</h1>
         </div>
         <div className="px-4 pt-2 space-y-4">
