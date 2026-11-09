@@ -11,3 +11,7 @@ DEPLOY_PRIVADO.md
 
 # Datos de los servidores (direcciones, usuarios, llaves): solo en tu equipo
 deploy/deploy.env
+
+# Fotos y archivos subidos - NUNCA subirlos al repositorio
+uploads/
+backend/uploads/
