@@ -441,6 +441,11 @@ router.patch('/cycle-crops/:id', authMiddleware, async (req: AuthRequest, res: R
       return;
     }
 
+    if (area_sown_ha !== undefined && area_sown_ha !== null && area_sown_ha !== '' && !(Number(area_sown_ha) > 0)) {
+      res.status(400).json({ error: 'La superficie sembrada debe ser un número mayor a 0.' });
+      return;
+    }
+
     // T11-B: solo si cambia la superficie sembrada
     if (area_sown_ha !== undefined && Number(area_sown_ha) > 0) {
       const f = propio.rows[0];
