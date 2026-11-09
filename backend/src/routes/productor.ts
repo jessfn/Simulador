@@ -347,6 +347,8 @@ router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void>
 
   // Lanzar chequeo BD y llamada SADER simultáneamente
   const saderPromise = consultarPersonaPorCURP(curpN);
+  // Si se responde antes de esperar a SADER, su error no debe quedar sin atender (detiene Node).
+  saderPromise.catch(() => {});
 
   try {
     // Revisar producer (incluye admin-registrados sin cuenta) Y usuarios en una sola query
