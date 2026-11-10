@@ -23,7 +23,7 @@ export interface ResultadoSuperficie {
   ok: boolean;
   mensaje?: string;
   /** Cuerpo estructurado del 409 (la pantalla lo muestra). */
-  detalle?: { codigo: 'SUPERFICIE_COMBINADA'; superficie_parcela: number; por_cultivo: { maiz: number; frijol: number }; suma: number };
+  detalle?: { codigo: 'SUPERFICIE_COMBINADA' | 'SUPERFICIE_PARCELA'; superficie_parcela: number; por_cultivo: { maiz: number; frijol: number }; suma: number };
 }
 
 const TOLERANCIA_HA = 0.01;
@@ -38,8 +38,8 @@ const fmt = (n: number) => { const t = (Math.round(n * 100) / 100).toFixed(2); r
  *
  * Decisiones:
  *  - Un ciclo "cosechado" sigue ocupando la parcela de ese año: cuenta. Uno "cancelado" no.
- *  - Si en la parcela, ese año y tipo, NO hay otro cultivo, no se agrega ninguna restricción (la regla de "no más que la parcela" de un solo cultivo ya
- *    existe en cada flujo): así maíz solo no cambia de comportamiento.
+ *  - Un cultivo por sí solo nunca puede pasar de la parcela, aunque no haya otro cultivo o la siembra sea asociada.
+ *  - Si en la parcela, ese año y tipo, NO hay otro cultivo, no se agrega ninguna otra restricción: así maíz solo no cambia de comportamiento.
  *  - Si alguno de los cultivos de la suma es siembra asociada (milpa), no se bloquea: la excepción aplica a toda la suma de ese ciclo.
  *  - Parcelas sin superficie (0 o vacía) no se pueden comparar: no se bloquea.
  */
@@ -47,6 +47,16 @@ export async function validarSuperficieCombinada(db: { query: (texto: string, va
   const up = await db.query('SELECT COALESCE(superficie_ha_real, superficie_ha_calculada)::float AS superficie FROM up WHERE up_id = $1', [e.upId]);
   const superficie = Number(up.rows[0]?.superficie || 0);
   if (!(superficie > 0)) return { ok: true };
+
+  const haNueva = Number(e.haNueva) || 0;
+  if (haNueva > superficie + TOLERANCIA_HA) {
+    const porCultivo = { maiz: 0, frijol: 0, [e.cultivo]: haNueva } as { maiz: number; frijol: number };
+    return {
+      ok: false,
+      mensaje: `No se pudo guardar. La superficie de ${NOMBRE[e.cultivo]} (${fmt(haNueva)} ha) no puede ser mayor a la de la parcela (${fmt(superficie)} ha).`,
+      detalle: { codigo: 'SUPERFICIE_PARCELA', superficie_parcela: superficie, por_cultivo: porCultivo, suma: haNueva },
+    };
+  }
 
   const otros = await db.query(
     `SELECT cc.cultivo, cc.superficie_sembrada_ha::float AS ha, COALESCE(fc.tipo_siembra = 'asociada', false) AS asociada

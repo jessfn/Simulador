@@ -448,6 +448,14 @@ router.put('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest, 
       return;
     }
 
+    // La cuenta de un productor copia los datos de su ficha: nombre y CURP se corrigen desde ahí.
+    const prod = await pool.query('SELECT productor_id FROM productor WHERE usuario_id = $1', [id]);
+    const productorId = prod.rows[0]?.producer_id;
+    if (productorId && (nombre_completo || curp)) {
+      res.status(400).json({ error: 'El nombre y la CURP de un productor se corrigen desde su ficha, no desde su cuenta.' });
+      return;
+    }
+
     const sets: string[] = [];
     const params: any[] = [];
     let idx = 1;
@@ -466,6 +474,13 @@ router.put('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest, 
     if (result.rows.length === 0) {
       res.status(404).json({ error: 'Usuario no encontrado' });
       return;
+    }
+    if (productorId) {
+      await pool.query(
+        `UPDATE productor SET telefono = COALESCE($1, telefono), correo = COALESCE($2, correo), correo_electronico = COALESCE($2, correo_electronico)
+          WHERE productor_id = $3`,
+        [telefono ? telefono.replace(/\D/g, '') : null, email ? email.toLowerCase().trim() : null, productorId]
+      );
     }
 
     res.json({ message: 'Usuario actualizado correctamente', usuario: result.rows[0] });

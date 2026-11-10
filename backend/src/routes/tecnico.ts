@@ -119,6 +119,8 @@ router.post('/consultar-curp', authMiddleware, requiereCapturista, requiereProgr
   const curpN = curp.toUpperCase().trim();
 
   const saderPromise = consultarPersonaPorCURP(curpN);
+  // Si se responde antes de esperar a SADER, su error no debe quedar sin atender (detiene Node).
+  saderPromise.catch(() => {});
 
   try {
     const [prodResult, usuResult] = await Promise.all([
