@@ -62,11 +62,11 @@ export default function PropuestaVentaPage() {
           const up = upsConCiclos[0];
           setUpSeleccionada(up);
           const ciclosActivos = up.ciclos_activos || [];
+          setCiclos(ciclosActivos);
           if (ciclosActivos.length === 1) {
             setCicloSeleccionado(ciclosActivos[0]);
             setPaso('datos');
           } else {
-            setCiclos(ciclosActivos);
             setPaso('sel_ciclo');
           }
         } else {
@@ -83,11 +83,12 @@ export default function PropuestaVentaPage() {
   const seleccionarUP = (up: UP) => {
     setUpSeleccionada(up);
     const ciclosActivos = up.ciclos_activos || [];
+    setCiclos(ciclosActivos);
+    setCicloSeleccionado(null);
     if (ciclosActivos.length === 1) {
       setCicloSeleccionado(ciclosActivos[0]);
       setPaso('datos');
     } else {
-      setCiclos(ciclosActivos);
       setPaso('sel_ciclo');
     }
   };
@@ -161,10 +162,45 @@ export default function PropuestaVentaPage() {
     <div className="min-h-screen bg-white pb-8">
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <BotonAtras onClick={() => {
-            if (paso === 'datos' && ciclos.length > 1) setPaso('sel_ciclo');
-            else if (paso === 'datos' || paso === 'sel_ciclo') setPaso(ups.filter(u => (u.ciclos_activos?.length || 0) > 0).length > 1 ? 'sel_up' : 'datos');
-            else navigate(-1);
-          }} tono="claro" />
+            const upsConCiclos = ups.filter(
+              u => (u.ciclos_activos?.length || 0) > 0
+            );
+
+            const tieneVariasUps = upsConCiclos.length > 1;
+
+            // Desde los datos, regresar a seleccionar ciclo si existen varios.
+            if (paso === 'datos') {
+              if (ciclos.length > 1) {
+                setPaso('sel_ciclo');
+                return;
+              }
+
+              // Si hay varias parcelas, regresar a seleccionarlas.
+              if (tieneVariasUps) {
+                setPaso('sel_up');
+                return;
+              }
+
+              // Una sola parcela y un solo ciclo: salir.
+              navigate(-1);
+              return;
+            }
+
+            // Desde selección de ciclo.
+            if (paso === 'sel_ciclo') {
+              if (tieneVariasUps) {
+                setPaso('sel_up');
+                return;
+              }
+
+              // Una sola parcela: salir.
+              navigate(-1);
+              return;
+            }
+
+            // Desde cualquier otro paso: salir.
+            navigate(-1);
+          }} tono="claro"/>
         <div>
           <h1 className="font-semibold text-gray-900">Propuesta de venta</h1>
           <p className="text-xs text-gray-500">
