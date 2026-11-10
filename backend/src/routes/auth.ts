@@ -349,10 +349,13 @@ router.get('/perfil/acuse', authMiddleware, async (req: AuthRequest, res: Respon
     }
     const u = userR.rows[0];
     const extra: string[] = [];
+    let nombreCompleto = u.nombre_completo, telefono = u.telefono, email = u.email;
 
     if (u.rol === 'productor') {
       const prodR = await pool.query(
-        `SELECT p.productor_id, p.estado_validacion, up.nombre_up, up.nombre_municipio, up.nombre_estado
+        `SELECT p.productor_id, p.estado_validacion, up.nombre_up, up.nombre_municipio, up.nombre_estado,
+                NULLIF(concat_ws(' ', p.nombres, p.apellido_paterno, p.apellido_materno), '') AS nombre_productor,
+                p.telefono AS telefono_productor, COALESCE(p.correo, p.correo_electronico) AS correo_productor
          FROM productor p
          LEFT JOIN up ON up.productor_id = p.productor_id
          WHERE p.usuario_id = $1
@@ -361,6 +364,10 @@ router.get('/perfil/acuse', authMiddleware, async (req: AuthRequest, res: Respon
       );
       if (prodR.rows.length > 0) {
         const p = prodR.rows[0];
+        // Los datos del productor son la fuente; los de la cuenta pueden estar atrasados.
+        nombreCompleto = p.nombre_productor || nombreCompleto;
+        telefono = p.telefono_productor || telefono;
+        email = p.correo_productor || email;
         const estadoLegible: Record<string, string> = {
           activo: 'Activo', pendiente: 'Pendiente de validación',
           rechazado: 'Rechazado', suspendido: 'Suspendido',
@@ -392,10 +399,10 @@ router.get('/perfil/acuse', authMiddleware, async (req: AuthRequest, res: Respon
 
     const doc = generarAcuseRegistro({
       usuarioId: u.id,
-      nombreCompleto: u.nombre_completo,
+      nombreCompleto,
       curp: u.curp,
-      email: u.email,
-      telefono: u.telefono,
+      email,
+      telefono,
       rol: u.rol,
       fechaRegistro: new Date(u.created_at),
       extra,

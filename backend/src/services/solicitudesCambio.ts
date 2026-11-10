@@ -138,8 +138,6 @@ export async function resolverSolicitud(
     }
     if (comparable(campo, ahora) !== comparable(campo, n.valor)) {
       await escribirCampo(client, Number(s.producer_id), campo, n.valor);
-      // El teléfono del productor con cuenta también es el de su cuenta (con él recupera su NIP): se mantienen iguales.
-      if (campo === 'telefono' && p.usuario_id) await client.query('UPDATE usuarios SET telefono = $1 WHERE id = $2', [n.valor, p.usuario_id]);
     }
     await client.query(
       `INSERT INTO productor_cambios (productor_id, campo, valor_anterior, valor_nuevo, usuario_id, programa, consume_edicion, solicitud_id, aprobado_por)

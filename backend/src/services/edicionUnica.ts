@@ -10,6 +10,7 @@
 // Se calcula al vuelo con un índice parcial (idx_producer_cambios_edicion): una consulta corta, no hace falta columna aparte.
 
 import { PoolClient } from 'pg';
+import { sincronizarCuentaProductor } from './cuentaProductor';
 
 export type CampoPersonal = 'nombres' | 'apellido_paterno' | 'apellido_materno' | 'sexo' | 'fecha_nacimiento' | 'correo' | 'telefono';
 
@@ -168,6 +169,7 @@ export async function escribirCampo(client: Db, producerId: number, campo: Campo
   } else {
     await client.query(`UPDATE productor SET ${col} = $1 WHERE productor_id = $2`, [valor, producerId]);
   }
+  await sincronizarCuentaProductor(client, producerId);
 }
 
 /** Para las rutas que cambian estado o municipio del productor (no entran en la regla): solo dejan historial, sin gastar la edición. */

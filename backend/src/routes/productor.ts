@@ -23,6 +23,7 @@ import {
 import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
 import { parcelaDeMaiz } from '../utils/programas';
 import { validarSuperficieCombinada } from '../utils/superficie';
+import { sincronizarCuentaProductor } from '../services/cuentaProductor';
 
 // Bloquea las APIs "operativas" del rol productor (dashboard, precios,
 // solicitudes de apoyo, encuesta de insumos) mientras falte ubicación o
@@ -1373,14 +1374,32 @@ router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response):
     const producerId = await getProducerId(userId);
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
-    await pool.query(
-      `UPDATE productor SET
-         telefono                  = COALESCE($1, telefono),
-         programas_beneficiario = COALESCE($2, programas_beneficiario),
-         correo                 = COALESCE($3, correo)
-       WHERE productor_id = $4`,
-      [telefono, programas_beneficiario, correo || null, producerId]
-    );
+    let tel: string | null = null;
+    if (telefono !== undefined && telefono !== null && telefono !== '') {
+      tel = String(telefono).replace(/\D/g, '');
+      if (tel.length !== 10) { res.status(400).json({ error: 'El teléfono debe tener 10 dígitos.' }); return; }
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `UPDATE productor SET
+           telefono                  = COALESCE($1, telefono),
+           programas_beneficiario = COALESCE($2, programas_beneficiario),
+           correo                 = COALESCE($3, correo),
+           correo_electronico     = COALESCE($3, correo_electronico)
+         WHERE productor_id = $4`,
+        [tel, programas_beneficiario, correo || null, producerId]
+      );
+      await sincronizarCuentaProductor(client, producerId);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
     res.json({ ok: true });
   } catch (error) {
     console.error('Error en perfil productor:', error);
