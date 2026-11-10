@@ -61,7 +61,7 @@ export default function Paso7Revisar({ b, actualizar, catalogos, estados, nombre
         <Fila k="Número" v={`${pa.numero_up} de ${c.total_ups}`} />
         <Fila k="Ubicación" v={`${pa.localidad}, ${nombreMunicipio}, ${estados.find(e => e.state_id === pa.state_id)?.name || ''}`} />
         <Fila k="Documento" v={pa.documento === 'otro' ? pa.documento_otro : etiqueta(catalogos?.documento_propiedad, pa.documento)} />
-        <Fila k="Superficie" v={sup > 0 ? `${sup.toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha` : '—'} />
+        <Fila k="Superficie" v={sup > 0 ? `${sup.toLocaleString('es-MX', { maximumFractionDigits: 4 })} ha` : '—'} />
         <Fila k="Régimen" v={pa.modo === 'nueva' ? (regimenDe(b) === 'riego' ? 'Riego' : 'Temporal') : 'Parcela existente'} />
       </Bloque>
 
