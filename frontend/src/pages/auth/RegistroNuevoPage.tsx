@@ -105,6 +105,8 @@ export default function RegistroNuevoPage() {
 
   // Paso 2
   const [datosPadron, setDatosPadron] = useState<DatosPadron | null>(null);
+  // Comprobante firmado de consultar-curp; el registro lo exige
+  const [tokenVerificacion, setTokenVerificacion] = useState<string | null>(null);
   const [telefonoEditable, setTelefonoEditable] = useState('');
   // C14 — estado/municipio editable cuando SADER los devuelve vacíos
   const [estadoEditable, setEstadoEditable] = useState('');
@@ -276,6 +278,7 @@ export default function RegistroNuevoPage() {
                            : data.datos_renapo.sexo === 'MUJER'  ? 'M' : '',
           }));
           setDatosDeRenapo(true);
+          setTokenVerificacion(data.token_verificacion || null);
           navigate(`/maiz/productor/registro?modo=manual&curp=${curp.toUpperCase().trim()}`);
           return;
         }
@@ -283,6 +286,7 @@ export default function RegistroNuevoPage() {
         return;
       }
       setDatosPadron(data.datos);
+      setTokenVerificacion(data.token_verificacion || null);
       setTelefonoEditable(data.datos.telefono || '');
       // C14 — precargar estados si SADER no devuelve estado/municipio
       if (!data.datos.estado_padron || !data.datos.municipio_padron) cargarEstados();
@@ -464,6 +468,7 @@ export default function RegistroNuevoPage() {
           aviso_privacidad_foto_url: avisoData?.fotoUrl ?? null,
           encuesta_insumos: encuestaInsumos,
           idempotency_key: idempotencyKeyRef.current,
+          token_verificacion: tokenVerificacion,
         }),
       });
       const data = await res.json();

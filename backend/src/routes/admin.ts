@@ -449,8 +449,8 @@ router.put('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest, 
     }
 
     // La cuenta de un productor copia los datos de su ficha: nombre y CURP se corrigen desde ahí.
-    const prod = await pool.query('SELECT productor_id FROM productor WHERE usuario_id = $1', [id]);
-    const productorId = prod.rows[0]?.producer_id;
+    const fichaProductor = await pool.query('SELECT productor_id FROM productor WHERE usuario_id = $1', [id]);
+    const productorId = fichaProductor.rows[0]?.producer_id;
     if (productorId && (nombre_completo || curp)) {
       res.status(400).json({ error: 'El nombre y la CURP de un productor se corrigen desde su ficha, no desde su cuenta.' });
       return;
