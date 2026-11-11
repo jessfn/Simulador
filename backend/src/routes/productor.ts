@@ -26,6 +26,7 @@ import { validarSuperficieCombinada } from '../utils/superficie';
 import { sincronizarCuentaProductor } from '../services/cuentaProductor';
 import { FORMATO_CURP, firmarCurpVerificada, esCurpVerificada } from '../services/verificacionCurp';
 import { normalizarTelefono } from '../utils/telefono';
+import { validarDatosDeParcela, poligonoAGeoJSON } from '../services/ubicacionParcela';
 
 // Bloquea las APIs "operativas" del rol productor (dashboard, precios,
 // solicitudes de apoyo, encuesta de insumos) mientras falte ubicación o
@@ -1083,6 +1084,16 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
     const producerId = await getProducerId(userId);
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
+    // Se valida antes de resolver la parcela para no crear una parcela vacía si el trazo se rechaza.
+    const parcelaValidada = await validarDatosDeParcela(pool, {
+      poligono: Array.isArray(poligono) && poligono.length >= 3 ? poligono : null, latitud: lat, longitud: lng,
+      superficieApp: area_calc_ha, superficieDeclarada: area_real_ha, conPostgis: await postgisDisponible(),
+    });
+    if (!parcelaValidada.ok) {
+      res.status(parcelaValidada.status).json({ error: parcelaValidada.mensaje, codigo: parcelaValidada.codigo });
+      return;
+    }
+
     // Resolver la parcela a actualizar: la indicada (up_id) o, si no, la principal
     // (la más antigua). Así editar una parcela NO sobreescribe las demás.
     // Una sola consulta que siempre referencia $1: cuando no viene up_id,
@@ -1119,13 +1130,8 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
     const hasPoligono = poligono && Array.isArray(poligono) && poligono.length >= 3;
     const postgisActivo = await postgisDisponible();
     if (hasPoligono) {
-      const geomGeoJSON = JSON.stringify({
-        type: 'Polygon',
-        coordinates: [[
-          ...poligono.map(([plat, plng]: [number, number]) => [plng, plat]),
-          [poligono[0][1], poligono[0][0]],
-        ]],
-      });
+      const geomGeoJSON = parcelaValidada.geojson ?? poligonoAGeoJSON(poligono);
+      if (!geomGeoJSON) { res.status(400).json({ error: 'El trazo de la parcela no es válido.', codigo: 'POLIGONO_INVALIDO' }); return; }
 
       if (postgisActivo) {
         // Traslape con OTRAS parcelas del mismo productor (excluyendo esta misma UP)
@@ -1169,7 +1175,8 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
            ubicacion_confirmada = TRUE,
            origen_centroide = 'productor'
          WHERE up_id = $7`,
-        [lng, lat, geomGeoJSON, area_calc_ha || null, area_real_ha || null, coincide_area ?? null, targetUpId]
+        [parcelaValidada.longitudCentro ?? lng, parcelaValidada.latitudCentro ?? lat, geomGeoJSON,
+         parcelaValidada.superficieCalculadaHa, parcelaValidada.superficieDeclaradaHa, coincide_area ?? null, targetUpId]
       );
     } else {
       await pool.query(
@@ -1184,8 +1191,14 @@ router.patch('/ubicacion', authMiddleware, async (req: AuthRequest, res: Respons
 
     // Reverse-geocoding: el estado y municipio se derivan de DÓNDE quedó la parcela.
     let geo = null;
-    if (lat != null && lng != null) {
-      const g = await reverseGeocode(Number(lat), Number(lng));
+    const latitudReferencia = parcelaValidada.latitudCentro ?? lat;
+    const longitudReferencia = parcelaValidada.longitudCentro ?? lng;
+    if (latitudReferencia != null && longitudReferencia != null) {
+      const g = await reverseGeocode(Number(latitudReferencia), Number(longitudReferencia));
+      // Nominatim puede fallar o confundirse cerca de un límite; el estado que sale del polígono es el que vale.
+      if (parcelaValidada.estadoId && g.state_id !== parcelaValidada.estadoId) {
+        Object.assign(g, { state_id: parcelaValidada.estadoId, state_name: parcelaValidada.estadoNombre, municipality_id: null, municipality_name: null });
+      }
       if (g.state_name || g.municipality_name) {
         // Actualizar la UP con el estado/municipio reales de la ubicación marcada
         await pool.query(
@@ -1621,21 +1634,37 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const geojson = hasPoligono ? JSON.stringify({
-      type: 'Polygon',
-      coordinates: [[
-        ...poligono.map(([plat, plng]: [number, number]) => [plng, plat]),
-        [poligono[0][1], poligono[0][0]],
-      ]],
-    }) : null;
+    const parcelaValidada = await validarDatosDeParcela(client, {
+      poligono: hasPoligono ? poligono : null, latitud: lat, longitud: lng,
+      superficieApp: area_calc_ha, superficieDeclarada: area_real_ha, conPostgis: postgisActivo,
+    });
+    if (!parcelaValidada.ok) {
+      await client.query('ROLLBACK');
+      res.status(parcelaValidada.status).json({ error: parcelaValidada.mensaje, codigo: parcelaValidada.codigo });
+      return;
+    }
+    const geojson = parcelaValidada.geojson;
 
     // Canonicalizar estado/municipio contra geo_state para evitar guardar nombres del padrón en mayúsculas
     let estadoCanon = estado_up;
     let municipioCanon = municipio_up;
+    let estadoIdElegido: string | null = null;
+    let municipioIdElegido: string | null = null;
     if (estadoCanon) {
       const c = await canonicalizarEstado(estadoCanon, municipioCanon);
       estadoCanon = c.state_name;
       if (c.municipality_name) municipioCanon = c.municipality_name;
+      estadoIdElegido = c.state_id;
+      municipioIdElegido = c.municipality_id;
+    }
+    // El estado lo decide el polígono; si no coincide con el elegido, el municipio elegido tampoco sería confiable.
+    if (parcelaValidada.estadoId && estadoIdElegido !== parcelaValidada.estadoId) {
+      await client.query('ROLLBACK');
+      res.status(409).json({
+        error: `La parcela dibujada está en ${parcelaValidada.estadoNombre}${estadoCanon ? `, pero elegiste ${estadoCanon}` : ''}. Revisa el estado o el trazo.`,
+        codigo: 'ESTADO_NO_COINCIDE',
+      });
+      return;
     }
 
     // Validar overlap con UPs existentes del mismo productor
@@ -1683,9 +1712,9 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
       const geomSql = useGeom ? `ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($6::text), 4326))` : 'NULL';
       const aIdx = useGeom ? 7 : 6;
       const params = [
-        producer_id, estadoCanon, municipioCanon, lng, lat,
+        producer_id, estadoCanon, municipioCanon, parcelaValidada.longitudCentro, parcelaValidada.latitudCentro,
         ...(useGeom ? [geojson] : []),
-        area_calc_ha || null, area_real_ha || null, coincide_area ?? null, upName,
+        parcelaValidada.superficieCalculadaHa, parcelaValidada.superficieDeclaradaHa, coincide_area ?? null, upName,
       ];
       upResult = await client.query(
         `INSERT INTO up
@@ -1711,7 +1740,7 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
                  $6, $7, $8, TRUE, 'poligono_calculado')
          RETURNING up_id, nombre_up`,
         [producer_id, estadoCanon, municipioCanon, geojson, upName,
-         area_calc_ha || null, area_real_ha || null, coincide_area ?? null]
+         parcelaValidada.superficieCalculadaHa, parcelaValidada.superficieDeclaradaHa, coincide_area ?? null]
       );
     } else {
       let centroidVal = null;
@@ -1733,8 +1762,12 @@ router.post('/ups', authMiddleware, async (req: AuthRequest, res: Response): Pro
                  $6, $7, $8, FALSE, 'municipio')
          RETURNING up_id, nombre_up`,
         [producer_id, estadoCanon, municipioCanon, centroidVal, upName,
-         area_calc_ha || null, area_real_ha || null, coincide_area ?? null]
+         parcelaValidada.superficieCalculadaHa, parcelaValidada.superficieDeclaradaHa, coincide_area ?? null]
       );
+    }
+
+    if (estadoIdElegido) {
+      await client.query('UPDATE up SET estado_id = $1, municipio_id = $2 WHERE up_id = $3', [estadoIdElegido, municipioIdElegido, upResult.rows[0].up_id]);
     }
 
     if (traslapeProducerId2 !== null) {
