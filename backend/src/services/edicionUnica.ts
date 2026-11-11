@@ -21,7 +21,7 @@ export const CAMPOS_PERSONALES: Record<CampoPersonal, { columna: string; etiquet
   sexo: { columna: 'sexo', etiqueta: 'el sexo' },
   fecha_nacimiento: { columna: 'fecha_nacimiento', etiqueta: 'la fecha de nacimiento' },
   correo: { columna: 'correo', etiqueta: 'el correo' },
-  telefono: { columna: 'phone', etiqueta: 'el teléfono' },
+  telefono: { columna: 'telefono', etiqueta: 'el teléfono' },
 };
 export const LISTA_CAMPOS = Object.keys(CAMPOS_PERSONALES) as CampoPersonal[];
 export const esCampoPersonal = (x: unknown): x is CampoPersonal => typeof x === 'string' && x in CAMPOS_PERSONALES;

@@ -191,7 +191,7 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
             <div className="flex items-center gap-3 min-w-0">
               <CheckCircle2 className="text-emerald-600 flex-shrink-0" size={24} />
               <div><p className="text-[15px] font-bold text-slate-900">Polígono listo</p>
-                <p className="text-[13px] text-slate-500">{area ? `${area.toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha calculadas · ` : ''}{p.poligono.length} puntos</p></div>
+                <p className="text-[13px] text-slate-500">{area ? `${area.toLocaleString('es-MX', { maximumFractionDigits: 4 })} ha calculadas · ` : ''}{p.poligono.length} puntos</p></div>
             </div>
             <button type="button" onClick={() => setMapaAbierto(true)} className="min-h-[46px] px-4 rounded-2xl bg-slate-100 text-slate-700 text-[14px] font-bold flex items-center gap-1.5"><Pencil size={15} /> Editar</button>
           </div>
@@ -206,7 +206,7 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
         {p.poligono && area ? (
           <div className="mt-5 space-y-4">
             <div className="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 flex items-center gap-3"><MapPin size={18} className="text-[#1A5C38]" />
-              <p className="text-[14px] text-slate-700">Superficie calculada: <strong>{area.toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha</strong></p></div>
+              <p className="text-[14px] text-slate-700">Superficie calculada: <strong>{area.toLocaleString('es-MX', { maximumFractionDigits: 4 })} ha</strong></p></div>
             <Campo etiqueta="Superficie ajustada (ha)" obligatorio={false} error={errores.area_real_ha} ayuda="Solo si la superficie real es distinta a la calculada.">
               <Texto valor={p.area_real_ha} alCambiar={v => set({ area_real_ha: v.replace(',', '.') })} inputMode="decimal" error={errores.area_real_ha} autoComplete="off" />
             </Campo>

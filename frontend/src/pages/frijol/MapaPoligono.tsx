@@ -109,7 +109,7 @@ export default function MapaPoligono({ vertices, poligono, propias, alCambiarVer
             <div className="flex items-center gap-3 text-white">
               <CheckCircle2 className="text-emerald-400 flex-shrink-0" size={22} />
               <div><p className="font-bold text-[16px]">Parcela dibujada</p>
-                <p className="text-white/60 text-[13px]">{pendiente.area > 0 ? `${pendiente.area.toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha calculadas · ` : ''}{pendiente.poligono.length} puntos</p></div>
+                <p className="text-white/60 text-[13px]">{pendiente.area > 0 ? `${pendiente.area.toLocaleString('es-MX', { maximumFractionDigits: 4 })} ha calculadas · ` : ''}{pendiente.poligono.length} puntos</p></div>
             </div>
             <div className="flex gap-2.5">
               <button type="button" onClick={() => { dibujarRef.current?.clear(); setPendiente(null); }}

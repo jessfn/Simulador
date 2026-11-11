@@ -62,7 +62,7 @@ export default function FormularioCultivo({ b, actualizar, catalogos, errores, a
             </Campo>
           )}
           <Campo etiqueta="Superficie sembrada de frijol (ha)" error={errores.area_sembrada_ha}
-            ayuda={`Puede ser menor si siembra otros cultivos${superficie > 0 ? ` (la parcela tiene ${superficie.toFixed(2)} ha)` : ''}.`}>
+            ayuda={`Puede ser menor si siembra otros cultivos${superficie > 0 ? ` (la parcela tiene ${superficie.toLocaleString('es-MX', { maximumFractionDigits: 4 })} ha)` : ''}.`}>
             <input value={c.area_sembrada_ha} onChange={e => set({ area_sembrada_ha: num(e.target.value) })} inputMode="decimal" className={claseInput(errores.area_sembrada_ha)} autoComplete="off" />
           </Campo>
           <Campo etiqueta="Rendimiento esperado (t/ha)" error={errores.rendimiento} aviso={avisos.rendimiento}>
