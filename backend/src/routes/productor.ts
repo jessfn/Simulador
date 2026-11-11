@@ -24,6 +24,8 @@ import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
 import { parcelaDeMaiz } from '../utils/programas';
 import { validarSuperficieCombinada } from '../utils/superficie';
 import { sincronizarCuentaProductor } from '../services/cuentaProductor';
+import { FORMATO_CURP, firmarCurpVerificada, esCurpVerificada } from '../services/verificacionCurp';
+import { normalizarTelefono } from '../utils/telefono';
 
 // Bloquea las APIs "operativas" del rol productor (dashboard, precios,
 // solicitudes de apoyo, encuesta de insumos) mientras falte ubicación o
@@ -339,8 +341,7 @@ router.get('/geo/reverse', async (req, res): Promise<void> => {
 router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void> => {
   const { curp } = req.body;
 
-  const CURP_RE = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
-  if (!curp || !CURP_RE.test(curp.toUpperCase().trim())) {
+  if (!curp || !FORMATO_CURP.test(curp.toUpperCase().trim())) {
     res.status(400).json({ error: 'CURP inválida. Verifica el formato (18 caracteres).' });
     return;
   }
@@ -431,6 +432,7 @@ router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void>
       res.status(404).json({
         error: 'Tu CURP no está en el padrón de SADER. Puedes completar tu registro manualmente.',
         codigo: 'NO_EN_PADRON',
+        token_verificacion: firmarCurpVerificada(curpN, 'renapo'),
         datos_renapo: {
           nombres:      renapo.datos!.nombres,
           apellido_pat: renapo.datos!.apellidoPat,
@@ -468,6 +470,7 @@ router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void>
 
     res.json({
       encontrado: true,
+      token_verificacion: firmarCurpVerificada(curpN, 'padron_sader'),
       datos: {
         curp: datos.curp,
         nombres: datos.nombres,
@@ -511,6 +514,7 @@ router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void>
     res.status(404).json({
       error: 'Tu CURP no está en el padrón de SADER. Puedes completar tu registro manualmente.',
       codigo: 'NO_EN_PADRON',
+      token_verificacion: firmarCurpVerificada(curpN, 'renapo'),
       datos_renapo: {
         nombres:      renapo.datos!.nombres,
         apellido_pat: renapo.datos!.apellidoPat,
@@ -547,6 +551,7 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       aviso_privacidad_foto_url,
       encuesta_insumos,
       idempotency_key,
+      token_verificacion,
     } = req.body;
 
     if (!pin || !/^\d{4}$/.test(pin)) {
@@ -554,8 +559,15 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       return;
     }
 
-    if (!curp || curp.length !== 18) {
+    if (typeof curp !== 'string' || !FORMATO_CURP.test(curp.toUpperCase().trim())) {
       res.status(400).json({ error: 'CURP inválida' });
+      return;
+    }
+    if (!esCurpVerificada(token_verificacion, curp.toUpperCase().trim())) {
+      res.status(403).json({
+        error: 'No se pudo confirmar la verificación de tu CURP. Vuelve a consultarla para continuar con el registro.',
+        codigo: 'VERIFICACION_REQUERIDA',
+      });
       return;
     }
 
@@ -574,7 +586,7 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
     // Clave de idempotencia del alta completa (cuenta + parcelas + encuesta):
     // un reintento con la misma clave y el mismo contenido devuelve el mismo
     // resultado sin duplicar nada; con contenido distinto, es un conflicto.
-    const { idempotency_key: _ik, ...huellaBody } = req.body;
+    const { idempotency_key: _ik, token_verificacion: _tv, ...huellaBody } = req.body;
     const huella = huellaDe(huellaBody);
 
     const client = await pool.connect();
@@ -1374,11 +1386,9 @@ router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response):
     const producerId = await getProducerId(userId);
     if (!producerId) { res.status(404).json({ error: 'Productor no encontrado' }); return; }
 
-    let tel: string | null = null;
-    if (telefono !== undefined && telefono !== null && telefono !== '') {
-      tel = String(telefono).replace(/\D/g, '');
-      if (tel.length !== 10) { res.status(400).json({ error: 'El teléfono debe tener 10 dígitos.' }); return; }
-    }
+    const telefonoEnviado = telefono !== undefined && telefono !== null && telefono !== '';
+    const telefonoNormalizado = telefonoEnviado ? normalizarTelefono(telefono) : null;
+    if (telefonoEnviado && !telefonoNormalizado) { res.status(400).json({ error: 'El teléfono debe tener 10 dígitos.' }); return; }
 
     const client = await pool.connect();
     try {
@@ -1390,13 +1400,13 @@ router.patch('/perfil', authMiddleware, async (req: AuthRequest, res: Response):
            correo                 = COALESCE($3, correo),
            correo_electronico     = COALESCE($3, correo_electronico)
          WHERE productor_id = $4`,
-        [tel, programas_beneficiario, correo || null, producerId]
+        [telefonoNormalizado, programas_beneficiario, correo || null, producerId]
       );
       await sincronizarCuentaProductor(client, producerId);
       await client.query('COMMIT');
-    } catch (e) {
+    } catch (errorActualizacion) {
       await client.query('ROLLBACK');
-      throw e;
+      throw errorActualizacion;
     } finally {
       client.release();
     }
