@@ -4,6 +4,7 @@ import { Loader2, Search, UserCheck } from 'lucide-react';
 import { api } from '../../../services/api';
 import { Aviso, Campo, Texto, Tarjeta } from '../ui';
 import { esCurp, vacioParcela } from '../validacion';
+import { extraerDatosCurp } from '../../../utils/curp';
 import type { Borrador, ParcelaExistente } from '../tipos';
 
 interface Props {
@@ -56,11 +57,13 @@ export default function Paso1Curp({ b, actualizar, enLinea, alAvanzar, curpInici
 
   /** Prellena el borrador con lo que encontró la búsqueda y pasa al paso siguiente. */
   function aplicar(r: Respuesta, irAParcela = false) {
+    const curpNorm = curp.trim().toUpperCase();
+    const curpDatos = extraerDatosCurp(curpNorm);
     const d = (r.datos || {}) as Record<string, string | null>;
     const fecha = (d.fecha_nacimiento || '').toString().slice(0, 10);
     actualizar(prev => ({
       ...prev,
-      curp: curp.trim().toUpperCase(),
+      curp: curpNorm,
       consulta: {
         codigo: r.codigo as never, producer_id: r.producer_id, token_verificacion: r.token_verificacion,
         parcelas: r.parcelas || [], tiene_cuenta: !!(d.tiene_cuenta as unknown as boolean), telefono_original: (d.telefono as string) || '',
@@ -70,8 +73,8 @@ export default function Paso1Curp({ b, actualizar, enLinea, alAvanzar, curpInici
         nombres: d.nombres || d.nombres === '' ? (d.nombres as string) : prev.productor.nombres,
         apellido_paterno: (d.apellido_paterno as string) || prev.productor.apellido_paterno,
         apellido_materno: (d.apellido_materno as string) || prev.productor.apellido_materno,
-        sexo: ((d.sexo || d.genero) as 'H' | 'M') || prev.productor.sexo,
-        fecha_nacimiento: fecha || prev.productor.fecha_nacimiento,
+        sexo: ((d.sexo || d.genero) as 'H' | 'M') || (curpDatos.valida ? curpDatos.sexo : null) || prev.productor.sexo,
+        fecha_nacimiento: fecha || (curpDatos.valida ? curpDatos.fechaNacimiento : null) || prev.productor.fecha_nacimiento,
         telefono: ((d.telefono as string) || prev.productor.telefono || '').replace(/\D/g, '').slice(-10),
         correo: (d.correo as string) || prev.productor.correo,
       },

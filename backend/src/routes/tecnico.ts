@@ -16,6 +16,7 @@ import {
   EncuestaError, determinarContextoTerritorial, guardarEncuestaEnTransaccion,
   obtenerRespuestaProductor, obtenerEdicionVigente,
 } from '../services/encuestaService';
+import { CURP_RE, extraerDatosCurp } from '../utils/curp';
 
 const router = Router();
 
@@ -111,7 +112,6 @@ router.post('/auth/login', authLimiter, async (req: Request, res: Response): Pro
 router.post('/consultar-curp', authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_MAIZ), async (req: AuthRequest, res: Response): Promise<void> => {
   const { curp } = req.body;
 
-  const CURP_RE = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
   if (!curp || !CURP_RE.test(curp.toUpperCase().trim())) {
     res.status(400).json({ error: 'CURP inválida. Verifica el formato (18 caracteres).' });
     return;
@@ -301,14 +301,13 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
       sexo, fecha_nac, fuente,
       producer_id_existente,
     } = req.body;
-    // MEN (revisión Fase 5, 2026-09-22): antes solo se validaba que la fecha
-    // fuera parseable — una fecha futura o del siglo pasado (año 1850, por
-    // ejemplo) pasaba directo a producer.fecha_nacimiento sin detectarse.
+    const curpDatos = curp ? extraerDatosCurp(String(curp).trim().toUpperCase()) : null;
     const fechaNacParsed = fecha_nac ? Date.parse(fecha_nac) : NaN;
     const HACE_100_ANIOS = Date.now() - 100 * 365.25 * 24 * 60 * 60 * 1000;
     const fechaNacValida = !Number.isNaN(fechaNacParsed) && fechaNacParsed <= Date.now() && fechaNacParsed >= HACE_100_ANIOS
       ? fecha_nac
-      : null;
+      : (curpDatos?.valida ? curpDatos.fechaNacimiento : null);
+    const sexoFinal = sexo || (curpDatos?.valida ? curpDatos.sexo : null);
 
     if (!producer_id_existente) {
       if (!curp || String(curp).trim().length !== 18) {
@@ -420,7 +419,7 @@ router.post('/registro-alterno', authMiddleware, requiereCapturista, requierePro
          RETURNING productor_id`,
         [curpN, nombres, apellido_paterno, apellido_materno || null,
          telefono || null, state_id || null, municipality_id || null,
-         sexo || null, fechaNacValida, fuente || null, tecnicoId]
+         sexoFinal || null, fechaNacValida, fuente || null, tecnicoId]
       );
       producerId = r.rows[0].producer_id;
       // Programa: el técnico de maíz queda como responsable en 'simac_maiz'.

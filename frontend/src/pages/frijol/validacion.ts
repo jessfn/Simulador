@@ -1,6 +1,7 @@
 import type { Borrador, CultivoBorrador, ParcelaBorrador } from './tipos';
 import { cicloFinal, inferirCiclo } from '../../utils/cicloSIAP';
 import { uuid } from './almacen';
+import { extraerDatosCurp } from '../../utils/curp';
 
 // Las mismas reglas que valida el servidor, para avisar antes de enviar. Devuelven { campo: mensaje }.
 export type Errores = Record<string, string>;
@@ -15,10 +16,16 @@ const txt = (v: string | null | undefined) => (v ?? '').trim();
 
 export function borradorNuevo(curp: string): Borrador {
   const ahora = new Date().toISOString();
+  const datosC = extraerDatosCurp(curp);
   return {
     id: uuid(), creado: ahora, actualizado: ahora, paso: 1, estado: 'borrador', capturado_en: ahora, hubo_desconexion: false,
     curp, consulta: null,
-    productor: { nombres: '', apellido_paterno: '', apellido_materno: '', sexo: '', fecha_nacimiento: '', telefono: '', correo: '' },
+    productor: {
+      nombres: '', apellido_paterno: '', apellido_materno: '',
+      sexo: datosC.valida ? (datosC.sexo || '') : '',
+      fecha_nacimiento: datosC.valida ? (datosC.fechaNacimiento || '') : '',
+      telefono: '', correo: ''
+    },
     complementaria: { total_ups: 1, participa: null, programas_sader: [], programas_otro: '', organizacion: '', seguro: '', seguro_nombre: '' },
     complementaria_resumen: false,
     parcela: vacioParcela(),
