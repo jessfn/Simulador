@@ -22,9 +22,9 @@ export function usePermisosSSE(userId: number | undefined, rolTienePermisosTotal
     fetch(`${BASE}/admin/permisos/${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
+      .then(r => (r.ok ? r.json() : { permisos: [] }))
       .then(d => setPermisos(d.permisos ?? [], d.permisos_totales ?? false))
-      .catch(() => {});
+      .catch(() => setPermisos([], false));
 
     // Abrir SSE para actualizaciones en tiempo real
     // EventSource no soporta headers → pasamos token como query param

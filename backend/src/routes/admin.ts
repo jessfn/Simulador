@@ -3,20 +3,16 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import pool from '../config/database';
 import { soloMaiz, soloMaizDeUp, parcelaDeMaiz } from '../utils/programas';
-import { authMiddleware, requierePermisosTotales, AuthRequest } from '../middleware/auth';
+import { authMiddleware, requierePermisosTotales, tienePermisosTotales, AuthRequest } from '../middleware/auth';
+import {
+  soloDeSuEstado, soloCuentasDeBodega, estadosAsignados, productorEnEstados, cuentaDeBodegaEnEstados,
+  estadosDeProductor, estadosDeParcela, estadosDeBodega, estadosDeCuentaDeBodega,
+} from '../middleware/alcancePanel';
+import { checkPermiso } from './admin-permisos';
 import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
 import { obtenerRespuestaProductor } from '../services/encuestaService';
 
 const router = Router();
-
-// Middleware: solo admin
-function soloAdmin(req: AuthRequest, res: Response, next: Function): void {
-  if (req.user?.rol !== 'admin') {
-    res.status(403).json({ error: 'Acceso denegado: se requiere rol admin' });
-    return;
-  }
-  next();
-}
 
 /** Devuelve true si el usuario puede acceder al panel (admin, responsable o OREF) */
 function esPanelAdmin(u: AuthRequest['user']): boolean {
@@ -185,7 +181,7 @@ router.get('/usuarios', authMiddleware, async (req: AuthRequest, res: Response):
 // =============================================
 // GET /api/admin/usuarios/estados-disponibles
 // =============================================
-router.get('/usuarios/estados-disponibles', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/usuarios/estados-disponibles', authMiddleware, checkPermiso('productores', 'ver'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await pool.query(`
       SELECT DISTINCT up.nombre_estado AS estado
@@ -208,7 +204,7 @@ router.get('/usuarios/estados-disponibles', authMiddleware, soloAdmin, async (re
 // =============================================
 // PATCH /api/admin/usuarios/:id/rol
 // =============================================
-router.patch('/usuarios/:id/rol', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch('/usuarios/:id/rol', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { rol } = req.body;
@@ -240,11 +236,7 @@ router.patch('/usuarios/:id/rol', authMiddleware, soloAdmin, async (req: AuthReq
 // PATCH /api/admin/usuarios/:id/estatus
 // Maneja tanto activo (usuarios) como estado_validacion (productores)
 // =============================================
-router.patch('/usuarios/:id/estatus', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  if (req.user?.rol !== 'admin') {
-    res.status(403).json({ error: 'Acceso denegado: se requiere rol admin' });
-    return;
-  }
+router.patch('/usuarios/:id/estatus', authMiddleware, checkPermiso('productores', 'editar'), soloDeSuEstado(estadosDeProductor), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { activo, estado_validacion, nota } = req.body;
@@ -271,6 +263,11 @@ router.patch('/usuarios/:id/estatus', authMiddleware, async (req: AuthRequest, r
     // Si viene activo, actualizar en tabla usuarios
     if (typeof activo !== 'boolean') {
       res.status(400).json({ error: 'Debe enviar activo (boolean) o estado_validacion (string)' });
+      return;
+    }
+    // Activar o desactivar cualquier cuenta de usuario queda solo para quien tiene permisos totales.
+    if (!(await tienePermisosTotales(req.user?.rol))) {
+      res.status(403).json({ error: 'Acceso denegado: se requieren permisos totales' });
       return;
     }
 
@@ -382,7 +379,7 @@ router.patch('/solicitudes-bodega/:id/rechazar', authMiddleware, requierePermiso
 // =============================================
 // POST /api/admin/crear-usuario
 // =============================================
-router.post('/crear-usuario', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/crear-usuario', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { email, curp, nombre_completo, password, telefono, rol } = req.body;
 
@@ -438,7 +435,7 @@ router.post('/crear-usuario', authMiddleware, soloAdmin, async (req: AuthRequest
 // =============================================
 // PUT /api/admin/usuarios/:id - Edit user
 // =============================================
-router.put('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/usuarios/:id', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { nombre_completo, email, curp, telefono } = req.body;
@@ -497,7 +494,7 @@ router.put('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest, 
 // =============================================
 // DELETE /api/admin/usuarios/:id
 // =============================================
-router.delete('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.delete('/usuarios/:id', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -533,7 +530,7 @@ router.delete('/usuarios/:id', authMiddleware, soloAdmin, async (req: AuthReques
 // DELETE /api/admin/productores/:producer_id — Eliminar productor completo (cascade)
 // Orden: disponibilidad_productor → cycle_crop → cycle → up → producer → usuario
 // =============================================
-router.delete('/productores/:producer_id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.delete('/productores/:producer_id', authMiddleware, checkPermiso('productores', 'eliminar'), soloDeSuEstado(estadosDeProductor, 'producer_id'), async (req: AuthRequest, res: Response): Promise<void> => {
   const client = await pool.connect();
   try {
     const { producer_id } = req.params;
@@ -779,8 +776,8 @@ router.get('/actividad-reciente', authMiddleware, async (req: AuthRequest, res: 
   if (!esPanelAdmin) { res.status(403).json({ error: 'Acceso denegado' }); return; }
   try {
     const estado = (u.rol === 'admin' || u.rol === 'responsable') ? null : (u.estado_asignado ?? null);
-    const ep = estado ? [estado] : [];
-    const whereEstadoP = estado ? `WHERE p.nombre_estado = $1 AND ${soloMaiz('p')}` : `WHERE ${soloMaiz('p')}`;
+    const ep = estado ? [estado.split(',').map(e => e.trim().toUpperCase())] : [];
+    const whereEstadoP = estado ? `WHERE ${productorEnEstados('p', '$1')} AND ${soloMaiz('p')}` : `WHERE ${soloMaiz('p')}`;
 
     const productoresR = pool.query(`
       SELECT
@@ -803,7 +800,7 @@ router.get('/actividad-reciente', authMiddleware, async (req: AuthRequest, res: 
         a.fecha_alerta AS fecha,
         '/admin/alertas' AS link
       FROM alertas a
-      ${estado ? `JOIN up u2 ON u2.up_id = a.up_id AND u2.nombre_estado = $1` : ''}
+      ${estado ? `JOIN up u2 ON u2.up_id = a.up_id AND UPPER(u2.nombre_estado) = ANY($1::text[])` : ''}
       ORDER BY a.fecha_alerta DESC
       LIMIT 10
     `, ep).catch(() => ({ rows: [] as any[] }));
@@ -888,13 +885,15 @@ router.get('/bodegas/estadisticas', authMiddleware, async (req: AuthRequest, res
 // Avisos unificados: productores + usuarios (bodegueros/industria)
 // ?tipo=productor|usuario|all  &q=  &limit=  &offset=
 // =============================================
-router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/avisos-privacidad', authMiddleware, checkPermiso('avisos-privacidad', 'ver'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const q      = (req.query.q as string) || '';
     const tipo   = (req.query.tipo as string) || 'all';
     const limite = Math.min(parseInt(req.query.limit as string) || 50, 500);
     const offset = parseInt(req.query.offset as string) || 0;
     const like   = `%${q.trim()}%`;
+    const estados = await estadosAsignados(req);
+    const soloSusEstados = (condicion: string) => (estados ? `AND ${condicion}` : '');
 
     // ── Productores ──────────────────────────────────────────
     const sqlProd = `
@@ -914,6 +913,7 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
         p.creado_en AS created_at
       FROM productor p
       WHERE p.aviso_privacidad_aceptado = TRUE
+        ${soloSusEstados(productorEnEstados('p', '$ESTADOS'))}
         AND (p.curp ILIKE $1 OR p.nombres ILIKE $1 OR p.apellido_paterno ILIKE $1 OR p.apellido_materno ILIKE $1)`;
 
     // ── Usuarios bodegueros/industria ─────────────────────────
@@ -935,6 +935,7 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
       FROM usuarios u
       WHERE u.aviso_privacidad_aceptado = TRUE
         AND u.rol IN ('bodeguero','bodega','industria')
+        ${soloSusEstados(cuentaDeBodegaEnEstados('u', '$ESTADOS'))}
         AND (u.curp ILIKE $1 OR u.nombre_completo ILIKE $1 OR u.telefono ILIKE $1)`;
 
     let unionSQL: string;
@@ -962,10 +963,13 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
         ))                                                                AS completitud_media
       FROM (${unionAll}) t`;
 
+    // Cada consulta lleva los estados en una posición distinta de parámetro.
+    const conEstados = (sql: string, posicion: number) => sql.split('$ESTADOS').join(`$${posicion}`);
+    const parametroEstados = estados ? [estados] : [];
     const [{ rows }, { rows: cnt }, { rows: glob }] = await Promise.all([
-      pool.query(dataSQL,   [like, limite, offset]),
-      pool.query(countSQL,  [like]),
-      pool.query(globalSQL, []),
+      pool.query(conEstados(dataSQL, 4),   [like, limite, offset, ...parametroEstados]),
+      pool.query(conEstados(countSQL, 2),  [like, ...parametroEstados]),
+      pool.query(conEstados(globalSQL, 1), parametroEstados),
     ]);
 
     const g = glob[0];
@@ -986,7 +990,7 @@ router.get('/avisos-privacidad', authMiddleware, soloAdmin, async (req: AuthRequ
 // =============================================
 // PATCH /api/admin/bodegas/:id — Edición completa de bodega por admin
 // =============================================
-router.patch('/bodegas/:id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch('/bodegas/:id', authMiddleware, checkPermiso('bodegas', 'editar'), soloDeSuEstado(estadosDeBodega), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { nombre, estado, municipio, localidad, direccion, telefono, capacidad_ton, estatus, latitud, longitud } = req.body;
@@ -1030,7 +1034,7 @@ router.patch('/bodegas/:id', authMiddleware, soloAdmin, async (req: AuthRequest,
 });
 
 // DELETE /api/admin/bodegas/:id — Eliminar bodega con cascade completo
-router.delete('/bodegas/:id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.delete('/bodegas/:id', authMiddleware, checkPermiso('bodegas', 'eliminar'), soloDeSuEstado(estadosDeBodega), async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
   const client = await pool.connect();
   try {
@@ -1074,7 +1078,7 @@ router.delete('/bodegas/:id', authMiddleware, soloAdmin, async (req: AuthRequest
 
 // POST /api/admin/reset-nip/:producer_id
 // El admin genera un PIN temporal de 4 dígitos para un productor
-router.post('/reset-nip/:producer_id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/reset-nip/:producer_id', authMiddleware, checkPermiso('productores', 'editar'), soloDeSuEstado(estadosDeProductor, 'producer_id'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { producer_id } = req.params;
 
@@ -1105,7 +1109,7 @@ router.post('/reset-nip/:producer_id', authMiddleware, soloAdmin, async (req: Au
 
 // GET /api/admin/productor-nip/:producer_id
 // El admin consulta el NIP actual del productor (almacenado en texto plano)
-router.get('/productor-nip/:producer_id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/productor-nip/:producer_id', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { producer_id } = req.params;
     const { rows } = await pool.query(
@@ -1122,7 +1126,7 @@ router.get('/productor-nip/:producer_id', authMiddleware, soloAdmin, async (req:
 
 // POST /api/admin/asignar-nip/:producer_id
 // Asigna un NIP nuevo permanente a un productor que no tiene pin_texto (cuenta antigua)
-router.post('/asignar-nip/:producer_id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/asignar-nip/:producer_id', authMiddleware, checkPermiso('productores', 'editar'), soloDeSuEstado(estadosDeProductor, 'producer_id'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { producer_id } = req.params;
     const { rows } = await pool.query(
@@ -1148,7 +1152,7 @@ router.post('/asignar-nip/:producer_id', authMiddleware, soloAdmin, async (req: 
 
 // POST /api/admin/reset-password/:usuario_id
 // El admin genera un enlace de reset para un usuario de bodega
-router.post('/reset-password/:usuario_id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/reset-password/:usuario_id', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { usuario_id } = req.params;
 
@@ -1185,10 +1189,12 @@ router.post('/reset-password/:usuario_id', authMiddleware, soloAdmin, async (req
 // ─────────────────────────────────────────────────────────────────
 
 // GET /api/admin/usuarios-bodega
-router.get('/usuarios-bodega', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/usuarios-bodega', authMiddleware, checkPermiso('bodegas', 'ver'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const q    = (req.query.q as string) || '';
     const like = `%${q.trim()}%`;
+    const roles = (await tienePermisosTotales(req.user?.rol)) ? ['bodeguero', 'bodega', 'industria', 'admin'] : ['bodeguero', 'bodega', 'industria'];
+    const estados = await estadosAsignados(req);
     const { rows } = await pool.query(`
       SELECT
         u.id, u.nombre_completo, u.correo_electronico, u.telefono, u.rol,
@@ -1209,11 +1215,12 @@ router.get('/usuarios-bodega', authMiddleware, soloAdmin, async (req: AuthReques
       FROM usuarios u
       LEFT JOIN bodeguero_bodegas bb ON bb.usuario_id = u.id
       LEFT JOIN bodegas b ON b.id = bb.bodega_id
-      WHERE u.rol IN ('bodeguero','bodega','industria','admin')
+      WHERE u.rol = ANY($2::text[])
         AND ($1 = '%%' OR u.nombre_completo ILIKE $1 OR u.correo_electronico ILIKE $1 OR u.telefono ILIKE $1)
+        ${estados ? `AND ${cuentaDeBodegaEnEstados('u', '$3')}` : ''}
       GROUP BY u.id, u.nombre_completo, u.correo_electronico, u.telefono, u.rol, u.activo, u.creado_en
       ORDER BY u.creado_en DESC
-    `, [like]);
+    `, estados ? [like, roles, estados] : [like, roles]);
     res.json({ usuarios: rows, total: rows.length });
   } catch (error) {
     console.error('Error usuarios-bodega:', error);
@@ -1222,7 +1229,7 @@ router.get('/usuarios-bodega', authMiddleware, soloAdmin, async (req: AuthReques
 });
 
 // GET /api/admin/usuarios-bodega/:id
-router.get('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/usuarios-bodega/:id', authMiddleware, checkPermiso('bodegas', 'ver_detalle'), soloCuentasDeBodega(), soloDeSuEstado(estadosDeCuentaDeBodega), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query(`
@@ -1248,7 +1255,7 @@ router.get('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: AuthRe
 });
 
 // PATCH /api/admin/usuarios-bodega/:id
-router.patch('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch('/usuarios-bodega/:id', authMiddleware, checkPermiso('bodegas', 'editar'), soloCuentasDeBodega(), soloDeSuEstado(estadosDeCuentaDeBodega), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { nombre_completo, email, telefono, activo, password } = req.body;
@@ -1280,7 +1287,7 @@ router.patch('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: Auth
 
 // DELETE /api/admin/usuarios-bodega/:id
 // Cascade: bodegas del usuario (y sus hijos) → bodeguero_bodegas → usuario
-router.delete('/usuarios-bodega/:id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.delete('/usuarios-bodega/:id', authMiddleware, checkPermiso('bodegas', 'eliminar'), soloCuentasDeBodega(), soloDeSuEstado(estadosDeCuentaDeBodega), async (req: AuthRequest, res: Response): Promise<void> => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
@@ -1416,7 +1423,7 @@ router.get('/parcelas', authMiddleware, async (req: AuthRequest, res: Response):
 });
 
 // DELETE /api/admin/parcelas/:up_id — Eliminar una UP individual
-router.delete('/parcelas/:up_id', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.delete('/parcelas/:up_id', authMiddleware, checkPermiso('parcelas', 'eliminar'), soloDeSuEstado(estadosDeParcela, 'up_id'), async (req: AuthRequest, res: Response): Promise<void> => {
   const client = await pool.connect();
   try {
     const { up_id } = req.params;

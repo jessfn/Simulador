@@ -49,15 +49,23 @@ const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery
 export default function MercadoAdminPage() {
   const [data, setData] = useState<MercadoData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState('');
 
   async function cargar() {
     setLoading(true);
+    setErrorCarga('');
     try {
       const r = await fetch(`${BASE}/admin/mercado/mapa`, { headers: HDR() });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setData(null);
+        setErrorCarga(d.error || 'No se pudo cargar la información de mercado.');
+        return;
+      }
       setData(d);
     } catch (e) {
       console.error(e);
+      setErrorCarga('No se pudo conectar con el servidor.');
     } finally {
       setLoading(false);
     }
@@ -88,6 +96,9 @@ export default function MercadoAdminPage() {
 
   return (
     <div className="flex flex-col gap-3">
+      {errorCarga && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700">{errorCarga}</div>
+      )}
 
       {/* ── Barra de acción ── */}
       <div className="bg-[#eef8f2] flex-shrink-0 rounded-b-2xl border border-[#1A5C38]/30 border-t-0 px-3 py-1.5 flex justify-end">

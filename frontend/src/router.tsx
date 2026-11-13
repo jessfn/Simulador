@@ -115,6 +115,7 @@ import DetalleProductorTecnicoPage from './pages/tecnico/DetalleProductorTecnico
 import CicloTecnicoPage from './pages/tecnico/CicloTecnicoPage';
 import EncuestaInsumosTecnicoPage from './pages/tecnico/EncuestaInsumosTecnicoPage';
 import PerfilTecnicoPage from './pages/tecnico/PerfilTecnicoPage';
+import ErrorDePantallaAdmin from './components/admin/ErrorDePantallaAdmin';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -270,8 +271,11 @@ function rutaDeVista(vista: string): string {
 /** Bloquea acceso a rutas admin si el usuario OREF no tiene permiso de ver esa vista. */
 function RequireVista({ vista, soloAdmin, children }: { vista?: string; soloAdmin?: boolean; children: React.ReactNode }) {
   const { user } = useAuthStore();
-  const { puedeVerVista, permisosTotal } = usePermisosStore();
+  const { puedeVerVista, permisosTotal, cargados } = usePermisosStore();
   const esAdminOResponsable = user?.rol === 'admin' || user?.rol === 'responsable';
+
+  // Al recargar la página los permisos llegan después del primer render; se espera para no redirigir de más.
+  if (!esAdminOResponsable && !cargados) return null;
 
   if (soloAdmin && !esAdminOResponsable) {
     const primera = permisosTotal ? 'resumen' : ORDEN_VISTAS.find(v => puedeVerVista(v));
@@ -512,7 +516,7 @@ export const router = createBrowserRouter([{
   {
     path: '/maiz/admin',
     element: <RequireAdmin><AdminShell><Outlet /></AdminShell></RequireAdmin>,
-    children: [
+    children: [{ errorElement: <ErrorDePantallaAdmin />, children: [
       { index: true, element: <RequireVista vista="resumen"><DashboardAdminPage /></RequireVista> },
       { path: 'productores',    element: <RequireVista vista="productores"><ProductoresAdminPage /></RequireVista> },
       { path: 'productores/:id',element: <RequireVista vista="productores"><ProductorDetalleAdminPage /></RequireVista> },
@@ -535,7 +539,7 @@ export const router = createBrowserRouter([{
       { path: 'permisos',       element: <RequireVista soloAdmin><PermisosAdminPage /></RequireVista> },
       { path: 'cambiar-password', element: <CambiarPasswordPage /> },
       { path: 'perfil',         element: <MiPerfilAdminPage /> },
-    ],
+    ] }],
   },
 
   { path: '*', element: <RutaDesconocida /> },

@@ -1,11 +1,14 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
-import { authMiddleware, soloAdmin, AuthRequest } from '../middleware/auth';
+import { authMiddleware, requierePermisosTotales, AuthRequest } from '../middleware/auth';
+import { checkPermiso } from './admin-permisos';
 import { actualizarReferenciasExternas } from '../services/preciosExternos';
 import multer from 'multer';
 import fs from 'fs';
 
 const router = Router();
+const verPrecios = checkPermiso('precios', 'ver');
+const editarPrecios = checkPermiso('precios', 'editar');
 const upload = multer({ dest: 'uploads/' });
 
 // ─── CONSTANTES DEL PROGRAMA ─────────────────────────────────────
@@ -601,7 +604,7 @@ router.get('/mercado', authMiddleware, async (_req: AuthRequest, res: Response):
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/precios/referencias/externas
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/referencias/externas', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/referencias/externas', authMiddleware, verPrecios, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const params = await getParametros();
     const extRef = await obtenerReferenciasExternasActuales();
@@ -649,7 +652,7 @@ router.get('/referencias/externas', authMiddleware, soloAdmin, async (req: AuthR
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/precios/parametros
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/parametros', authMiddleware, soloAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/parametros', authMiddleware, requierePermisosTotales, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const params = await getParametros();
     res.json({ parametros: params });
@@ -662,12 +665,8 @@ router.get('/parametros', authMiddleware, soloAdmin, async (_req: AuthRequest, r
 // ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/precios/parametros
 // ─────────────────────────────────────────────────────────────────────────────
-router.put('/parametros', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/parametros', authMiddleware, requierePermisosTotales, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.user?.rol !== 'admin') {
-      res.status(403).json({ error: 'Solo el administrador puede modificar parámetros' });
-      return;
-    }
 
     const { margen_pct, ventana_dias, min_txns, harineras_n,
             servicios_default, flete_default, costo_fira, precio_garantia_sader } = req.body;
@@ -702,7 +701,7 @@ router.put('/parametros', authMiddleware, soloAdmin, async (req: AuthRequest, re
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/discrepancias/pendientes
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/discrepancias', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/discrepancias', authMiddleware, verPrecios, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { prioridad } = req.query;
     const conditions = ["estado = 'pendiente'"];
@@ -728,7 +727,7 @@ router.get('/discrepancias', authMiddleware, soloAdmin, async (req: AuthRequest,
 // ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/precios/discrepancias/:id/resolver
 // ─────────────────────────────────────────────────────────────────────────────
-router.put('/discrepancias/:id/resolver', authMiddleware, soloAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/discrepancias/:id/resolver', authMiddleware, editarPrecios, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { resolucion, notas } = req.body;
@@ -790,12 +789,8 @@ router.get('/transacciones/resumen', authMiddleware, async (req: AuthRequest, re
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/precios/actualizar-externas
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/actualizar-externas', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/actualizar-externas', authMiddleware, editarPrecios, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.user?.rol !== 'admin' && req.user?.rol !== 'responsable') {
-      res.status(403).json({ error: 'No tienes permisos para realizar esta acción' });
-      return;
-    }
     const nuevo = await actualizarReferenciasExternas('admin_manual');
     res.json({ success: true, datos: nuevo });
   } catch (error) {
@@ -807,12 +802,8 @@ router.post('/actualizar-externas', authMiddleware, async (req: AuthRequest, res
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/precios/actualizaciones-log
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/actualizaciones-log', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/actualizaciones-log', authMiddleware, verPrecios, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.user?.rol !== 'admin' && req.user?.rol !== 'responsable') {
-      res.status(403).json({ error: 'No tienes permisos para realizar esta acción' });
-      return;
-    }
     const log = await pool.query(`
       SELECT * FROM precio_referencias_externas
       ORDER BY creado_en DESC LIMIT 20
@@ -827,12 +818,8 @@ router.get('/actualizaciones-log', authMiddleware, async (req: AuthRequest, res:
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/precios/fira/upload-csv
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/fira/upload-csv', authMiddleware, upload.single('file'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/fira/upload-csv', authMiddleware, editarPrecios, upload.single('file'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.user?.rol !== 'admin') {
-      res.status(403).json({ error: 'Solo el administrador puede subir datos FIRA' });
-      return;
-    }
 
     if (!req.file) {
       res.status(400).json({ error: 'No se subió ningún archivo' });
