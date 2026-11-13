@@ -125,7 +125,7 @@ router.post('/consultar-curp', authMiddleware, requiereCapturista, requiereProgr
   try {
     const [prodResult, usuResult] = await Promise.all([
       pool.query(
-        `SELECT p.productor_id, u.id AS usuario_id, p.nombres, p.apellido_paterno
+        `SELECT p.productor_id, u.id AS usuario_id, p.nombres, p.apellido_paterno, p.apellido_materno
          FROM productor p LEFT JOIN usuarios u ON u.id = p.usuario_id
          WHERE UPPER(p.curp) = $1 LIMIT 1`,
         [curpN]
@@ -153,6 +153,7 @@ router.post('/consultar-curp', authMiddleware, requiereCapturista, requiereProgr
         codigo: 'PUEDE_ACTIVAR',
         nombres: row.nombres,
         apellido_paterno: row.apellido_paterno,
+        apellido_materno: row.apellido_materno,
         producer_id: row.producer_id,
         fuente: 'padron_sader',
       });
@@ -235,6 +236,7 @@ router.post('/consultar-curp', authMiddleware, requiereCapturista, requiereProgr
       fuente: 'padron_sader',
       nombres: datos.nombres,
       apellido_paterno: datos.apellido_paterno,
+      apellido_materno: datos.apellido_materno,
       datos: {
         curp: datos.curp,
         nombres: datos.nombres,
