@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { usePermisosStore } from './permisos';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -49,6 +50,7 @@ export const useAuthStore = create<AuthState>()(
           }).catch(() => {});
         }
         localStorage.removeItem('simac_token');
+        usePermisosStore.getState().limpiar();
         set({ token: null, user: null, isAuthenticated: false });
       },
     }),

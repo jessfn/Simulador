@@ -137,6 +137,7 @@ export default function AgregarUPPage() {
       return;
     }
     setErrorOverlap(null);
+    setError(null); // el rechazo era del trazo anterior
     setAdvertenciaOverlap(r.mensaje ?? null);
     setPendingUP({ poligono: poly, coords: centro, area });
     setCoincideArea(null); setAreaReal('');
