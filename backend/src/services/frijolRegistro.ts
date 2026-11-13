@@ -273,7 +273,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
         [curp, String(p.nombres).trim(), String(p.apellido_paterno).trim(), p.apellido_materno ? String(p.apellido_materno).trim() : null,
          telefono, correo, correo, sexoFinal, fechaNacFinal, pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
       );
-      producerId = Number(r.rows[0].productor_id);
+      producerId = Number(r.rows[0].producer_id);
     }
 
     // ── 2. Programa frijol ──
