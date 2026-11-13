@@ -19,20 +19,23 @@ const pausa = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export interface ResumenVerificacion { revisados: number; verificados: number; no_validos: number; siguen_pendientes: number }
 
-async function anotarDiscrepancias(producerId: number, p: Record<string, unknown>, d: DatosPersona): Promise<void> {
+async function anotarDiscrepancias(producerId: number, p: Record<string, unknown>, d: DatosPersona): Promise<number> {
   const comparar: Array<[string, unknown, unknown]> = [
     ['nombres', p.nombres, d.nombres], ['apellido_paterno', p.apellido_paterno, d.apellido_paterno],
     ['apellido_materno', p.apellido_materno, d.apellido_materno], ['sexo', p.sexo, d.sexo], ['fecha_nacimiento', p.fn, d.fecha_nacimiento],
   ];
+  let conteo = 0;
   for (const [campo, capturado, oficial] of comparar) {
     if (!oficial) continue; // la fuente no trae ese dato
     if (quitaAcentos(capturado) !== quitaAcentos(oficial)) {
+      conteo++;
       await pool.query(
         `INSERT INTO productor_cambios (productor_id, campo, valor_anterior, valor_nuevo, usuario_id, programa) VALUES ($1,$2,$3,$4,NULL,$5)`,
         [producerId, `discrepancia_renapo_${campo}`, capturado == null ? null : String(capturado), String(oficial), PROGRAMA_FRIJOL]
       );
     }
   }
+  return conteo;
 }
 
 export async function verificarPendientes(): Promise<ResumenVerificacion> {
@@ -51,10 +54,24 @@ export async function verificarPendientes(): Promise<ResumenVerificacion> {
     try {
       const ident = await verificarIdentidad(fila.curp);
       if (ident.tipo === 'PADRON_SADER' || ident.tipo === 'RENAPO') {
-        await pool.query(
-          `UPDATE productor_programa SET verificacion_identidad = 'verificada', verificacion_ultimo_intento = NOW(), actualizado_en = NOW()
-            WHERE productor_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
-        await anotarDiscrepancias(fila.producer_id, fila, ident.datos);
+        const discrepancias = await anotarDiscrepancias(fila.productor_id, fila, ident.datos);
+        if (discrepancias > 0) {
+          // Opción A: suspender la validación automática y marcar para revisión
+          await pool.query(
+            `UPDATE productor_programa
+                SET verificacion_identidad = 'verificada',
+                    estatus_registro = 'requiere_correccion',
+                    verificacion_ultimo_intento = NOW(),
+                    actualizado_en = NOW()
+              WHERE productor_id = $1 AND programa = $2`, [fila.productor_id, PROGRAMA_FRIJOL]);
+        } else {
+          await pool.query(
+            `UPDATE productor_programa
+                SET verificacion_identidad = 'verificada',
+                    verificacion_ultimo_intento = NOW(),
+                    actualizado_en = NOW()
+              WHERE productor_id = $1 AND programa = $2`, [fila.productor_id, PROGRAMA_FRIJOL]);
+        }
         r.verificados++;
       } else if (ident.tipo === 'CURP_NO_VALIDA' || ident.tipo === 'CURP_FALLECIDO') {
         await pool.query(
