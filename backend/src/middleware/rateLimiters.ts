@@ -9,6 +9,15 @@ export const authLimiter = rateLimit({
   message: { error: 'Demasiados intentos. Intenta de nuevo en unos minutos.' },
 });
 
+/** Subidas sin sesión de la foto del aviso de privacidad; deja margen para retomar la foto varias veces. */
+export const subidaFotoVerificacionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Subiste demasiadas fotos en poco tiempo. Intenta de nuevo en unos minutos.' },
+});
+
 /**
  * T09 §9.3 (auditoría B8): límite de consultas de CURP de frijol, POR TÉCNICO (no por computadora).
  * Cada consulta gasta cuota de RENAPO/SADER y, sin límite, alguien podría recorrer CURP una tras otra.

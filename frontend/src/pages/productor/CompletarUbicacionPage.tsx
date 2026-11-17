@@ -215,6 +215,7 @@ export default function CompletarUbicacionPage() {
               misUpIds={misOtrasUpIds}
               onPoligonoCompleto={(c, centroide, ha) => {
                 setOverlapWarning(null);
+                setErrorGuardar(null); // el rechazo era del trazo anterior
                 setPoligono(c);
                 setCoords(centroide);
                 setAreaCalc(ha);
@@ -224,6 +225,7 @@ export default function CompletarUbicacionPage() {
               }}
               onPoligonoEliminado={() => {
                 setOverlapWarning(null);
+                setErrorGuardar(null);
                 setPoligono(null);
                 setAreaCalc(null);
                 setCoincideArea(null);

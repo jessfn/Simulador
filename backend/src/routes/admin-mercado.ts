@@ -1,23 +1,16 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { checkPermiso } from './admin-permisos';
 
 const router = Router();
-
-function adminOnly(req: AuthRequest, res: Response): boolean {
-  if (req.user!.rol !== 'admin' && req.user!.rol !== 'responsable') {
-    res.status(403).json({ error: 'Acceso restringido a administradores' });
-    return false;
-  }
-  return true;
-}
+const verMercado = checkPermiso('mercado', 'ver');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/admin/mercado/mapa
 // Disponibilidades de productores + requerimientos de bodegas con coordenadas
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/mercado/mapa', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  if (!adminOnly(req, res)) return;
+router.get('/mercado/mapa', authMiddleware, verMercado, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     // Detectar columnas reales de disponibilidad_productor con fallback
     const [disponibilidades, requerimientos, kpis] = await Promise.all([
@@ -101,8 +94,7 @@ router.get('/mercado/mapa', authMiddleware, async (req: AuthRequest, res: Respon
 // GET /api/admin/bodegas/stats-inventario
 // Stock por estado/variedad para gráficas de bodegas
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/bodegas/stats-inventario', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  if (!adminOnly(req, res)) return;
+router.get('/bodegas/stats-inventario', authMiddleware, verMercado, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const [porEstado, porVariedad, bodegas_tarifario, total_ventanillas] = await Promise.all([
       pool.query(`

@@ -7,10 +7,11 @@ import {
   Phone, Hash, CheckSquare, Square, FileDown, TableProperties,
   LayoutGrid, ArrowDownToLine, Fingerprint, Globe,
 } from 'lucide-react';
+import { useFotoVerificacion } from '../../hooks/useFotoVerificacion';
+import { fotoVerificacionComoDataUrl } from '../../services/fotosVerificacion';
 
 /* ─── Configuración ──────────────────────────────────────────────── */
 const BASE         = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-const UPLOADS_BASE = BASE.replace('/api', '');
 const HDR          = () => ({ Authorization: `Bearer ${localStorage.getItem('simac_token')}` });
 const POR_PAG      = 25;
 
@@ -48,9 +49,6 @@ const fmt = (iso: string | null, corto = false) => {
 
 const nombre = (a: Aviso) => a.nombre || '—';
 
-const fotoURL = (url: string | null) =>
-  url ? `${UPLOADS_BASE}/uploads/${url}` : null;
-
 const completitud = (a: Aviso) => {
   let n = 0;
   if (a.aviso_privacidad_aceptado) n++;
@@ -61,8 +59,11 @@ const completitud = (a: Aviso) => {
 };
 
 /* ─── PDF individual ─────────────────────────────────────────────── */
-function generarPDF(a: Aviso) {
-  const foto   = fotoURL(a.aviso_privacidad_foto_url);
+async function generarPDF(a: Aviso) {
+  // La ventana se abre antes de esperar la foto para que el navegador no la bloquee.
+  const win = window.open('', '_blank', 'width=960,height=720');
+  if (!win) return;
+  const foto   = await fotoVerificacionComoDataUrl(a.aviso_privacidad_foto_url);
   const nomb   = nombre(a);
   const coords = a.aviso_privacidad_lat && a.aviso_privacidad_lng
     ? `${a.aviso_privacidad_lat.toFixed(6)}, ${a.aviso_privacidad_lng.toFixed(6)}`
@@ -210,8 +211,6 @@ function generarPDF(a: Aviso) {
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=960,height=720');
-  if (!win) return;
   win.document.write(html);
   win.document.close();
 }
@@ -335,7 +334,7 @@ function edadDesdeCurp(curp: string): number | null {
 }
 
 function ModalDetalle({ aviso, onClose }: { aviso: Aviso; onClose: () => void }) {
-  const foto   = fotoURL(aviso.aviso_privacidad_foto_url);
+  const foto   = useFotoVerificacion(aviso.aviso_privacidad_foto_url);
   const nomb   = nombre(aviso);
   const coords = aviso.aviso_privacidad_lat && aviso.aviso_privacidad_lng;
   const pct    = completitud(aviso);
@@ -926,7 +925,7 @@ function FiltroCheck({ label, checked, onChange }: { label: string; checked: boo
 function FilaTabla({ aviso, sel, onToggleSel, onVer, onPDF }: {
   aviso: Aviso; sel: boolean; onToggleSel: () => void; onVer: () => void; onPDF: () => void;
 }) {
-  const foto  = fotoURL(aviso.aviso_privacidad_foto_url);
+  const foto  = useFotoVerificacion(aviso.aviso_privacidad_foto_url);
   const nomb  = nombre(aviso);
   const pct   = completitud(aviso);
   const hasGPS = aviso.aviso_privacidad_lat && aviso.aviso_privacidad_lng;
@@ -1024,7 +1023,7 @@ function FilaTabla({ aviso, sel, onToggleSel, onVer, onPDF }: {
 function Card({ aviso, sel, onToggleSel, onVer, onPDF }: {
   aviso: Aviso; sel: boolean; onToggleSel: () => void; onVer: () => void; onPDF: () => void;
 }) {
-  const foto = fotoURL(aviso.aviso_privacidad_foto_url);
+  const foto = useFotoVerificacion(aviso.aviso_privacidad_foto_url);
   const nomb = nombre(aviso);
   const pct  = completitud(aviso);
 
