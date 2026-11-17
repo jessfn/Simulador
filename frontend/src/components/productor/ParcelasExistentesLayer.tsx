@@ -4,7 +4,7 @@ import { Polygon } from 'react-leaflet';
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 interface Props {
-  excluirUpIds?: number[];
+  excluirUpIds?: (number | string)[];
 }
 
 const ESTILO = {
@@ -22,10 +22,10 @@ export default function ParcelasExistentesLayer({ excluirUpIds = [] }: Props) {
     fetch(`${BASE}/ups/geometrias`)
       .then(r => r.ok ? r.json() : { ups: [] })
       .then(d => {
-        const excluir = new Set(excluirUpIds);
+        const excluir = new Set(excluirUpIds.map(String));
         const resultado: { id: number; pos: [number, number][] }[] = [];
         for (const u of (d.ups || [])) {
-          if (excluir.has(u.up_id)) continue;
+          if (excluir.has(String(u.up_id))) continue;
           const g = u.geom_geojson;
           if (!g?.coordinates) continue;
           const ring: number[][] =

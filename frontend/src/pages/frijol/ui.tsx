@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Minus, Plus, AlertTriangle, Info, Search, X, ChevronDown } from 'lucide-react';
 
 // Piezas de formulario para trabajar en campo: texto de 16 px, áreas táctiles de 48 px o más, contraste alto.
@@ -133,40 +133,139 @@ export function Tarjeta({ titulo, acciones, children }: { titulo?: string; accio
 
 /** Lista con buscador para elegir una opción entre muchas (variedades). */
 export function ListaBuscable({ valor, alCambiar, opciones, vacio, error }: {
-  valor: string; alCambiar: (v: string) => void; opciones: { code: string; label: string }[]; vacio: string; error?: string;
+  valor: string;
+  alCambiar: (v: string) => void;
+  opciones: { code: string; label: string }[];
+  vacio: string;
+  error?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [q, setQ] = useState('');
   const actual = opciones.find(o => o.code === valor);
-  const visibles = opciones.filter(o => o.label.toLowerCase().includes(q.trim().toLowerCase()));
+  const visibles = opciones.filter(o =>
+    o.label.toLowerCase().includes(q.trim().toLowerCase())
+  );
+
+  const cerrar = () => {
+    setAbierto(false);
+    setQ('');
+  };
+
+  // Cerrar con Escape.
+  useEffect(() => {
+    if (!abierto) return;
+
+    const manejarEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        cerrar();
+      }
+    };
+
+    window.addEventListener('keydown', manejarEscape);
+
+    return () => {
+      window.removeEventListener('keydown', manejarEscape);
+    };
+  }, [abierto]);
+
   return (
     <>
-      <button type="button" onClick={() => { setQ(''); setAbierto(true); }}
-        className={`${claseInput(error)} text-left flex items-center justify-between`}>
-        <span className={actual ? 'text-slate-900' : 'text-slate-300'}>{actual ? actual.label : vacio}</span>
+      <button type="button"
+        onClick={() => {
+          setQ('');
+          setAbierto(true);
+        }}
+        aria-haspopup="dialog"
+        aria-expanded={abierto}
+        className={`${claseInput(error)} text-left flex items-center justify-between`}
+      >
+        <span className={actual ? 'text-slate-900' : 'text-slate-300'}>
+          {actual ? actual.label : vacio}
+        </span>
         <ChevronDown size={18} className="text-slate-400" />
       </button>
       {abierto && (
-        <div className="fixed inset-0 z-[10000] bg-white flex flex-col" role="dialog" aria-modal="true" aria-label={vacio}>
-          <div className="flex items-center gap-2 p-3 border-b border-slate-100" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
-            <div className="relative flex-1">
-              <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar…"
-                className="w-full min-h-[50px] bg-slate-50 rounded-2xl pl-11 pr-4 text-[16px] outline-none" />
-            </div>
-            <button type="button" aria-label="Cerrar" onClick={() => setAbierto(false)} className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center"><X size={20} /></button>
-          </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-            {visibles.length === 0 && <p className="p-6 text-slate-400 text-center">Sin resultados</p>}
-            {visibles.map(o => (
-              <button key={o.code} type="button" onClick={() => { alCambiar(o.code); setAbierto(false); }}
-                className={`w-full px-5 py-4 text-left text-[16px] ${o.code === valor ? 'bg-[#eef8f2] font-bold text-[#0f3f26]' : 'text-slate-800'}`}>
-                {o.label}
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-0 sm:p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              cerrar();
+            }
+          }}
+        >
+          <div role="dialog"
+            aria-modal="true"
+            aria-label={vacio}
+            className="
+              bg-white flex flex-col w-full h-full
+              sm:h-auto sm:max-h-[80vh]
+              sm:max-w-xl
+              sm:rounded-2xl sm:shadow-2xl
+              overflow-hidden
+            "
+          >
+            {/* Buscador y cierre */}
+            <div
+              className="flex items-center gap-2 p-3 border-b border-slate-100"
+              style={{
+                paddingTop: 'max(12px, env(safe-area-inset-top))'
+              }}
+            >
+              <div className="relative flex-1">
+                <Search
+                  size={18}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+
+                <input
+                  autoFocus
+                  value={q}
+                  onChange={e => setQ(e.target.value)}
+                  placeholder="Buscar variedad..."
+                  className="w-full min-h-[50px] bg-slate-50 rounded-2xl pl-11 pr-4 text-[16px] outline-none"
+                />
+              </div>
+
+              <button
+                type="button"
+                aria-label="Cerrar"
+                onClick={cerrar}
+                className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center flex-shrink-0"
+              >
+                <X size={20} />
               </button>
-            ))}
+            </div>
+
+            {/* Opciones */}
+            <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-50">
+              {visibles.length === 0 && (
+                <p className="p-6 text-slate-400 text-center">
+                  Sin resultados
+                </p>
+              )}
+
+              {visibles.map(o => (
+                <button
+                  key={o.code}
+                  type="button"
+                  onClick={() => {
+                    alCambiar(o.code);
+                    cerrar();
+                  }}
+                  className={`w-full px-5 py-4 text-left text-[16px] hover:bg-slate-50 ${
+                    o.code === valor
+                      ? 'bg-[#eef8f2] font-bold text-[#0f3f26]'
+                      : 'text-slate-800'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
     </>
   );
 }
+

@@ -3,7 +3,7 @@ import area from '@turf/area';
 import intersect from '@turf/intersect';
 
 export interface ParcelaExistente {
-  id: number;
+  id: number | string;
   /** Vértices en formato [lat, lng], igual que usa Leaflet. */
   pos: [number, number][];
 }
@@ -43,8 +43,8 @@ function aFeature(verticesLatLng: [number, number][]) {
 export function calcularTraslape(
   nuevoPoligono: [number, number][],
   existentes: ParcelaExistente[],
-  excluirIds: number[] = [],
-  misUpIds: number[] = []
+  excluirIds: (number | string)[] = [],
+  misUpIds: (number | string)[] = []
 ): ResultadoTraslape {
   if (nuevoPoligono.length < 3) return { bloqueado: false, pct: 0 };
 
@@ -57,12 +57,12 @@ export function calcularTraslape(
   const areaNuevo = area(featNuevo);
   if (!areaNuevo) return { bloqueado: false, pct: 0 };
 
-  const excluir = new Set(excluirIds);
-  const propias = new Set(misUpIds);
+  const excluir = new Set(excluirIds.map(String));
+  const propias = new Set(misUpIds.map(String));
   let peor: ResultadoTraslape = { bloqueado: false, pct: 0 };
 
   for (const existente of existentes) {
-    if (excluir.has(existente.id) || existente.pos.length < 3) continue;
+    if (excluir.has(String(existente.id)) || existente.pos.length < 3) continue;
     let featExistente;
     try {
       featExistente = aFeature(existente.pos);
@@ -81,7 +81,7 @@ export function calcularTraslape(
     const pct = areaInterseccion / areaNuevo;
     if (pct <= 0) continue;
 
-    const esPropia = propias.has(existente.id);
+    const esPropia = propias.has(String(existente.id));
     const bloqueado = esPropia ? true : pct > UMBRAL_BLOQUEO_AJENA;
 
     // Prioriza mostrar el conflicto que efectivamente bloquea; si ninguno

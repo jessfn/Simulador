@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChevronDown, ArrowRight, AlertTriangle } from 'lucide-react';
 import { PageHeaderTecnico } from '../../components/LayoutTecnico';
+import { extraerDatosCurp } from '../../utils/curp';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -22,6 +23,11 @@ export default function DatosProductorPage() {
   const [estados, setEstados] = useState<{ state_id: string; name: string }[]>([]);
   const [municipios, setMunicipios] = useState<{ municipality_id: string; name: string }[]>([]);
   const [error, setError] = useState('');
+
+  const esOficial = state.fuente === 'renapo' || state.fuente === 'padron_sader';
+  const curpInfo = extraerDatosCurp(curpParam || '');
+  const fechaNac = state.fecha_nac || (curpInfo.valida ? curpInfo.fechaNacimiento : null);
+  const sexo = state.sexo || (curpInfo.valida ? curpInfo.sexo : null);
 
   useEffect(() => {
     fetch(`${BASE}/auth/states`)
@@ -59,6 +65,8 @@ export default function DatosProductorPage() {
         nombres,
         apellido_paterno: apellidoPaterno,
         apellido_materno: apellidoMaterno,
+        sexo,
+        fecha_nac: fechaNac,
         telefono,
         state_nombre: estadoNombre,
         municipio_nombre: municipioNombre,
@@ -68,25 +76,31 @@ export default function DatosProductorPage() {
     });
   }
 
-  const inputCls = 'w-full border border-slate-200 rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#1A5C38]/20 focus:border-[#1A5C38] transition-all';
+  const inputCls = 'w-full border border-slate-200 rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#1A5C38]/20 focus:border-[#1A5C38] transition-all disabled:bg-slate-50 disabled:text-slate-600 disabled:cursor-not-allowed';
 
   return (
     <div className="min-h-full pb-8">
       <PageHeaderTecnico title="Datos del productor" subtitle="Paso 2 · Información básica" back={-1} />
 
       <div className="p-4 space-y-4">
+        {esOficial && (
+          <div className="p-3.5 bg-green-50 border border-green-200 rounded-2xl text-[13px] text-green-800 font-medium leading-relaxed">
+            Datos de identidad verificados ante {state.fuente === 'renapo' ? 'RENAPO' : 'el Padrón de SADER'}. Los nombres y apellidos están protegidos en solo lectura.
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <div>
             <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Nombres</label>
-            <input type="text" value={nombres} onChange={e => setNombres(e.target.value)} className={inputCls} />
+            <input type="text" value={nombres} onChange={e => setNombres(e.target.value)} disabled={esOficial} className={inputCls} />
           </div>
           <div>
             <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Apellido paterno</label>
-            <input type="text" value={apellidoPaterno} onChange={e => setApellidoPaterno(e.target.value)} className={inputCls} />
+            <input type="text" value={apellidoPaterno} onChange={e => setApellidoPaterno(e.target.value)} disabled={esOficial} className={inputCls} />
           </div>
           <div>
             <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Apellido materno</label>
-            <input type="text" value={apellidoMaterno} onChange={e => setApellidoMaterno(e.target.value)} className={inputCls} />
+            <input type="text" value={apellidoMaterno} onChange={e => setApellidoMaterno(e.target.value)} disabled={esOficial} className={inputCls} />
           </div>
           <div>
             <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Teléfono</label>

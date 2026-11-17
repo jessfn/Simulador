@@ -5,7 +5,7 @@ import { api } from '../../services/api';
 import { PageHeaderTecnico } from '../../components/LayoutTecnico';
 
 type Resultado =
-  | { tipo: 'PUEDE_ACTIVAR'; nombres: string; apellido_paterno: string; producer_id: number; fuente: string }
+  | { tipo: 'PUEDE_ACTIVAR'; nombres: string; apellido_paterno: string; apellido_materno?: string; producer_id?: number; fuente: string }
   | { tipo: 'NO_EN_PADRON'; datos_renapo: any; fuente: string }
   | { tipo: 'CURP_DUPLICADA' }
   | { tipo: 'ERROR_RED' };
@@ -34,8 +34,9 @@ export default function BuscarProductorPage() {
       } else if (res.codigo === 'PUEDE_ACTIVAR') {
         setResultado({
           tipo: 'PUEDE_ACTIVAR',
-          nombres: res.nombres,
-          apellido_paterno: res.apellido_paterno,
+          nombres: res.nombres || res.datos?.nombres || '',
+          apellido_paterno: res.apellido_paterno || res.datos?.apellido_paterno || '',
+          apellido_materno: res.apellido_materno || res.datos?.apellido_materno || '',
           producer_id: res.producer_id,
           fuente: res.fuente,
         });
@@ -69,6 +70,7 @@ export default function BuscarProductorPage() {
           curp: curpUpper,
           nombres: resultado.nombres,
           apellido_paterno: resultado.apellido_paterno,
+          apellido_materno: resultado.apellido_materno || '',
           producer_id: resultado.producer_id,
           fuente: resultado.fuente,
         },
@@ -145,7 +147,7 @@ export default function BuscarProductorPage() {
               <CheckCircle2 size={20} className="text-emerald-600" />
               <p className="text-[14px] font-bold text-slate-800">Encontrado en padrón SADER</p>
             </div>
-            <p className="text-[16px] font-semibold text-slate-900">{resultado.nombres} {resultado.apellido_paterno}</p>
+            <p className="text-[16px] font-semibold text-slate-900">{resultado.nombres} {resultado.apellido_paterno} {resultado.apellido_materno || ''}</p>
             <button onClick={continuar}
               className="w-full mt-4 bg-[#1A5C38] hover:bg-[#124227] text-white py-3.5 rounded-2xl font-bold text-[14.5px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
               Continuar registro <ArrowRight size={16} />

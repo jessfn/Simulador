@@ -24,8 +24,9 @@ import { evaluarEstadoRegistro } from '../services/estadoRegistroService';
 import { parcelaDeMaiz } from '../utils/programas';
 import { validarSuperficieCombinada } from '../utils/superficie';
 import { sincronizarCuentaProductor } from '../services/cuentaProductor';
-import { FORMATO_CURP, firmarCurpVerificada, esCurpVerificada } from '../services/verificacionCurp';
+import { firmarCurpVerificada, esCurpVerificada } from '../services/verificacionCurp';
 import { normalizarTelefono } from '../utils/telefono';
+import { CURP_RE, extraerDatosCurp } from '../utils/curp';
 
 // Bloquea las APIs "operativas" del rol productor (dashboard, precios,
 // solicitudes de apoyo, encuesta de insumos) mientras falte ubicación o
@@ -109,7 +110,7 @@ router.post('/auth/upload-verificacion', uploadVerificacion.single('foto'), (req
 router.post('/auth/buscar-curp', authLimiter, async (req, res): Promise<void> => {
   try {
     const { curp } = req.body;
-    if (!curp || curp.length !== 18) {
+    if (!curp || !CURP_RE.test(String(curp).toUpperCase().trim())) {
       res.status(400).json({ error: 'CURP inválida' });
       return;
     }
@@ -341,7 +342,7 @@ router.get('/geo/reverse', async (req, res): Promise<void> => {
 router.post('/auth/consultar-curp', authLimiter, async (req, res): Promise<void> => {
   const { curp } = req.body;
 
-  if (!curp || !FORMATO_CURP.test(curp.toUpperCase().trim())) {
+  if (!curp || !CURP_RE.test(curp.toUpperCase().trim())) {
     res.status(400).json({ error: 'CURP inválida. Verifica el formato (18 caracteres).' });
     return;
   }
@@ -559,7 +560,7 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
       return;
     }
 
-    if (typeof curp !== 'string' || !FORMATO_CURP.test(curp.toUpperCase().trim())) {
+    if (!curp || !CURP_RE.test(String(curp).toUpperCase().trim())) {
       res.status(400).json({ error: 'CURP inválida' });
       return;
     }
@@ -622,14 +623,18 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
         [curpN, nombreCompleto, hashedPin, String(pin), telefono]
       );
 
-      // Cuenta ACTIVA automáticamente (validada por el padrón SADER). sexo desde el padrón.
+      const curpDatos = extraerDatosCurp(curpN);
+      const sexoFinal = (curpDatos.valida && curpDatos.sexo) ? curpDatos.sexo : (genero || null);
+      const fechaNacFinal = (curpDatos.valida && curpDatos.fechaNacimiento) ? curpDatos.fechaNacimiento : (req.body.fecha_nacimiento || null);
+
+      // Cuenta ACTIVA automáticamente (validada por el padrón SADER). sexo y fecha_nacimiento desde la CURP/padrón.
       const p = await client.query(
         `INSERT INTO productor
            (usuario_id, curp, nombres, apellido_paterno, apellido_materno,
             telefono, sexo, tipo_registro, estado_validacion, programas_beneficiario, correo,
             aviso_privacidad_aceptado, aviso_privacidad_fecha, aviso_privacidad_latitud,
             aviso_privacidad_longitud, aviso_privacidad_version, aviso_privacidad_foto_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'B','activo',$8,$9,$10,$11,$12,$13,$14,$15)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'B','activo',$8,$9,$10,$11,$12,$13,$14)
          RETURNING productor_id`,
         [
           u.rows[0].id, curpN, nombresN, apPaternoN, apMaternoN,
@@ -1913,7 +1918,7 @@ router.delete('/push/cancelar', authMiddleware, async (req: AuthRequest, res: Re
 router.post('/auth/recuperar-nip/verificar-curp', async (req, res): Promise<void> => {
   try {
     const { curp } = req.body;
-    if (!curp || curp.length !== 18) {
+    if (!curp || !CURP_RE.test(String(curp).toUpperCase().trim())) {
       res.status(400).json({ error: 'CURP inválida' });
       return;
     }

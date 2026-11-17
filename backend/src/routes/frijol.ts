@@ -10,13 +10,13 @@ import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo, val
 import { aplicarEdicionDirecta, ErrorEdicion, estadoDeCampos } from '../services/edicionUnica';
 import { generarAcuseFrijol } from '../services/acuseFrijol';
 import { consultaCurpLimiter } from '../middleware/rateLimiters';
+import { CURP_RE, extraerDatosCurp } from '../utils/curp';
 
 // Módulo de registro de Frijol (técnicos ECA). Todo /api/frijol/* requiere sesión de técnico con el programa frijol_afb.
 // Aquí viven solo las rutas de frijol; maíz no se toca.
 const router = Router();
 router.use(authMiddleware, requiereCapturista, requierePrograma(PROGRAMA_FRIJOL));
 
-const CURP_RE = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Listas generales que usa la pantalla de frijol (catálogo `cat_catalog`).
@@ -199,9 +199,19 @@ router.post('/consultar-curp', consultaCurpLimiter, async (req: AuthRequest, res
       case 'RENAPO':
         res.json({ codigo: 'RENAPO', datos: ident.datos, token_verificacion: firmarVerificacion(curp, 'renapo', tecnicoId) });
         return;
-      case 'NO_VERIFICABLE':
-        res.json({ codigo: 'NO_VERIFICABLE', mensaje: 'No pudimos verificar la CURP en este momento. Puedes continuar; el sistema la verificará después automáticamente.' });
+      case 'NO_VERIFICABLE': {
+        const cData = extraerDatosCurp(curp);
+        res.json({
+          codigo: 'NO_VERIFICABLE',
+          mensaje: 'No pudimos verificar la CURP en este momento. Puedes continuar; el sistema la verificará después automáticamente.',
+          datos: {
+            curp,
+            sexo: cData.valida ? cData.sexo : null,
+            fecha_nacimiento: cData.valida ? cData.fechaNacimiento : null,
+          },
+        });
         return;
+      }
       case 'CURP_NO_VALIDA':
         res.status(404).json({ codigo: 'CURP_NO_VALIDA', error: 'Esta CURP no existe en el Registro Nacional de Población. Revisa que esté bien escrita.' });
         return;
