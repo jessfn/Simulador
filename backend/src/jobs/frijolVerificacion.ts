@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import pool from '../config/database';
-import { verificarIdentidad, DatosPersona } from '../services/identidad';
+import { consultarIdentidadFrijol, DatosPersonaFrijol } from '../services/frijolIdentidad';
 import { PROGRAMA_FRIJOL } from '../utils/programas';
 
 // Reverificación automática de identidad (frijol). Cada 6 horas toma los registros "pendientes de verificación"
@@ -19,7 +19,7 @@ const pausa = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export interface ResumenVerificacion { revisados: number; verificados: number; no_validos: number; siguen_pendientes: number }
 
-async function anotarDiscrepancias(producerId: number, p: Record<string, unknown>, d: DatosPersona): Promise<number> {
+async function anotarDiscrepancias(producerId: number, p: Record<string, unknown>, d: DatosPersonaFrijol): Promise<number> {
   const comparar: Array<[string, unknown, unknown]> = [
     ['nombres', p.nombres, d.nombres], ['apellido_paterno', p.apellido_paterno, d.apellido_paterno],
     ['apellido_materno', p.apellido_materno, d.apellido_materno], ['sexo', p.sexo, d.sexo], ['fecha_nacimiento', p.fn, d.fecha_nacimiento],
@@ -52,7 +52,7 @@ export async function verificarPendientes(): Promise<ResumenVerificacion> {
   for (const fila of lote.rows) {
     r.revisados++;
     try {
-      const ident = await verificarIdentidad(fila.curp);
+      const ident = await consultarIdentidadFrijol(fila.curp);
       if (ident.tipo === 'PADRON_SADER' || ident.tipo === 'RENAPO') {
         const discrepancias = await anotarDiscrepancias(fila.productor_id, fila, ident.datos);
         if (discrepancias > 0) {
@@ -77,12 +77,12 @@ export async function verificarPendientes(): Promise<ResumenVerificacion> {
         await pool.query(
           `UPDATE productor_programa SET verificacion_identidad = 'no_valida', estatus_registro = 'requiere_correccion',
                   verificacion_ultimo_intento = NOW(), actualizado_en = NOW()
-            WHERE productor_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
+            WHERE productor_id = $1 AND programa = $2`, [fila.productor_id, PROGRAMA_FRIJOL]);
         r.no_validos++;
       } else {
         await pool.query(
           `UPDATE productor_programa SET verificacion_intentos = verificacion_intentos + 1, verificacion_ultimo_intento = NOW()
-            WHERE productor_id = $1 AND programa = $2`, [fila.producer_id, PROGRAMA_FRIJOL]);
+            WHERE productor_id = $1 AND programa = $2`, [fila.productor_id, PROGRAMA_FRIJOL]);
         r.siguen_pendientes++;
       }
     } catch (error) {

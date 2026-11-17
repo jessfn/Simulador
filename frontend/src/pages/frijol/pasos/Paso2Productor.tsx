@@ -17,7 +17,8 @@ export default function Paso2Productor({ b, actualizar, errores }: Props) {
   const p = b.productor;
   const set = (campo: keyof Borrador['productor'], valor: string) => actualizar(prev => ({ ...prev, productor: { ...prev.productor, [campo]: valor } }));
   const enSimac = b.consulta?.codigo === 'EN_SIMAC' || b.consulta?.codigo === 'EN_FRIJOL_PROPIO';
-  const esOficial = b.consulta?.codigo === 'RENAPO' || b.consulta?.codigo === 'PADRON_SADER';
+  const esSader = b.consulta?.codigo === 'PADRON_SADER' || b.consulta?.fuente === 'padron_sader';
+  const esOficial = b.consulta?.codigo === 'RENAPO' || esSader;
   const bloq = (c: string) => !!b.consulta?.bloqueados?.includes(c);
   const hayBloqueados = (b.consulta?.bloqueados?.length ?? 0) > 0;
   const cambioTelefono = enSimac && b.consulta?.tiene_cuenta && (b.consulta.telefono_original || '') !== '' && p.telefono !== (b.consulta.telefono_original || '').replace(/\D/g, '').slice(-10);
@@ -44,11 +45,11 @@ export default function Paso2Productor({ b, actualizar, errores }: Props) {
     <div className="space-y-5">
       {esOficial && (
         <Aviso tipo="verde">
-          Datos de identidad verificados ante {b.consulta?.codigo === 'RENAPO' ? 'RENAPO' : 'el Padrón de SADER'}. Los datos personales están protegidos y se muestran en solo lectura.
+          Datos de identidad verificados ante {esSader ? 'el Padrón de SADER' : 'RENAPO'}. Los datos personales están protegidos y se muestran en solo lectura.
         </Aviso>
       )}
 
-      {enSimac && (
+      {enSimac && !esOficial && (
         <Aviso tipo="info">
           Este productor ya está registrado en SIMAC. Los datos de identidad están protegidos.
         </Aviso>

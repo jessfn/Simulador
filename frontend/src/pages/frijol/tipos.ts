@@ -67,6 +67,7 @@ export interface Borrador {
   curp: string;
   consulta: {
     codigo: CodigoConsulta; producer_id?: number; token_verificacion?: string;
+    fuente?: string;
     parcelas?: ParcelaExistente[]; tiene_cuenta?: boolean; telefono_original?: string;
     /** T10: datos personales que ya no se pueden cambiar directo (edición única usada, o teléfono con cuenta) */
     bloqueados?: string[];

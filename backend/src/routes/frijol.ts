@@ -4,7 +4,7 @@ import { authMiddleware, requiereCapturista, AuthRequest } from '../middleware/a
 import { requierePrograma } from '../middleware/programa';
 import { PROGRAMA_FRIJOL } from '../utils/programas';
 import { validarSuperficieCombinada } from '../utils/superficie';
-import { verificarIdentidad } from '../services/identidad';
+import { consultarIdentidadFrijol } from '../services/frijolIdentidad';
 import { inferirCiclo, cicloFinal, Regimen } from '../services/cicloSIAP';
 import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo, validarCatalogosCultivo, validarCatalogosProductor, errorFechaNacimiento } from '../services/frijolRegistro';
 import { aplicarEdicionDirecta, ErrorEdicion, estadoDeCampos } from '../services/edicionUnica';
@@ -63,7 +63,8 @@ async function datosProductor(producerId: number) {
   const p = await pool.query(
     `SELECT p.productor_id::int AS producer_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo,
             to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento,
-            p.telefono AS telefono, p.correo, p.usuario_id IS NOT NULL AS tiene_cuenta
+            p.telefono AS telefono, p.correo, p.usuario_id IS NOT NULL AS tiene_cuenta,
+            p.fuente_registro, p.tipo_registro
        FROM productor p WHERE p.productor_id = $1`, [producerId]);
   const fp = await pool.query('SELECT * FROM frijol_productor WHERE productor_id = $1', [producerId]);
   const parcelas = await pool.query(
@@ -76,8 +77,13 @@ async function datosProductor(producerId: number) {
                                         ELSE 'Anual ' || c.anio_ciclo END ORDER BY c.anio_ciclo DESC)
                        FROM ciclo c WHERE c.up_id = u.up_id AND c.cultivo = 'frijol' AND COALESCE(c.estado_ciclo,'activo') <> 'cancelado'), '[]'::json) AS ciclos_frijol
        FROM up u WHERE u.productor_id = $1 ORDER BY u.numero_up NULLS LAST, u.creado_en`, [producerId]);
+  const row = p.rows[0];
+  const esPadronSader = row?.fuente_registro === 'padron_sader' || row?.tipo_registro === 'A';
   return {
-    datos: p.rows[0],
+    datos: {
+      ...row,
+      fuente: esPadronSader ? 'padron_sader' : (row?.fuente_registro || null),
+    },
     frijol_productor: fp.rows[0] || null,
     parcelas: parcelas.rows.map((r: any) => ({ ...r, tiene_frijol: r.ciclos_frijol.length > 0 })),
     // T10: qué datos personales se pueden editar directo (una vez) y cuáles ya solo se cambian con solicitud
@@ -191,7 +197,7 @@ router.post('/consultar-curp', consultaCurpLimiter, async (req: AuthRequest, res
       return;
     }
 
-    const ident = await verificarIdentidad(curp);
+    const ident = await consultarIdentidadFrijol(curp);
     switch (ident.tipo) {
       case 'PADRON_SADER':
         res.json({ codigo: 'PADRON_SADER', datos: ident.datos, token_verificacion: firmarVerificacion(curp, 'padron_sader', tecnicoId) });
@@ -204,7 +210,7 @@ router.post('/consultar-curp', consultaCurpLimiter, async (req: AuthRequest, res
         res.json({
           codigo: 'NO_VERIFICABLE',
           mensaje: 'No pudimos verificar la CURP en este momento. Puedes continuar; el sistema la verificará después automáticamente.',
-          datos: {
+          datos: ident.datos || {
             curp,
             sexo: cData.valida ? cData.sexo : null,
             fecha_nacimiento: cData.valida ? cData.fechaNacimiento : null,
