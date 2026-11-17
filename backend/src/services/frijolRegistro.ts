@@ -7,6 +7,7 @@ import { huellaDe } from './encuestaService';
 import { PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from '../utils/programas';
 import { validarSuperficieCombinada } from '../utils/superficie';
 import { aplicarEdicionDirecta } from './edicionUnica';
+import { CURP_RE, extraerDatosCurp } from '../utils/curp';
 
 // ─── Errores ────────────────────────────────────────────────────────────────
 export class ErrorRegistro extends Error {
@@ -19,7 +20,6 @@ export class ErrorRegistro extends Error {
   ) { super(message); }
 }
 
-const CURP_RE = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ESTADOS_SEMILLAS = ['10', '18', '32'];          // Durango, Nayarit, Zacatecas
 export const PROGRAMAS_SADER = ['acopio_bienestar', 'fertilizantes_bienestar', 'produccion_bienestar', 'semillas_bienestar', 'otro_sader'];
@@ -229,7 +229,21 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     const correo = p.correo ? String(p.correo).trim().toLowerCase() : null;
 
     if (prod) {
-      producerId = Number(prod.producer_id);
+      producerId = Number(prod.productor_id);
+      // Validar que no se intente alterar la fecha de nacimiento ni el sexo de un productor preexistente en el registro de frijol
+      const curpDatos = extraerDatosCurp(curp);
+      if (prod.fn && p.fecha_nacimiento && fechaValida(p.fecha_nacimiento)) {
+        const fnStr = String(p.fecha_nacimiento).slice(0, 10);
+        if (fnStr !== prod.fn && (!curpDatos.valida || fnStr !== curpDatos.fechaNacimiento)) {
+          falla('productor.fecha_nacimiento', 'La fecha de nacimiento no coincide con los datos del productor ni con su CURP');
+        }
+      }
+      if (prod.sexo && p.sexo && (p.sexo === 'H' || p.sexo === 'M') && p.sexo !== prod.sexo) {
+        if (!curpDatos.valida || p.sexo !== curpDatos.sexo) {
+          falla('productor.sexo', 'El sexo no coincide con los datos del productor ni con su CURP');
+        }
+      }
+
       // T10: registrar frijol sobre un productor que ya existía NO sobrescribe sus datos a ciegas: lo que cambia pasa por la edición única
       // (una vez por dato, con historial; el teléfono de un productor con cuenta nunca se cambia aquí). Lo que viene igual no cuesta nada.
       await aplicarEdicionDirecta(client, {
@@ -247,6 +261,9 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
       // NO se toca producer.usuario_id ni producer.usuario_capturista_id: maíz sigue igual.
     } else {
       verificacion = leerVerificacion(p.verificacion_token, curp, tecnicoId) ? 'verificada' : 'pendiente';
+      const curpDatos = extraerDatosCurp(curp);
+      const sexoFinal = (curpDatos.valida && curpDatos.sexo) ? curpDatos.sexo : (p.sexo === 'H' || p.sexo === 'M' ? p.sexo : 'H');
+      const fechaNacFinal = (curpDatos.valida && curpDatos.fechaNacimiento) ? curpDatos.fechaNacimiento : (fechaValida(p.fecha_nacimiento) ? String(p.fecha_nacimiento).slice(0, 10) : null);
       const r = await client.query(
         `INSERT INTO productor
            (curp, nombres, apellido_paterno, apellido_materno, telefono, correo, correo_electronico, sexo, fecha_nacimiento,
@@ -254,7 +271,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
          RETURNING productor_id`,
         [curp, String(p.nombres).trim(), String(p.apellido_paterno).trim(), p.apellido_materno ? String(p.apellido_materno).trim() : null,
-         telefono, correo, correo, p.sexo, String(p.fecha_nacimiento).slice(0, 10), pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
+         telefono, correo, correo, sexoFinal, fechaNacFinal, pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
       );
       producerId = Number(r.rows[0].producer_id);
     }

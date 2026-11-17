@@ -1,8 +1,6 @@
 // Comprobante firmado de que la consulta de CURP verificó la identidad; el registro del productor lo exige.
 import jwt from 'jsonwebtoken';
 
-export const FORMATO_CURP = /^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9][0-9]$/;
-
 const USO_REGISTRO_PRODUCTOR = 'registro_productor';
 
 export type FuenteVerificacion = 'padron_sader' | 'renapo';
