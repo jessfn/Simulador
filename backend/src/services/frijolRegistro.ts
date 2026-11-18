@@ -8,6 +8,7 @@ import { PROGRAMA_FRIJOL, PROGRAMA_MAIZ } from '../utils/programas';
 import { validarSuperficieCombinada } from '../utils/superficie';
 import { aplicarEdicionDirecta } from './edicionUnica';
 import { CURP_RE, extraerDatosCurp } from '../utils/curp';
+import { validarUbicacionDeParcelaNueva } from './ubicacionParcelaFrijol';
 
 // ─── Errores ────────────────────────────────────────────────────────────────
 export class ErrorRegistro extends Error {
@@ -215,6 +216,8 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     if (est.rows.length === 0) falla('parcela.state_id', 'El estado no existe');
     const mun = await client.query('SELECT nombre FROM geo_municipio WHERE municipio_id = $1 AND estado_id = $2', [pa.municipality_id, pa.state_id]);
     if (mun.rows.length === 0) falla('parcela.municipality_id', 'El municipio no pertenece al estado elegido');
+    const errorUbicacion = pa.up_id ? null : await validarUbicacionDeParcelaNueva(client, pa, est.rows[0].name);
+    if (errorUbicacion) throw new ErrorRegistro(errorUbicacion.status, errorUbicacion.codigo, errorUbicacion.mensaje, errorUbicacion.campo);
 
     // Ciclo (siempre se recalcula en el servidor)
     const regimen: Regimen = (cu.tipo_riego === 'riego' || cu.tipo_riego === 'temporal') ? cu.tipo_riego : (pa.water_regime === 'riego' ? 'riego' : 'temporal');

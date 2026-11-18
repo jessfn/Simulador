@@ -158,7 +158,7 @@ def curp_nueva(consonantes, sexo='H'):
 _REG = {}
 def regiones():
     if not _REG:
-        _REG.update({'10': (24.2, -104.6, '10005'), '32': (22.7, -102.6, '32010'), '18': (21.8, -104.8, None), '25': (24.9, -107.3, None)})
+        _REG.update({'10': (24.2, -104.6, '10005'), '32': (22.7, -102.6, '32010'), '18': (21.8, -104.8, None), '25': (24.9, -107.45, None)})
         for sid in ('18', '25'):
             _REG[sid] = (_REG[sid][0], _REG[sid][1], val(f"select municipio_id from geo_municipio where estado_id='{sid}' limit 1"))
     return _REG
@@ -174,7 +174,8 @@ def shift_poligono(poli, frac):
 
 def cuerpo(curp, estado='10', area=3.0, siembra='2026-07-10', cosecha='2026-10-25', token=None, numero=1, total=1, **extra):
     lat, lng, muni = regiones()[estado]
-    lat += random.uniform(0, 0.8); lng += random.uniform(0, 0.8)
+    # El margen es chico para que la parcela no salga del estado elegido: el servidor lo rechaza.
+    lat += random.uniform(0, 0.25); lng += random.uniform(0, 0.25)
     b = {
         'productor': {'producer_id': None, 'curp': curp, 'nombres': 'Frijolero', 'apellido_paterno': 'De Prueba', 'apellido_materno': 'Uno',
                       'sexo': 'H', 'fecha_nacimiento': '1980-05-10', 'telefono': '6181234567', 'correo': None, 'verificacion_token': token},
