@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { soloMaiz, soloMaizDeUp } from '../utils/programas';
+import { productorEnEstados } from '../middleware/alcancePanel';
 
 const router = Router();
 
@@ -36,7 +37,9 @@ router.get('/resumen', authMiddleware, async (req: AuthRequest, res: Response): 
   if (!esPanelAdmin(req, res)) return;
   try {
     const estado = getEstado(req);
-    const wP = estadoWhere(estado, 'p.nombre_estado', 1);
+    const wP = estado
+      ? { sql: `AND ${productorEnEstados('p', '$1')}`, params: [estado.split(',').map(e => e.trim().toUpperCase())] }
+      : { sql: '', params: [] as string[][] };
     const wB = estadoWhere(estado, 'b.estado', 1);
 
     const [productoresActivos, productoresPendientes, bodegasActivas, bodegasPendientes,

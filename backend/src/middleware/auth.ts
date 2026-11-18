@@ -60,6 +60,11 @@ export function requiereCapturista(req: AuthRequest, res: Response, next: NextFu
   next();
 }
 
+export async function tienePermisosTotales(rol: string | undefined): Promise<boolean> {
+  const { rows } = await pool.query('SELECT permisos_totales FROM roles_panel WHERE clave = $1', [rol]);
+  return rows[0]?.permisos_totales === true;
+}
+
 /** Solo permite continuar si el usuario autenticado tiene rol admin. */
 export function soloAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
   if (req.user?.rol !== 'admin') {
@@ -79,11 +84,7 @@ export function soloAdmin(req: AuthRequest, res: Response, next: NextFunction): 
  */
 export async function requierePermisosTotales(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { rows } = await pool.query(
-      'SELECT permisos_totales FROM roles_panel WHERE clave = $1',
-      [req.user?.rol]
-    );
-    if (rows[0]?.permisos_totales) {
+    if (await tienePermisosTotales(req.user?.rol)) {
       next();
       return;
     }

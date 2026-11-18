@@ -1,17 +1,12 @@
 import { Router, Request, Response } from 'express';
 import ExcelJS from 'exceljs';
 import pool from '../config/database';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, requierePermisosTotales } from '../middleware/auth';
 import { soloMaiz, soloMaizDeUp } from '../utils/programas';
 
 const router = Router();
 
-router.get('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
-  const user = (req as any).user;
-  if (user?.rol !== 'admin' && user?.rol !== 'responsable') {
-    res.status(403).json({ error: 'Acceso denegado' });
-    return;
-  }
+router.get('/', authMiddleware, requierePermisosTotales, async (req: Request, res: Response): Promise<void> => {
 
   try {
     const wb = new ExcelJS.Workbook();

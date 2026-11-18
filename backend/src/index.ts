@@ -39,6 +39,7 @@ import ofertaRoutes from './routes/oferta';
 import productoresRoutes from './routes/productores';
 import disponibilidadRoutes from './routes/disponibilidad';
 import productorRoutes from './routes/productor';
+import fotosVerificacionRoutes from './routes/fotos-verificacion';
 import tecnicoRoutes from './routes/tecnico';
 import adminTecnicosRoutes from './routes/admin-tecnicos';
 import adminFrijolRoutes from './routes/admin-frijol';
@@ -118,11 +119,11 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
   next(err);
 });
 
-// Archivos estáticos — verificaciones biométricas (avisos de privacidad)
+// Solo los adjuntos del chat son públicos; las fotos de verificación se sirven con sesión en /api/fotos-verificacion.
 const UPLOADS_DIR = process.env.NODE_ENV === 'production'
   ? '/var/www/Simulador/uploads'
   : path.join(__dirname, '../../uploads');
-app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads/chat', express.static(path.join(UPLOADS_DIR, 'chat')));
 
 // Rutas
 app.use('/api/auth', authRoutes);
@@ -170,6 +171,7 @@ app.use('/api/oferta', ofertaRoutes);
 app.use('/api/productores', productoresRoutes);
 app.use('/api/productor/disponibilidad', disponibilidadRoutes);
 app.use('/api/productor', productorRoutes);
+app.use('/api/fotos-verificacion', fotosVerificacionRoutes);
 app.use('/api/tecnico', tecnicoRoutes);
 app.use('/api/frijol', frijolRoutes);
 app.use('/api/admin/tecnicos', adminTecnicosRoutes);

@@ -9,6 +9,7 @@ import { enviarEmailRecuperacion, smtpConfigurado } from '../utils/mailer';
 import { verificarBloqueo, registrarIntentoFallido, limpiarIntentosFallidos } from '../utils/loginLockout';
 import { authLimiter } from '../middleware/rateLimiters';
 import { generarAcuseRegistro } from '../services/acuseRegistro';
+import { validarRutaGuardadaDeFoto } from '../services/fotosVerificacion';
 
 const router = Router();
 
@@ -138,7 +139,7 @@ router.post('/registro', authLimiter, async (req: Request, res: Response): Promi
         aviso_privacidad_lat      || null,
         aviso_privacidad_lng      || null,
         aviso_privacidad_version  || null,
-        aviso_privacidad_foto_url || null,
+        validarRutaGuardadaDeFoto(aviso_privacidad_foto_url),
       ]
     );
 
