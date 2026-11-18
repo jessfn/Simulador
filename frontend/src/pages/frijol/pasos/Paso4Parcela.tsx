@@ -17,6 +17,7 @@ interface Props {
   errores: Errores;
   /** mensaje del servidor (p. ej. traslape) que obliga a regresar al mapa */
   errorServidor?: string;
+  enLinea?: boolean;
 }
 
 const centroDe = (g: ParcelaExistente['geom_geojson']): [number, number] | null => {
@@ -29,12 +30,20 @@ const centroDe = (g: ParcelaExistente['geom_geojson']): [number, number] | null 
 };
 
 // Paso 4 de 7 — Parcela. Primero se elige una parcela que el productor ya tenga (SIMAC o frijol), o se agrega una nueva.
-export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, errores, errorServidor }: Props) {
+export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, errores, errorServidor, enLinea = true }: Props) {
   const p = b.parcela;
   const propias = b.consulta?.parcelas || [];
   const municipios = useMunicipios(p.state_id);
   const [mapaAbierto, setMapaAbierto] = useState(false);
   const set = (parche: Partial<ParcelaBorrador>) => actualizar(prev => ({ ...prev, parcela: { ...prev.parcela, ...parche } }));
+
+  // Si no hay conexión, se marca en el borrador que la parcela se capturó sin conexión
+  useEffect(() => {
+    if (!enLinea && !p.capturada_sin_conexion) {
+      set({ capturada_sin_conexion: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enLinea]);
 
   // Si el servidor rechazó el polígono (traslape), se vuelve directo al mapa
   useEffect(() => { if (errorServidor) setMapaAbierto(true); }, [errorServidor]);
@@ -158,6 +167,12 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
           alCerrar={() => setMapaAbierto(false)} />
       )}
 
+      {!enLinea && (
+        <Aviso tipo="info">
+          <strong>Modo sin conexión:</strong> Puedes continuar el registro sin dibujar el polígono. Indica la superficie declarada de la parcela en hectáreas; la ubicación geográfica se podrá completar posteriormente cuando tengas señal.
+        </Aviso>
+      )}
+
       {propias.length > 0 && !p.nombre && (
         <button type="button" onClick={() => set({ modo: null })} className="text-[14px] font-bold text-[#1A5C38] min-h-[44px]">← Elegir una parcela que ya tiene</button>
       )}
@@ -195,6 +210,16 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
             </div>
             <button type="button" onClick={() => setMapaAbierto(true)} className="min-h-[46px] px-4 rounded-2xl bg-slate-100 text-slate-700 text-[14px] font-bold flex items-center gap-1.5"><Pencil size={15} /> Editar</button>
           </div>
+        ) : !enLinea ? (
+          <>
+            <p className="text-[14px] text-slate-600 mb-3 leading-snug">
+              Sin conexión el mapa puede no mostrar las imágenes satelitales. Puedes trazar con GPS si el dispositivo capta satélites, o bien continuar sin coordenadas y completarlo al tener señal.
+            </p>
+            <button type="button" onClick={() => setMapaAbierto(true)}
+              className="w-full min-h-[52px] rounded-2xl bg-white border-2 border-[#1A5C38] text-[#1A5C38] text-[15px] font-bold flex items-center justify-center gap-2 active:scale-[0.98]">
+              <MapaIcono size={18} /> {p.vertices.length > 0 ? 'Continuar dibujo con GPS' : 'Intentar dibujo con GPS (opcional)'}
+            </button>
+          </>
         ) : (
           <>
             <p className="text-[14px] text-slate-600 mb-3 leading-snug">Dibuja la parcela caminando su borde con el GPS o marcando las esquinas en el mapa.{p.vertices.length > 0 ? ` Llevas ${p.vertices.length} punto${p.vertices.length === 1 ? '' : 's'}.` : ''}</p>
@@ -203,6 +228,7 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
           </>
         )}
         {errores.poligono && <p role="alert" className="text-[13px] text-red-600 font-medium mt-2">{errores.poligono}</p>}
+
         {p.poligono && area ? (
           <div className="mt-5 space-y-4">
             <div className="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 flex items-center gap-3"><MapPin size={18} className="text-[#1A5C38]" />
@@ -216,7 +242,13 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
               </Campo>
             )}
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-4 space-y-4">
+            <Campo etiqueta="Superficie declarada de la parcela (ha)" obligatorio={!enLinea || p.capturada_sin_conexion} error={errores.area_real_ha} ayuda={!enLinea || p.capturada_sin_conexion ? "Indica las hectáreas de la parcela para validar el cultivo sin polígono." : undefined}>
+              <Texto valor={p.area_real_ha} alCambiar={v => set({ area_real_ha: v.replace(',', '.') })} inputMode="decimal" placeholder="Ej. 2.5" error={errores.area_real_ha} autoComplete="off" />
+            </Campo>
+          </div>
+        )}
       </Tarjeta>
     </div>
   );

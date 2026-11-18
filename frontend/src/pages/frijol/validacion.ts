@@ -77,7 +77,7 @@ export function validarComplementaria(b: Borrador): Errores {
 }
 
 // ── Paso 4: parcela ──
-export function validarParcela(b: Borrador): Errores {
+export function validarParcela(b: Borrador, enLinea = true): Errores {
   const e: Errores = {}, p = b.parcela;
   if (!p.modo) { e.modo = 'Elige una parcela o agrega una nueva'; return e; }
   if (!p.numero_up || p.numero_up < 1) e.numero_up = 'Indica el número de parcela';
@@ -90,11 +90,21 @@ export function validarParcela(b: Borrador): Errores {
   if (p.modo === 'nueva') {
     if (!txt(p.nombre)) e.nombre = 'Escribe el nombre de la parcela';
     if (!p.regimen) e.regimen = 'Elige el régimen hídrico';
-    if (!p.poligono || p.poligono.length < 3) e.poligono = 'Falta dibujar el polígono de la parcela';
+    const tienePoligono = p.poligono && p.poligono.length >= 3;
     const real = num(p.area_real_ha);
-    if (p.area_real_ha !== '' && !(real > 0)) e.area_real_ha = 'La superficie ajustada debe ser mayor a 0';
-    if (p.area_calc_ha && real > 0 && Math.abs(real - p.area_calc_ha) / p.area_calc_ha > 0.10 && !txt(p.motivo_diferencia)) {
-      e.motivo_diferencia = 'Explica por qué difiere más de 10 % de la superficie calculada';
+    if (tienePoligono) {
+      if (p.area_real_ha !== '' && !(real > 0)) e.area_real_ha = 'La superficie ajustada debe ser mayor a 0';
+      if (p.area_calc_ha && real > 0 && Math.abs(real - p.area_calc_ha) / p.area_calc_ha > 0.10 && !txt(p.motivo_diferencia)) {
+        e.motivo_diferencia = 'Explica por qué difiere más de 10 % de la superficie calculada';
+      }
+    } else {
+      // Sin polígono: únicamente permitido si no hay conexión o se capturó sin conexión
+      if (enLinea && !p.capturada_sin_conexion) {
+        e.poligono = 'Falta dibujar el polígono de la parcela';
+      }
+      if (!(real > 0)) {
+        e.area_real_ha = 'Indica la superficie de la parcela en hectáreas';
+      }
     }
   }
   return e;
@@ -197,6 +207,7 @@ export function construirCuerpo(b: Borrador) {
       poligono: pa.modo === 'nueva' ? pa.poligono : null,
       area_calc_ha: pa.area_calc_ha, area_real_ha: pa.modo === 'nueva' && pa.area_real_ha !== '' ? Number(pa.area_real_ha) : null,
       motivo_diferencia_superficie: txt(pa.motivo_diferencia) || null,
+      sin_coordenadas: pa.modo === 'nueva' && (!pa.poligono || pa.poligono.length < 3),
     },
     semillas: { se_dedica_produccion_semillas: b.semillas.dedica, trabajo_con_prosebien: b.semillas.trabajo_prosebien, usara_prosebien_pv: b.semillas.usara_prosebien },
     cultivo: {
@@ -206,6 +217,10 @@ export function construirCuerpo(b: Borrador) {
       densidad_kg_ha: Number(cu.densidad), usa_fertilizante: cu.usa_fertilizante === true, tipos_fertilizante: cu.usa_fertilizante ? cu.tipos_fertilizante : [],
       rotacion: cu.rotacion, observaciones: cu.sin_observaciones ? null : txt(cu.observaciones), sin_observaciones: cu.sin_observaciones,
     },
-    trazabilidad: { capturado_en: b.capturado_en, hubo_desconexion: b.hubo_desconexion },
+    trazabilidad: {
+      capturado_en: b.capturado_en,
+      hubo_desconexion: b.hubo_desconexion,
+      capturado_sin_conexion: Boolean(pa.capturada_sin_conexion || b.hubo_desconexion || (typeof navigator !== 'undefined' && !navigator.onLine)),
+    },
   };
 }

@@ -101,8 +101,19 @@ export function validarEstructura(b: any, esProductorNuevo: boolean): void {
   if (!pa.up_id) {
     if (pa.water_regime !== 'temporal' && pa.water_regime !== 'riego') falla('parcela.water_regime', 'Elige el régimen hídrico (temporal o riego)');
     const pol = pa.poligono;
-    if (!Array.isArray(pol) || pol.length < 3 || pol.some((v: any) => !Array.isArray(v) || v.length < 2 || !esNum(v[0]) || !esNum(v[1]))) {
-      falla('parcela.poligono', 'Falta el polígono de la parcela (mínimo 3 puntos)');
+    const tienePoligono = Array.isArray(pol) && pol.length >= 3 && pol.every((v: any) => Array.isArray(v) && v.length >= 2 && esNum(v[0]) && esNum(v[1]));
+    if (!tienePoligono) {
+      const traz = body.trazabilidad || {};
+      const fueOffline = Boolean(traz.capturado_sin_conexion || traz.hubo_desconexion || pa.sin_coordenadas);
+      const fechaCaptura = fechaValida(traz.capturado_en);
+      const fechaCoherente = fechaCaptura && fechaCaptura.getTime() <= Date.now() + 5 * 60 * 1000;
+
+      if (!fueOffline || !fechaCoherente) {
+        falla('parcela.poligono', 'Falta el polígono de la parcela (mínimo 3 puntos). Solo se permite omitir coordenadas si el registro fue capturado sin conexión');
+      }
+      if (!esNum(pa.area_real_ha) || num(pa.area_real_ha) <= 0) {
+        falla('parcela.area_real_ha', 'La superficie declarada de la parcela es obligatoria cuando no se tienen coordenadas');
+      }
     }
   }
 
@@ -319,27 +330,53 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
         [num(pa.numero_up), String(pa.localidad).trim(), pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null, upId]
       );
     } else {
-      try {
-        upId = await insertarUP(client, producerId, {
-          nombre_up: pa.nombre, estado_up: est.rows[0].name, municipio_up: mun.rows[0].name, poligono: pa.poligono,
-          area_real_ha: pa.area_real_ha ?? null, coincide_area: pa.area_real_ha ? false : null,
-        }, { traslapeEstricto: true });
-      } catch (e: any) {
-        if (e.code === 'UP_OVERLAP') throw new ErrorRegistro(409, 'UP_OVERLAP', `El polígono se encima con otra parcela de este productor ("${e.up_conflicto}"). Usa esa parcela en lugar de crear una nueva.`, 'parcela.poligono');
-        if (e.code === 'UP_OVERLAP_CROSS') throw new ErrorRegistro(409, 'UP_OVERLAP_CROSS', 'El polígono se encima más del 10 % con la parcela de otro productor. Revisa el dibujo.', 'parcela.poligono');
-        throw e;
+      const tienePoligono = Array.isArray(pa.poligono) && pa.poligono.length >= 3;
+      if (!tienePoligono) {
+        // Registro sin coordenadas (captura sin conexión): ni geometría ni centroide, origen_centroide = NULL
+        const r = await client.query(
+          `INSERT INTO up
+             (productor_id, nombre_up, tipo_up, sistema_produccion, regimen_hidrico,
+              nombre_estado, nombre_municipio, estado_id, municipio_id, localidad,
+              documento_propiedad, documento_propiedad_otro,
+              superficie_ha_real, numero_up, motivo_diferencia_superficie,
+              programa_origen, ubicacion_confirmada, origen_centroide)
+           VALUES ($1, $2, 'temporal', 'tradicional', $3,
+                   $4, $5, $6, $7, $8,
+                   $9, $10,
+                   $11, $12, $13,
+                   '${PROGRAMA_FRIJOL}', FALSE, NULL)
+           RETURNING up_id`,
+          [
+            producerId, pa.nombre || 'Mi Parcela', pa.water_regime || 'temporal',
+            est.rows[0].name, mun.rows[0].name, pa.state_id, pa.municipality_id, String(pa.localidad || '').trim(),
+            pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro || '').trim() : null,
+            num(pa.area_real_ha), num(pa.numero_up), pa.motivo_diferencia_superficie ? String(pa.motivo_diferencia_superficie).trim() : null,
+          ]
+        );
+        upId = Number(r.rows[0].up_id);
+      } else {
+        try {
+          upId = await insertarUP(client, producerId, {
+            nombre_up: pa.nombre, estado_up: est.rows[0].name, municipio_up: mun.rows[0].name, poligono: pa.poligono,
+            area_real_ha: pa.area_real_ha ?? null, coincide_area: pa.area_real_ha ? false : null,
+          }, { traslapeEstricto: true });
+        } catch (e: any) {
+          if (e.code === 'UP_OVERLAP') throw new ErrorRegistro(409, 'UP_OVERLAP', `El polígono se encima con otra parcela de este productor ("${e.up_conflicto}"). Usa esa parcela en lugar de crear una nueva.`, 'parcela.poligono');
+          if (e.code === 'UP_OVERLAP_CROSS') throw new ErrorRegistro(409, 'UP_OVERLAP_CROSS', 'El polígono se encima más del 10 % con la parcela de otro productor. Revisa el dibujo.', 'parcela.poligono');
+          throw e;
+        }
+        await client.query(
+          `UPDATE up SET numero_up = $1, localidad = $2, documento_propiedad = $3, documento_propiedad_otro = $4,
+                         estado_id = COALESCE(estado_id, $5), municipio_id = COALESCE(municipio_id, $6),
+                         motivo_diferencia_superficie = $7,
+                         programa_origen = '${PROGRAMA_FRIJOL}'   -- T11 §11.2: solo las parcelas NUEVAS que crea frijol nacen con origen frijol
+           WHERE up_id = $8`,
+          [num(pa.numero_up), String(pa.localidad).trim(), pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null,
+           pa.state_id, pa.municipality_id, pa.motivo_diferencia_superficie ? String(pa.motivo_diferencia_superficie).trim() : null, upId]
+        );
       }
-      await client.query(
-        `UPDATE up SET numero_up = $1, localidad = $2, documento_propiedad = $3, documento_propiedad_otro = $4,
-                       estado_id = COALESCE(estado_id, $5), municipio_id = COALESCE(municipio_id, $6),
-                       motivo_diferencia_superficie = $7,
-                       programa_origen = '${PROGRAMA_FRIJOL}'   -- T11 §11.2: solo las parcelas NUEVAS que crea frijol nacen con origen frijol
-         WHERE up_id = $8`,
-        [num(pa.numero_up), String(pa.localidad).trim(), pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null,
-         pa.state_id, pa.municipality_id, pa.motivo_diferencia_superficie ? String(pa.motivo_diferencia_superficie).trim() : null, upId]
-      );
     }
-    const up = (await client.query('SELECT superficie_ha_calculada, superficie_ha_real, estado_id FROM up WHERE up_id = $1', [upId])).rows[0];
+    const up = (await client.query('SELECT superficie_ha_calculada AS area_ha_calc, superficie_ha_real AS area_ha_real, estado_id FROM up WHERE up_id = $1', [upId])).rows[0];
     const areaCalc = Number(up.area_ha_calc || 0);
     const areaFinal = Number(up.area_ha_real || up.area_ha_calc || 0);
     if (!pa.up_id && up.area_ha_real != null && areaCalc > 0 && Math.abs(Number(up.area_ha_real) - areaCalc) / areaCalc > 0.10 && !esTexto(pa.motivo_diferencia_superficie)) {

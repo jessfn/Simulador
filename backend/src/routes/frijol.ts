@@ -4,6 +4,8 @@ import { authMiddleware, requiereCapturista, AuthRequest } from '../middleware/a
 import { requierePrograma } from '../middleware/programa';
 import { PROGRAMA_FRIJOL } from '../utils/programas';
 import { validarSuperficieCombinada } from '../utils/superficie';
+import { validarTraslape } from '../utils/ups';
+import { postgisDisponible } from '../utils/postgis';
 import { consultarIdentidadFrijol } from '../services/frijolIdentidad';
 import { inferirCiclo, cicloFinal, Regimen } from '../services/cicloSIAP';
 import { ErrorRegistro, guardarRegistro, firmarVerificacion, validarCultivo, validarCatalogosCultivo, validarCatalogosProductor, errorFechaNacimiento } from '../services/frijolRegistro';
@@ -70,6 +72,7 @@ async function datosProductor(producerId: number) {
   const parcelas = await pool.query(
     `SELECT u.up_id::int AS up_id, u.nombre_up, u.numero_up, u.superficie_ha_calculada::float AS area_ha_calc, u.superficie_ha_real::float AS area_ha_real, u.estado_id, u.nombre_estado, u.municipio_id,
             u.nombre_municipio, u.localidad, u.documento_propiedad, u.documento_propiedad_otro,
+            u.ubicacion_confirmada,
             ST_AsGeoJSON(u.geometria)::json AS geom_geojson,
             COALESCE((SELECT json_agg(CASE c.tipo_ciclo
                                         WHEN 'OI' THEN 'OI ' || c.anio_ciclo || '-' || LPAD(((c.anio_ciclo + 1) % 100)::text, 2, '0')
@@ -530,6 +533,109 @@ router.patch('/cultivos/:cycle_crop_id', async (req: AuthRequest, res: Response)
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     responderError(res, error, 'PATCH /frijol/cultivos/:id');
+  } finally { client.release(); }
+});
+
+// =============================================
+// PUT /api/frijol/parcelas/:up_id/ubicacion   — completar o actualizar ubicación (polígono) de una parcela existente
+// =============================================
+router.put('/parcelas/:up_id/ubicacion', async (req: AuthRequest, res: Response): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    const upId = Number(req.params.up_id);
+    if (!Number.isInteger(upId) || upId <= 0) {
+      res.status(400).json({ error: 'ID de parcela inválido' });
+      return;
+    }
+    const upRow = await client.query('SELECT up_id, productor_id, nombre_up, ubicacion_confirmada FROM up WHERE up_id = $1', [upId]);
+    if (upRow.rows.length === 0) {
+      res.status(404).json({ error: 'Parcela no encontrada' });
+      return;
+    }
+    const up = upRow.rows[0];
+    const pp = await productorPropio(req, res, up.productor_id, client);
+    if (!pp) return;
+
+    const poligono = req.body?.poligono;
+    if (!Array.isArray(poligono) || poligono.length < 3 || poligono.some((v: any) => !Array.isArray(v) || v.length < 2 || typeof v[0] !== 'number' || typeof v[1] !== 'number' || !Number.isFinite(v[0]) || !Number.isFinite(v[1]))) {
+      res.status(400).json({ error: 'Falta el polígono de la parcela (mínimo 3 puntos válidos)', campo: 'poligono' });
+      return;
+    }
+
+    const postgis = await postgisDisponible();
+    if (!postgis) {
+      res.status(500).json({ error: 'El servicio geográfico no está disponible' });
+      return;
+    }
+
+    const geojson = JSON.stringify({
+      type: 'Polygon',
+      coordinates: [[
+        ...poligono.map(([plat, plng]: [number, number]) => [plng, plat]),
+        [poligono[0][1], poligono[0][0]],
+      ]],
+    });
+
+    await client.query('BEGIN');
+
+    // 1. Overlap con otras parcelas del mismo productor (excluyendo la parcela actual)
+    const ov = await client.query(
+      `SELECT up_id, nombre_up FROM up
+       WHERE productor_id = $1 AND geometria IS NOT NULL AND up_id <> $2
+         AND ST_Intersects(geometria, ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326))
+       LIMIT 1`,
+      [up.productor_id, upId, geojson]
+    );
+    if (ov.rows.length > 0) {
+      await client.query('ROLLBACK');
+      res.status(409).json({
+        error: `El polígono se encima con otra parcela de este productor ("${ov.rows[0].nombre_up}"). Usa esa parcela en lugar de sobreponerla.`,
+        codigo: 'UP_OVERLAP',
+        campo: 'poligono',
+      });
+      return;
+    }
+
+    // 2. Overlap con parcelas de otros productores (estricto)
+    const traslape = await validarTraslape(client, up.productor_id, geojson, upId, true);
+    if (traslape.bloqueado) {
+      await client.query('ROLLBACK');
+      res.status(409).json({
+        error: 'El polígono se encima más del 10 % con la parcela de otro productor. Revisa el dibujo.',
+        codigo: 'UP_OVERLAP_CROSS',
+        campo: 'poligono',
+      });
+      return;
+    }
+
+    const areaReal = typeof req.body?.area_real_ha === 'number' && Number.isFinite(req.body.area_real_ha) && req.body.area_real_ha > 0
+      ? req.body.area_real_ha
+      : null;
+    const motivo = req.body?.motivo_diferencia ? String(req.body.motivo_diferencia).trim() : null;
+
+    const r = await client.query(
+      `UPDATE up SET
+         geometria = ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($1::text), 4326)),
+         centroide = ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON($1::text), 4326)),
+         superficie_ha_calculada = ROUND((ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($1::text), 4326)::geography) / 10000.0)::numeric, 4),
+         superficie_ha_real = COALESCE($2, superficie_ha_real),
+         motivo_diferencia_superficie = COALESCE($3, motivo_diferencia_superficie),
+         ubicacion_confirmada = TRUE,
+         origen_centroide = 'poligono',
+         posible_traslape_productor_id = $4,
+         actualizado_en = NOW()
+       WHERE up_id = $5
+       RETURNING up_id::int, nombre_up, superficie_ha_calculada::float AS area_ha_calc,
+                 superficie_ha_real::float AS area_ha_real, ubicacion_confirmada,
+                 ST_AsGeoJSON(geometria)::json AS geom_geojson`,
+      [geojson, areaReal, motivo, traslape.advertencia ? (traslape.traslapeProducerId ?? null) : null, upId]
+    );
+
+    await client.query('COMMIT');
+    res.json({ ok: true, parcela: r.rows[0], mensaje: 'Ubicación actualizada exitosamente' });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    responderError(res, error, 'PUT /frijol/parcelas/:up_id/ubicacion');
   } finally { client.release(); }
 });
 
