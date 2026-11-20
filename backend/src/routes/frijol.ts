@@ -11,6 +11,7 @@ import { aplicarEdicionDirecta, ErrorEdicion, estadoDeCampos } from '../services
 import { generarAcuseFrijol } from '../services/acuseFrijol';
 import { consultaCurpLimiter } from '../middleware/rateLimiters';
 import { CURP_RE, extraerDatosCurp } from '../utils/curp';
+import { esClaveDeEstado, listarLocalidadesDeEstado } from '../services/localidades';
 
 // Módulo de registro de Frijol (técnicos ECA). Todo /api/frijol/* requiere sesión de técnico con el programa frijol_afb.
 // Aquí viven solo las rutas de frijol; maíz no se toca.
@@ -68,7 +69,7 @@ async function datosProductor(producerId: number) {
   const fp = await pool.query('SELECT * FROM frijol_productor WHERE productor_id = $1', [producerId]);
   const parcelas = await pool.query(
     `SELECT u.up_id::int AS up_id, u.nombre_up, u.numero_up, u.superficie_ha_calculada::float AS area_ha_calc, u.superficie_ha_real::float AS area_ha_real, u.estado_id, u.nombre_estado, u.municipio_id,
-            u.nombre_municipio, u.localidad, u.documento_propiedad, u.documento_propiedad_otro,
+            u.nombre_municipio, u.localidad, u.localidad_id, u.documento_propiedad, u.documento_propiedad_otro,
             ST_AsGeoJSON(u.geometria)::json AS geom_geojson,
             COALESCE((SELECT json_agg(CASE c.tipo_ciclo
                                         WHEN 'OI' THEN 'OI ' || c.anio_ciclo || '-' || LPAD(((c.anio_ciclo + 1) % 100)::text, 2, '0')
@@ -145,6 +146,15 @@ router.get('/municipios', async (req: AuthRequest, res: Response): Promise<void>
     const r = await pool.query('SELECT municipio_id, nombre FROM geo_municipio WHERE estado_id = $1 ORDER BY nombre', [stateId]);
     res.json({ municipios: r.rows });
   } catch (error) { responderError(res, error, 'GET /frijol/municipios'); }
+});
+
+// Por estado y no por municipio: el teléfono guarda la lista completa y la filtra sin señal.
+router.get('/localidades', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const estadoId = String(req.query.state_id || '');
+    if (!esClaveDeEstado(estadoId)) { res.status(400).json({ error: 'Falta state_id' }); return; }
+    res.json({ localidades: await listarLocalidadesDeEstado(estadoId) });
+  } catch (error) { responderError(res, error, 'GET /frijol/localidades'); }
 });
 
 // =============================================

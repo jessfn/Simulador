@@ -9,6 +9,7 @@ import { validarSuperficieCombinada } from '../utils/superficie';
 import { aplicarEdicionDirecta } from './edicionUnica';
 import { CURP_RE, extraerDatosCurp } from '../utils/curp';
 import { validarUbicacionDeParcelaNueva } from './ubicacionParcelaFrijol';
+import { buscarLocalidadDeMunicipio, esClaveDeLocalidad } from './localidades';
 
 // ─── Errores ────────────────────────────────────────────────────────────────
 export class ErrorRegistro extends Error {
@@ -96,7 +97,7 @@ export function validarEstructura(b: any, esProductorNuevo: boolean): void {
   if (num(pa.numero_up) > num(fp.total_ups_declaradas)) falla('parcela.numero_up', 'El número de parcela no puede ser mayor al total');
   if (!esTexto(pa.state_id)) falla('parcela.state_id', 'Elige el estado');
   if (!esTexto(pa.municipality_id)) falla('parcela.municipality_id', 'Elige el municipio');
-  if (!esTexto(pa.localidad)) falla('parcela.localidad', 'La localidad o ejido es obligatoria');
+  if (!esClaveDeLocalidad(pa.localidad_id)) falla('parcela.localidad_id', 'Elige la localidad o ejido de la lista');
   if (!esTexto(pa.documento_propiedad)) falla('parcela.documento_propiedad', 'Elige el documento de propiedad');
   if (pa.documento_propiedad === 'otro' && !esTexto(pa.documento_propiedad_otro)) falla('parcela.documento_propiedad_otro', 'Escribe cuál es el documento');
   if (!pa.up_id) {
@@ -216,6 +217,9 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     if (est.rows.length === 0) falla('parcela.state_id', 'El estado no existe');
     const mun = await client.query('SELECT nombre FROM geo_municipio WHERE municipio_id = $1 AND estado_id = $2', [pa.municipality_id, pa.state_id]);
     if (mun.rows.length === 0) falla('parcela.municipality_id', 'El municipio no pertenece al estado elegido');
+    const localidad = await buscarLocalidadDeMunicipio(client, pa.localidad_id, pa.municipality_id);
+    if (!localidad) falla('parcela.localidad_id', 'La localidad no pertenece al municipio elegido');
+    const { localidadId, nombre: nombreLocalidad } = localidad!;
     const errorUbicacion = pa.up_id ? null : await validarUbicacionDeParcelaNueva(client, pa, est.rows[0].name);
     if (errorUbicacion) throw new ErrorRegistro(errorUbicacion.status, errorUbicacion.codigo, errorUbicacion.mensaje, errorUbicacion.campo);
 
@@ -270,11 +274,11 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
       const r = await client.query(
         `INSERT INTO productor
            (curp, nombres, apellido_paterno, apellido_materno, telefono, correo, correo_electronico, sexo, fecha_nacimiento,
-            estado_id, municipio_id, localidad, usuario_capturista_id, estatus_registro, fecha_captura, fuente_registro)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
+            estado_id, municipio_id, localidad, localidad_id, usuario_capturista_id, estatus_registro, fecha_captura, fuente_registro)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'alterno',CURRENT_TIMESTAMP,'tecnico_frijol')
          RETURNING productor_id`,
         [curp, String(p.nombres).trim(), String(p.apellido_paterno).trim(), p.apellido_materno ? String(p.apellido_materno).trim() : null,
-         telefono, correo, correo, sexoFinal, fechaNacFinal, pa.state_id, pa.municipality_id, String(pa.localidad).trim(), tecnicoId]
+         telefono, correo, correo, sexoFinal, fechaNacFinal, pa.state_id, pa.municipality_id, nombreLocalidad, localidadId, tecnicoId]
       );
       producerId = Number(r.rows[0].producer_id);
     }
@@ -318,8 +322,8 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
       if (own.rows.length === 0) falla('parcela.up_id', 'La parcela no pertenece a este productor', 403);
       upId = Number(own.rows[0].up_id);
       await client.query(
-        `UPDATE up SET numero_up = $1, localidad = $2, documento_propiedad = $3, documento_propiedad_otro = $4, actualizado_en = NOW() WHERE up_id = $5`,
-        [num(pa.numero_up), String(pa.localidad).trim(), pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null, upId]
+        `UPDATE up SET numero_up = $1, localidad = $2, localidad_id = $6, documento_propiedad = $3, documento_propiedad_otro = $4, actualizado_en = NOW() WHERE up_id = $5`,
+        [num(pa.numero_up), nombreLocalidad, pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null, upId, localidadId]
       );
     } else {
       try {
@@ -333,13 +337,13 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
         throw e;
       }
       await client.query(
-        `UPDATE up SET numero_up = $1, localidad = $2, documento_propiedad = $3, documento_propiedad_otro = $4,
+        `UPDATE up SET numero_up = $1, localidad = $2, localidad_id = $9, documento_propiedad = $3, documento_propiedad_otro = $4,
                        estado_id = COALESCE(estado_id, $5), municipio_id = COALESCE(municipio_id, $6),
                        motivo_diferencia_superficie = $7,
                        programa_origen = '${PROGRAMA_FRIJOL}'   -- T11 §11.2: solo las parcelas NUEVAS que crea frijol nacen con origen frijol
          WHERE up_id = $8`,
-        [num(pa.numero_up), String(pa.localidad).trim(), pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null,
-         pa.state_id, pa.municipality_id, pa.motivo_diferencia_superficie ? String(pa.motivo_diferencia_superficie).trim() : null, upId]
+        [num(pa.numero_up), nombreLocalidad, pa.documento_propiedad, pa.documento_propiedad === 'otro' ? String(pa.documento_propiedad_otro).trim() : null,
+         pa.state_id, pa.municipality_id, pa.motivo_diferencia_superficie ? String(pa.motivo_diferencia_superficie).trim() : null, upId, localidadId]
       );
     }
     const up = (await client.query('SELECT superficie_ha_calculada, superficie_ha_real, estado_id FROM up WHERE up_id = $1', [upId])).rows[0];

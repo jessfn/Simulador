@@ -131,20 +131,27 @@ export function Tarjeta({ titulo, acciones, children }: { titulo?: string; accio
   );
 }
 
-/** Lista con buscador para elegir una opción entre muchas (variedades). */
-export function ListaBuscable({ valor, alCambiar, opciones, vacio, error }: {
+/** Minúsculas y sin acentos, para que "jose" encuentre "José". */
+const sinAcentos = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** Lista con buscador para elegir una opción entre muchas (variedades, localidades). */
+export function ListaBuscable({ valor, alCambiar, opciones, vacio, error, textoBusqueda = 'Buscar variedad...', maximoVisibles, deshabilitado }: {
   valor: string;
   alCambiar: (v: string) => void;
   opciones: { code: string; label: string }[];
   vacio: string;
   error?: string;
+  textoBusqueda?: string;
+  maximoVisibles?: number;
+  deshabilitado?: boolean;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [q, setQ] = useState('');
   const actual = opciones.find(o => o.code === valor);
-  const visibles = opciones.filter(o =>
-    o.label.toLowerCase().includes(q.trim().toLowerCase())
-  );
+  const busqueda = sinAcentos(q.trim());
+  const coincidencias = opciones.filter(o => sinAcentos(o.label).includes(busqueda));
+  // Una lista de miles de localidades se vuelve lenta en el teléfono: se muestran las primeras y se pide escribir más.
+  const visibles = maximoVisibles ? coincidencias.slice(0, maximoVisibles) : coincidencias;
 
   const cerrar = () => {
     setAbierto(false);
@@ -171,6 +178,7 @@ export function ListaBuscable({ valor, alCambiar, opciones, vacio, error }: {
   return (
     <>
       <button type="button"
+        disabled={deshabilitado}
         onClick={() => {
           setQ('');
           setAbierto(true);
@@ -221,7 +229,7 @@ export function ListaBuscable({ valor, alCambiar, opciones, vacio, error }: {
                   autoFocus
                   value={q}
                   onChange={e => setQ(e.target.value)}
-                  placeholder="Buscar variedad..."
+                  placeholder={textoBusqueda}
                   className="w-full min-h-[50px] bg-slate-50 rounded-2xl pl-11 pr-4 text-[16px] outline-none"
                 />
               </div>
@@ -261,6 +269,11 @@ export function ListaBuscable({ valor, alCambiar, opciones, vacio, error }: {
                   {o.label}
                 </button>
               ))}
+              {coincidencias.length > visibles.length && (
+                <p className="p-4 text-[14px] text-slate-500 text-center">
+                  Hay {coincidencias.length - visibles.length} más. Escribe más letras para encontrarla.
+                </p>
+              )}
             </div>
           </div>
         </div>
