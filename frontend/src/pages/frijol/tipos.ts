@@ -22,7 +22,7 @@ export type CodigoConsulta =
 export interface ParcelaExistente {
   up_id: number; up_name: string; numero_up: number | null; area_ha_calc: number | null; area_ha_real: number | null;
   state_id: string | null; state_name: string | null; municipality_id: string | null; municipality_name: string | null;
-  localidad: string | null; documento_propiedad: string | null; documento_propiedad_otro: string | null;
+  localidad: string | null; localidad_id: string | null; documento_propiedad: string | null; documento_propiedad_otro: string | null;
   geom_geojson: { type: string; coordinates: unknown } | null; ciclos_frijol: string[]; tiene_frijol: boolean;
 }
 
@@ -39,7 +39,9 @@ export interface Complementaria {
 export interface ParcelaBorrador {
   modo: 'existente' | 'nueva' | null;
   up_id: number | null;
-  nombre: string; numero_up: number | null; state_id: string; municipality_id: string; localidad: string;
+  nombre: string; numero_up: number | null; state_id: string; municipality_id: string;
+  /** clave INEGI de la localidad elegida de la lista; `localidad` guarda su nombre para mostrarlo */
+  localidad_id: string; localidad: string;
   documento: string; documento_otro: string; regimen: 'temporal' | 'riego' | '';
   /** vértices que se van marcando (se guardan al instante, incluso sin cerrar el polígono) */
   vertices: [number, number][];

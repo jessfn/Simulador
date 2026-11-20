@@ -59,7 +59,8 @@ def paso4_nueva(pg, nombre='El Bajio', reintentos=5):
     pg.locator('input').nth(0).fill(nombre)
     pg.locator('select').nth(0).select_option(label='Durango'); pg.wait_for_timeout(1200)
     pg.locator('select').nth(1).select_option(label='Durango')
-    pg.locator('input').nth(1).fill('Ejido San Jose')                  # localidad (la 0 es nombre)
+    pg.get_by_role('button', name='Elige la localidad o ejido').click(); pg.wait_for_timeout(500)
+    pg.get_by_role('dialog').locator('div.overflow-y-auto button').first.click()   # localidad: la primera de la lista
     pg.get_by_role('button', name='Certificado parcelario').click()
     pg.get_by_role('button', name='Temporal (lluvia)').click()
     for i in range(reintentos):

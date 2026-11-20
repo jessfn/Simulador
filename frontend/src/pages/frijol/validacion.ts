@@ -37,7 +37,7 @@ export function borradorNuevo(curp: string): Borrador {
 
 export function vacioParcela(): ParcelaBorrador {
   return {
-    modo: null, up_id: null, nombre: '', numero_up: null, state_id: '', municipality_id: '', localidad: '', documento: '', documento_otro: '',
+    modo: null, up_id: null, nombre: '', numero_up: null, state_id: '', municipality_id: '', localidad_id: '', localidad: '', documento: '', documento_otro: '',
     regimen: '', vertices: [], poligono: null, area_calc_ha: null, area_real_ha: '', motivo_diferencia: '',
   };
 }
@@ -84,7 +84,8 @@ export function validarParcela(b: Borrador): Errores {
   else if (p.numero_up > b.complementaria.total_ups) e.numero_up = 'El número de parcela no puede ser mayor al total';
   if (!p.state_id) e.state_id = 'Elige el estado';
   if (!p.municipality_id) e.municipality_id = 'Elige el municipio';
-  if (!txt(p.localidad)) e.localidad = 'Escribe la localidad o ejido';
+  // Los borradores anteriores al catálogo traen la localidad escrita a mano y sin clave: se pide elegirla de la lista.
+  if (!p.localidad_id) e.localidad = 'Elige la localidad o ejido de la lista';
   if (!p.documento) e.documento = 'Elige el documento de propiedad';
   if (p.documento === 'otro' && !txt(p.documento_otro)) e.documento_otro = 'Escribe cuál es el documento';
   if (p.modo === 'nueva') {
@@ -191,7 +192,7 @@ export function construirCuerpo(b: Borrador) {
     },
     parcela: {
       up_id: pa.modo === 'existente' ? pa.up_id : null, nombre: txt(pa.nombre), numero_up: pa.numero_up,
-      state_id: pa.state_id, municipality_id: pa.municipality_id, localidad: txt(pa.localidad),
+      state_id: pa.state_id, municipality_id: pa.municipality_id, localidad_id: pa.localidad_id,
       documento_propiedad: pa.documento, documento_propiedad_otro: pa.documento === 'otro' ? txt(pa.documento_otro) : null,
       water_regime: pa.regimen || null,
       poligono: pa.modo === 'nueva' ? pa.poligono : null,
