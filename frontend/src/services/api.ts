@@ -303,6 +303,7 @@ export const api = {
     catalogos: () => request('/frijol/catalogos'),
     estados: () => request('/frijol/estados'),
     municipios: (stateId: string) => request(`/frijol/municipios?state_id=${encodeURIComponent(stateId)}`),
+    municipiosDelPais: () => request('/frijol/municipios-del-pais'),
     localidades: (stateId: string) => request(`/frijol/localidades?state_id=${encodeURIComponent(stateId)}`),
     consultarCurp: (curp: string) => request('/frijol/consultar-curp', { method: 'POST', body: JSON.stringify({ curp }) }),
     registrar: (cuerpo: unknown, idempotencyKey: string, signal?: AbortSignal) =>
