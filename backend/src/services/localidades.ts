@@ -21,6 +21,14 @@ export async function listarLocalidadesDeEstado(estadoId: string): Promise<[stri
   return resultado.rows.map((fila: { localidad_id: string; nombre_localidad: string }) => [fila.localidad_id, fila.nombre_localidad]);
 }
 
+/** Todos los municipios del país como [clave, nombre]: el estado son los primeros 2 dígitos de la clave. */
+export async function listarMunicipiosDelPais(): Promise<[string, string][]> {
+  const resultado = await pool.query(
+    'SELECT municipio_id AS clave_municipio, nombre AS nombre_municipio FROM geo_municipio ORDER BY estado_id, nombre'
+  );
+  return resultado.rows.map((fila: { clave_municipio: string; nombre_municipio: string }) => [fila.clave_municipio, fila.nombre_municipio]);
+}
+
 /** Devuelve la localidad solo si pertenece al municipio indicado. */
 export async function buscarLocalidadDeMunicipio(
   client: PoolClient, localidadId: unknown, municipioId: unknown
