@@ -158,10 +158,17 @@ def curp_nueva(consonantes, sexo='H'):
 _REG = {}
 def regiones():
     if not _REG:
-        _REG.update({'10': (24.2, -104.6, '10005'), '32': (22.7, -102.6, '32010'), '18': (21.8, -104.8, None), '25': (24.9, -107.3, None)})
+        _REG.update({'10': (24.2, -104.6, '10005'), '32': (22.7, -102.6, '32010'), '18': (21.8, -104.8, None), '25': (24.9, -107.45, None)})
         for sid in ('18', '25'):
             _REG[sid] = (_REG[sid][0], _REG[sid][1], val(f"select municipio_id from geo_municipio where estado_id='{sid}' limit 1"))
     return _REG
+
+_LOC = {}
+def localidad_de(municipio):
+    """Primera localidad INEGI del municipio: el registro de frijol exige una clave del catálogo."""
+    if municipio not in _LOC:
+        _LOC[municipio] = val(f"select localidad_id from geo_localidad where municipio_id='{municipio}' order by localidad_id limit 1")
+    return _LOC[municipio]
 
 def poligono(lat0, lng0, area_ha):
     lado = math.sqrt(area_ha * 10000)
@@ -174,13 +181,14 @@ def shift_poligono(poli, frac):
 
 def cuerpo(curp, estado='10', area=3.0, siembra='2026-07-10', cosecha='2026-10-25', token=None, numero=1, total=1, **extra):
     lat, lng, muni = regiones()[estado]
-    lat += random.uniform(0, 0.8); lng += random.uniform(0, 0.8)
+    # El margen es chico para que la parcela no salga del estado elegido: el servidor lo rechaza.
+    lat += random.uniform(0, 0.25); lng += random.uniform(0, 0.25)
     b = {
         'productor': {'producer_id': None, 'curp': curp, 'nombres': 'Frijolero', 'apellido_paterno': 'De Prueba', 'apellido_materno': 'Uno',
                       'sexo': 'H', 'fecha_nacimiento': '1980-05-10', 'telefono': '6181234567', 'correo': None, 'verificacion_token': token},
         'frijol_productor': {'total_ups_declaradas': total, 'participa_programas_sader': True, 'programas_sader': ['fertilizantes_bienestar', 'otro_sader'],
                              'programas_sader_otro': 'Programa estatal', 'organizacion': 'SPR Los Llanos', 'seguro_agricola': 'cadena', 'seguro_agricola_nombre': None},
-        'parcela': {'up_id': None, 'nombre': 'El Bajio', 'numero_up': numero, 'state_id': estado, 'municipality_id': muni, 'localidad': 'Ejido San Jose',
+        'parcela': {'up_id': None, 'nombre': 'El Bajio', 'numero_up': numero, 'state_id': estado, 'municipality_id': muni, 'localidad_id': localidad_de(muni),
                     'documento_propiedad': 'certificado_parcelario', 'documento_propiedad_otro': None, 'water_regime': 'temporal',
                     'poligono': poligono(lat, lng, area), 'area_real_ha': None},
         'semillas': {'se_dedica_produccion_semillas': False, 'trabajo_con_prosebien': False, 'usara_prosebien_pv': True},

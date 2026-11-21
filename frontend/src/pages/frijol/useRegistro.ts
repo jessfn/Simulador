@@ -39,6 +39,21 @@ export function useMunicipios(stateId: string) {
   return municipios;
 }
 
+/** Localidades INEGI de un estado ([clave, nombre]), con copia local por estado; el municipio son los primeros 5 dígitos de la clave. */
+export function useLocalidades(stateId: string) {
+  const [resultado, setResultado] = useState<{ estado: string; localidades: [string, string][] } | null>(null);
+  useEffect(() => {
+    if (!stateId) return;
+    let vivo = true;
+    conCache<{ localidades: [string, string][] }>(`localidades:${stateId}`, () => api.frijol.localidades(stateId) as Promise<{ localidades: [string, string][] }>)
+      .then(respuesta => { if (vivo) setResultado({ estado: stateId, localidades: respuesta?.localidades || [] }); });
+    return () => { vivo = false; };
+  }, [stateId]);
+  // Mientras llega la lista del estado nuevo no se muestra la del anterior.
+  const listo = !!stateId && resultado?.estado === stateId;
+  return { localidades: listo ? resultado!.localidades : [], cargando: !!stateId && !listo };
+}
+
 /**
  * Estado del borrador: cada cambio se guarda en el teléfono (IndexedDB) a los 250 ms, así que si se cierra la app,
  * se apaga el teléfono o se pierde la señal, al volver se puede continuar desde donde se quedó.

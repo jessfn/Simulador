@@ -40,7 +40,9 @@ export interface Complementaria {
 export interface ParcelaBorrador {
   modo: 'existente' | 'nueva' | null;
   up_id: number | null;
-  nombre: string; numero_up: number | null; state_id: string; municipality_id: string; localidad: string;
+  nombre: string; numero_up: number | null; state_id: string; municipality_id: string;
+  /** clave INEGI de la localidad elegida de la lista; `localidad` guarda su nombre para mostrarlo */
+  localidad_id: string; localidad: string;
   documento: string; documento_otro: string; regimen: 'temporal' | 'riego' | '';
   /** vértices que se van marcando (se guardan al instante, incluso sin cerrar el polígono) */
   vertices: [number, number][];

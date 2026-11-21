@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapPin, Pencil, Map as MapaIcono, CheckCircle2 } from 'lucide-react';
 import MapaUP from '../../../components/productor/MapaUP';
 import MapaPoligono from '../MapaPoligono';
-import { useMunicipios } from '../useRegistro';
-import { Aviso, Campo, Opciones, Selector, Tarjeta, Texto, Contador } from '../ui';
+import { useLocalidades, useMunicipios } from '../useRegistro';
+import { Aviso, Campo, ListaBuscable, Opciones, Selector, Tarjeta, Texto, Contador } from '../ui';
 import { vacioParcela } from '../validacion';
 import type { Errores } from '../validacion';
 import type { Borrador, CatalogosFrijol, Estado, ParcelaBorrador, ParcelaExistente } from '../tipos';
@@ -34,6 +34,11 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
   const p = b.parcela;
   const propias = b.consulta?.parcelas || [];
   const municipios = useMunicipios(p.state_id);
+  const { localidades, cargando: cargandoLocalidades } = useLocalidades(p.state_id);
+  const opcionesLocalidad = useMemo(
+    () => localidades.filter(([clave]) => clave.startsWith(p.municipality_id)).map(([clave, nombre]) => ({ code: clave, label: nombre })),
+    [localidades, p.municipality_id]
+  );
   const [mapaAbierto, setMapaAbierto] = useState(false);
   const set = (parche: Partial<ParcelaBorrador>) => actualizar(prev => ({ ...prev, parcela: { ...prev.parcela, ...parche } }));
 
@@ -67,7 +72,7 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
       ...prev,
       parcela: {
         ...vacioParcela(), modo: 'existente', up_id: u.up_id, nombre: u.up_name, numero_up: u.numero_up ?? null,
-        state_id: u.state_id || '', municipality_id: u.municipality_id || '', localidad: u.localidad || '',
+        state_id: u.state_id || '', municipality_id: u.municipality_id || '', localidad_id: u.localidad_id || '', localidad: u.localidad_id ? (u.localidad || '') : '',
         documento: u.documento_propiedad || '', documento_otro: u.documento_propiedad_otro || '',
         regimen: '',
       },
@@ -130,6 +135,16 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
     </>
   );
 
+  const sinListaDeLocalidades = !!p.municipality_id && !cargandoLocalidades && opcionesLocalidad.length === 0;
+  const campoLocalidad = (
+    <Campo etiqueta="Localidad o ejido" error={errores.localidad}
+      ayuda={sinListaDeLocalidades ? 'Sin señal: las localidades de este estado no están en el teléfono. Conéctate a internet para descargarlas.' : undefined}>
+      <ListaBuscable valor={p.localidad_id} alCambiar={clave => set({ localidad_id: clave, localidad: opcionesLocalidad.find(opcion => opcion.code === clave)?.label || '' })}
+        opciones={opcionesLocalidad} vacio={p.municipality_id ? 'Elige la localidad o ejido' : 'Primero elige el municipio'}
+        textoBusqueda="Buscar localidad o ejido..." maximoVisibles={50} deshabilitado={!p.municipality_id || opcionesLocalidad.length === 0} error={errores.localidad} />
+    </Campo>
+  );
+
   // ── Parcela existente: datos en solo lectura y se piden los que faltan ──
   if (p.modo === 'existente' && seleccionada) {
     const c = centroDe(seleccionada.geom_geojson);
@@ -143,7 +158,7 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
         <Tarjeta titulo="Datos que faltan">
           <div className="space-y-5">
             {campoNumero}
-            <Campo etiqueta="Localidad o ejido" error={errores.localidad}><Texto valor={p.localidad} alCambiar={v => set({ localidad: v })} error={errores.localidad} autoComplete="off" /></Campo>
+            {campoLocalidad}
             {documento}
           </div>
         </Tarjeta>
@@ -184,14 +199,14 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
           </Campo>
           {campoNumero}
           <Campo etiqueta="Estado" error={errores.state_id}>
-            <Selector valor={p.state_id} alCambiar={v => set({ state_id: v, municipality_id: '' })} opciones={estados.map(e => ({ code: e.state_id, label: e.name }))} vacio="Elige el estado" error={errores.state_id} />
+            <Selector valor={p.state_id} alCambiar={v => set({ state_id: v, municipality_id: '', localidad_id: '', localidad: '' })} opciones={estados.map(e => ({ code: e.state_id, label: e.name }))} vacio="Elige el estado" error={errores.state_id} />
           </Campo>
           <Campo etiqueta="Municipio" error={errores.municipality_id}
             aviso={p.state_id && p.municipality_id && zona.length > 0 && !zona.some(z => z.state_id === p.state_id && (!z.municipality_id || z.municipality_id === p.municipality_id)) ? 'Este municipio está fuera de tu zona de operación.' : undefined}>
-            <Selector valor={p.municipality_id} alCambiar={v => set({ municipality_id: v })} opciones={municipios.map(m => ({ code: m.municipality_id, label: m.name }))}
+            <Selector valor={p.municipality_id} alCambiar={v => set({ municipality_id: v, localidad_id: '', localidad: '' })} opciones={municipios.map(m => ({ code: m.municipality_id, label: m.name }))}
               vacio={p.state_id ? 'Elige el municipio' : 'Primero elige el estado'} deshabilitado={!p.state_id} error={errores.municipality_id} />
           </Campo>
-          <Campo etiqueta="Localidad o ejido" error={errores.localidad}><Texto valor={p.localidad} alCambiar={v => set({ localidad: v })} error={errores.localidad} autoComplete="off" /></Campo>
+          {campoLocalidad}
           {documento}
           <Campo etiqueta="Régimen hídrico" error={errores.regimen}>
             <Opciones valor={p.regimen} alCambiar={v => set({ regimen: v as 'temporal' | 'riego' })} columnas={2}

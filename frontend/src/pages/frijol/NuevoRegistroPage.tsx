@@ -62,6 +62,8 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
   const [mostrar, setMostrar] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState('');
+  /** paso al que se regresó por un campo rechazado en el servidor: ahí se muestra el mensaje */
+  const [pasoDelError, setPasoDelError] = useState<number | null>(null);
   const [errorMapa, setErrorMapa] = useState('');
   const [resultado, setResultado] = useState<RespuestaRegistro | null>(null);
 
@@ -132,7 +134,7 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
       } else if (err.status === 400 || err.status === 409) {
         setErrorEnvio(err.message);
         const campo = (err as unknown as { campo?: string }).campo;
-        if (campo) { irA(pasoDeCampo(campo)); setMostrar(true); setErrorEnvio(err.message); }
+        if (campo) { const pasoError = pasoDeCampo(campo); setPasoDelError(pasoError); irA(pasoError); setMostrar(true); setErrorEnvio(err.message); }
       } else {
         setErrorEnvio(err.message || 'No se pudo enviar el registro.');
       }
@@ -171,12 +173,12 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
 
       <div className="flex-1 px-4 pt-3 pb-6 space-y-4">
         {sinDatos && !cargandoCat && <Aviso tipo="rojo">No se pudieron cargar las listas del formulario. Conéctate una vez para guardarlas en el teléfono.</Aviso>}
+        {(paso === 6 || (paso === pasoDelError && paso !== 7)) && errorEnvio && <Aviso tipo="rojo">{errorEnvio}</Aviso>}
         {paso === 1 && <Paso1Curp b={b} actualizar={actualizar} enLinea={enLinea} alAvanzar={n => irA(n)} curpInicial={curpInicial} />}
         {paso === 2 && <Paso2Productor b={b} actualizar={actualizar} errores={e} />}
         {paso === 3 && <Paso3Complementaria b={b} actualizar={actualizar} catalogos={catalogos} errores={e} />}
         {paso === 4 && <Paso4Parcela b={b} actualizar={actualizar} catalogos={catalogos} estados={estados} zona={zona} errores={e} errorServidor={errorMapa} enLinea={enLinea} />}
         {paso === 5 && <Paso5Semillas b={b} actualizar={actualizar} errores={e} />}
-        {paso === 6 && errorEnvio && <Aviso tipo="rojo">{errorEnvio}</Aviso>}
         {paso === 6 && <FormularioCultivo b={b} actualizar={actualizar} catalogos={catalogos} errores={e} avisos={avisos} superficie={superficie} />}
         {paso === 7 && <Paso7Revisar b={b} actualizar={actualizar} catalogos={catalogos} estados={estados} nombreMunicipio={nombreMunicipio} irAPaso={irA} errorEnvio={errorEnvio} enLinea={enLinea} />}
         {paso === 7 && mostrar && errores.confirmacion && <p role="alert" className="text-[13px] text-red-600 font-medium">{errores.confirmacion}</p>}
