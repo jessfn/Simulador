@@ -35,29 +35,41 @@ export default function FrijolTableroPage() {
 
   const tarjeta = 'rounded-3xl p-4 text-left w-full active:scale-[0.99] transition-transform';
   return (
-    <div className="px-4 py-5 space-y-4">
+    <div className="px-4 py-5 md:px-6 md:py-6 lg:px-8 lg:py-8 space-y-4 lg:space-y-6">
       {!enLinea && <div className="rounded-2xl bg-amber-400 text-amber-950 text-[13.5px] font-semibold px-4 py-2.5 flex items-center gap-2" role="status"><WifiOff size={16} /> Sin conexión. Lo que captures se guarda en tu teléfono.</div>}
 
-      <section className="rounded-3xl bg-gradient-to-br from-[#0f3821] to-[#1A5C38] text-white p-5 shadow-lg">
-        <div className="flex items-center gap-3">
-          <IconoFrijol className="h-10 w-10 flex-shrink-0" />
+      <section className="rounded-3xl bg-gradient-to-br from-[#0f3821] to-[#1A5C38] text-white p-5 md:p-6 lg:p-8 shadow-lg md:flex md:items-center md:justify-between md:gap-8">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <IconoFrijol className="h-10 w-10 md:h-14 md:w-14 flex-shrink-0" />
           <div className="min-w-0">
             <p className="text-[12px] font-semibold text-emerald-200/90 uppercase tracking-[0.12em]">Registro de Frijol{user?.tipo_tecnico_etiqueta ? ` · ${user.tipo_tecnico_etiqueta}` : ''}</p>
-            <h1 className="text-[22px] font-bold leading-tight break-words" style={{ fontFamily: 'Patria, Georgia, serif' }}>Hola, {nombre}</h1>
+            <h1 className="text-[22px] md:text-[28px] lg:text-[32px] font-bold leading-tight break-words" style={{ fontFamily: 'Patria, Georgia, serif' }}>Hola, {nombre}</h1>
           </div>
         </div>
         <button onClick={() => navigate('/frijol/tecnico/nuevo')}
-          className="mt-5 w-full min-h-[56px] flex items-center justify-center gap-2 rounded-2xl bg-white text-[#1A5C38] font-bold text-[17px] active:scale-[0.98] transition-transform">
+          className="mt-5 md:mt-0 w-full md:w-auto md:flex-none md:px-8 min-h-[56px] flex items-center justify-center gap-2 rounded-2xl bg-white text-[#1A5C38] font-bold text-[17px] shadow-md hover:bg-emerald-50 active:scale-[0.98] transition">
           <Plus size={21} /> Nuevo registro
         </button>
       </section>
 
       <AvisoSinConexion enLinea={enLinea} />
 
+      <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-6 lg:items-start">
+      {/* Pendientes: lo que necesita acción del técnico */}
+      <div className="space-y-4 min-w-0">
       <ResumenSolicitudes ruta="/frijol/tecnico/solicitudes" />
 
+      {contadores && contadores.requieren_correccion > 0 && (
+        <button onClick={() => navigate('/frijol/tecnico/registros?estatus=requiere_correccion')} className={`${tarjeta} bg-red-50 border border-red-200 flex items-center gap-3 hover:bg-red-100/70`}>
+          <AlertTriangle className="text-red-600 flex-shrink-0" size={22} />
+          <span className="flex-1"><span className="block text-[15px] font-bold text-red-800">{contadores.requieren_correccion} registro{contadores.requieren_correccion === 1 ? ' necesita' : 's necesitan'} corrección</span>
+            <span className="block text-[13px] text-red-700">La CURP no es válida. Toca para corregirla.</span></span>
+          <ChevronRight className="text-red-400" size={18} />
+        </button>
+      )}
+
       {borradores.length > 0 && (
-        <section className="rounded-3xl bg-white border border-amber-200 p-4" aria-label="Registros sin enviar">
+        <section className="rounded-3xl bg-white border border-amber-200 p-4 md:p-5 shadow-sm" aria-label="Registros sin enviar">
           <h2 className="text-[15px] font-bold text-slate-900 flex items-center gap-2"><FileEdit size={17} className="text-amber-600" /> Tienes {borradores.length} registro{borradores.length === 1 ? '' : 's'} sin enviar</h2>
           <ul className="mt-3 divide-y divide-slate-100">
             {borradores.map(b => {
@@ -77,33 +89,30 @@ export default function FrijolTableroPage() {
         </section>
       )}
 
-      {contadores && contadores.requieren_correccion > 0 && (
-        <button onClick={() => navigate('/frijol/tecnico/registros?estatus=requiere_correccion')} className={`${tarjeta} bg-red-50 border border-red-200 flex items-center gap-3`}>
-          <AlertTriangle className="text-red-600 flex-shrink-0" size={22} />
-          <span className="flex-1"><span className="block text-[15px] font-bold text-red-800">{contadores.requieren_correccion} registro{contadores.requieren_correccion === 1 ? ' necesita' : 's necesitan'} corrección</span>
-            <span className="block text-[13px] text-red-700">La CURP no es válida. Toca para corregirla.</span></span>
-          <ChevronRight className="text-red-400" size={18} />
-        </button>
-      )}
+      </div>
 
-      <div className="grid grid-cols-3 gap-2.5" aria-label="Resumen">
+      {/* Resumen */}
+      <div className="space-y-4 min-w-0">
+      <div className="grid grid-cols-3 gap-2.5 lg:gap-3" aria-label="Resumen">
         {[
           { n: contadores?.enviados, t: 'Enviados', c: 'text-emerald-700' },
           { n: contadores?.pendientes_verificacion, t: 'Por verificar', c: 'text-amber-700' },
           { n: contadores?.requieren_correccion, t: 'Por corregir', c: 'text-red-700' },
         ].map(x => (
-          <div key={x.t} className="rounded-2xl bg-white border border-slate-100 py-3.5 text-center">
-            <p className={`text-[24px] font-bold leading-none ${x.c}`}>{x.n ?? '—'}</p>
+          <div key={x.t} className="rounded-2xl bg-white border border-slate-100 py-3.5 lg:py-5 text-center shadow-sm">
+            <p className={`text-[24px] lg:text-[30px] font-bold leading-none ${x.c}`}>{x.n ?? '—'}</p>
             <p className="text-[12px] text-slate-500 font-medium mt-1.5">{x.t}</p>
           </div>
         ))}
       </div>
 
-      <button onClick={() => navigate('/frijol/tecnico/registros')} className={`${tarjeta} bg-white border border-slate-200 flex items-center gap-3`}>
+      <button onClick={() => navigate('/frijol/tecnico/registros')} className={`${tarjeta} bg-white border border-slate-200 flex items-center gap-3 shadow-sm hover:border-[#1A5C38]/40`}>
         <span className="w-12 h-12 rounded-2xl bg-[#eef8f2] text-[#1A5C38] flex items-center justify-center"><ClipboardList size={22} /></span>
         <span className="flex-1"><span className="block text-[16px] font-bold text-slate-900">Mis registros</span><span className="block text-[13px] text-slate-500">Productores de frijol que has registrado</span></span>
         <ChevronRight className="text-slate-300" size={18} />
       </button>
+      </div>
+      </div>
 
       {confirmar && (
         <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4" role="dialog" aria-modal="true">

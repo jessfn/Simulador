@@ -159,7 +159,7 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
         </div>
       )}
 
-      <div ref={topRef} className="px-4 pt-4 pb-4 bg-gradient-to-b from-[#1A5C38] to-[#14532d] text-white shadow-md">
+      <div ref={topRef} className="px-4 md:px-6 pt-4 pb-4 md:mx-4 md:mt-4 md:rounded-3xl bg-gradient-to-b from-[#1A5C38] to-[#14532d] text-white shadow-md">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[12.5px] font-bold text-emerald-200 uppercase tracking-[0.12em]">Paso {paso} de {TOTAL_PASOS}</p>
@@ -171,7 +171,7 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
         <div className="h-2 rounded-full bg-emerald-950/45 mt-3 overflow-hidden" aria-hidden="true"><div className="h-full bg-emerald-300 transition-all duration-300" style={{ width: `${progreso}%` }} /></div>
       </div>
 
-      <div className="flex-1 px-4 pt-3 pb-6 space-y-4">
+      <div className="flex-1 px-4 md:px-6 pt-3 md:pt-5 pb-6 space-y-4">
         {sinDatos && !cargandoCat && <Aviso tipo="rojo">No se pudieron cargar las listas del formulario. Conéctate una vez para guardarlas en el teléfono.</Aviso>}
         {(paso === 6 || (paso === pasoDelError && paso !== 7)) && errorEnvio && <Aviso tipo="rojo">{errorEnvio}</Aviso>}
         {paso === 1 && <Paso1Curp b={b} actualizar={actualizar} enLinea={enLinea} alAvanzar={n => irA(n)} curpInicial={curpInicial} />}
@@ -185,7 +185,7 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
       </div>
 
       {paso > 1 && (
-        <div className="sticky bottom-0 z-20 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 flex gap-3" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+        <div className="sticky bottom-0 z-20 bg-white/95 backdrop-blur border-t border-slate-200 px-4 md:px-6 py-3 flex gap-3" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
           <button type="button" onClick={atras} disabled={enviando}
             className="min-h-[52px] px-5 rounded-2xl bg-white border-2 border-[#14532d] text-[#14532d] text-[15px] font-bold flex items-center gap-1.5 active:scale-[0.98]"><ArrowLeft size={17} /> Atrás</button>
           {paso < TOTAL_PASOS ? (

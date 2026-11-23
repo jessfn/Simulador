@@ -580,3 +580,29 @@ body {
 .encabezado-ancho{margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 /* Botón Volver fijo en la esquina de la ventana en pantallas grandes (pantallas con barra lateral) */
 @media (min-width:1024px){.atras-fijo-lg{position:fixed;top:12px;left:16px;z-index:40}}
+
+/* ── Área del técnico de Frijol: columna adaptable + barra lateral en pantallas grandes ──────────────────────────────
+   La columna de contenido crece con la pantalla (teléfono → tableta → computadora) y su ancho se define en UN solo lugar (--tec-ancho).
+   El encabezado de cada página ocupa todo el ancho del área de contenido (sin invadir la barra lateral) gracias a una consulta de contenedor. */
+.tec-area{container-type:inline-size;container-name:tec}
+.tec-col{--tec-ancho:42rem;width:100%;max-width:var(--tec-ancho);margin-inline:auto}
+.tec-col--estrecha{--tec-ancho:40rem}
+@media (min-width:768px){.tec-col{--tec-ancho:46rem}.tec-col--estrecha{--tec-ancho:42rem}}
+@media (min-width:1024px){.tec-col{--tec-ancho:62rem}.tec-col--estrecha{--tec-ancho:46rem}}
+@media (min-width:1536px){.tec-col{--tec-ancho:70rem}.tec-col--estrecha{--tec-ancho:48rem}}
+.encabezado-tec{margin-inline:calc((100% - 100cqw) / 2);padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px))}
+.encabezado-tec__in{max-width:var(--tec-ancho);margin-inline:auto;width:100%}
+@media (min-width:1024px){
+  /* En computadora la barra de la página va de borde a borde del área: Volver siempre en la esquina izquierda y el título a su lado */
+  .encabezado-tec{padding-inline:24px}
+  .encabezado-tec__fila{display:flex;align-items:center;gap:20px}
+  .encabezado-tec__in{max-width:none;margin-inline:0;flex:1;min-width:0}
+}
+/* Teléfono en horizontal (poca altura): barra inferior y encabezado compactos para que quede espacio de trabajo */
+@media (max-height:480px) and (orientation:landscape){
+  .tec-nav a{flex-direction:row;gap:8px;padding-block:6px}
+  .tec-nav a span:first-child{width:2.25rem;height:1.75rem}
+  .tec-encabezado-app{display:none}
+}
+.tec-lateral a:focus-visible,.tec-nav a:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+@media (prefers-reduced-motion:reduce){.tec-lateral *,.tec-nav *{transition:none!important}}

@@ -73,7 +73,7 @@ async function datosProductor(producerId: number) {
   const fp = await pool.query('SELECT * FROM frijol_productor WHERE productor_id = $1', [producerId]);
   const parcelas = await pool.query(
     `SELECT u.up_id::int AS up_id, u.nombre_up, u.numero_up, u.superficie_ha_calculada::float AS area_ha_calc, u.superficie_ha_real::float AS area_ha_real, u.estado_id, u.nombre_estado, u.municipio_id,
-            u.nombre_municipio, u.localidad, u.documento_propiedad, u.documento_propiedad_otro,
+            u.nombre_municipio, u.localidad, u.localidad_id, u.documento_propiedad, u.documento_propiedad_otro,
             u.ubicacion_confirmada,
             ST_AsGeoJSON(u.geometria)::json AS geom_geojson,
             COALESCE((SELECT json_agg(CASE c.tipo_ciclo
