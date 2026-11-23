@@ -66,6 +66,7 @@ export default function Paso1Curp({ b, actualizar, enLinea, alAvanzar, curpInici
       curp: curpNorm,
       consulta: {
         codigo: r.codigo as never, producer_id: r.producer_id, token_verificacion: r.token_verificacion,
+        fuente: (d.fuente as string) || (r.codigo === 'PADRON_SADER' ? 'padron_sader' : r.codigo === 'RENAPO' ? 'renapo' : undefined),
         parcelas: r.parcelas || [], tiene_cuenta: !!(d.tiene_cuenta as unknown as boolean), telefono_original: (d.telefono as string) || '',
         bloqueados: ((r as unknown as { campos?: { campo: string; editable: boolean }[] }).campos || []).filter(c => !c.editable).map(c => c.campo),
       },
@@ -95,7 +96,7 @@ export default function Paso1Curp({ b, actualizar, enLinea, alAvanzar, curpInici
   }
 
   const c = resultado?.codigo;
-  const nombreHallado = resultado?.datos ? `${resultado.datos.nombres || ''} ${resultado.datos.apellido_paterno || ''}`.trim() : '';
+  const nombreHallado = resultado?.datos ? `${resultado.datos.nombres || ''} ${resultado.datos.apellido_paterno || ''} ${resultado.datos.apellido_materno || ''}`.trim() : '';
 
   return (
     <div className="space-y-5">

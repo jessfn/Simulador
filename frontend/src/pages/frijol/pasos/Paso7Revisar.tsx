@@ -63,6 +63,16 @@ export default function Paso7Revisar({ b, actualizar, catalogos, estados, nombre
         <Fila k="Documento" v={pa.documento === 'otro' ? pa.documento_otro : etiqueta(catalogos?.documento_propiedad, pa.documento)} />
         <Fila k="Superficie" v={sup > 0 ? `${sup.toLocaleString('es-MX', { maximumFractionDigits: 4 })} ha` : '—'} />
         <Fila k="Régimen" v={pa.modo === 'nueva' ? (regimenDe(b) === 'riego' ? 'Riego' : 'Temporal') : 'Parcela existente'} />
+        {pa.modo === 'nueva' && (
+          <Fila
+            k="Coordenadas"
+            v={pa.poligono && pa.poligono.length >= 3 ? (
+              <span className="text-emerald-700 font-medium">Polígono capturado ({pa.poligono.length} puntos)</span>
+            ) : (
+              <span className="text-amber-700 font-medium">Pendiente (capturado sin conexión)</span>
+            )}
+          />
+        )}
       </Bloque>
 
       <Bloque titulo="Semillas" paso={5} irAPaso={irAPaso}>

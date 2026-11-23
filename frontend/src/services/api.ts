@@ -316,6 +316,8 @@ export const api = {
     corregirProductor: (id: number | string, data: unknown) => request(`/frijol/productores/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     corregirCurp: (id: number | string, curp: string) => request(`/frijol/productores/${id}/curp`, { method: 'PATCH', body: JSON.stringify({ curp }) }),
     corregirCultivo: (cycleCropId: number | string, cultivo: unknown) => request(`/frijol/cultivos/${cycleCropId}`, { method: 'PATCH', body: JSON.stringify({ cultivo }) }),
+    completarUbicacionParcela: (upId: number | string, data: { poligono: [number, number][]; area_real_ha?: number | null; motivo_diferencia?: string | null }) =>
+      request(`/frijol/parcelas/${upId}/ubicacion`, { method: 'PUT', body: JSON.stringify(data) }),
     acuse: async (cycleCropId: number | string): Promise<Blob> => {
       const res = await apiFetch(`/frijol/registros/${cycleCropId}/acuse`);
       if (!res.ok) throw new Error('No se pudo descargar el acuse');

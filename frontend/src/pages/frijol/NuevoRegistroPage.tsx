@@ -76,13 +76,13 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
     switch (paso) {
       case 2: return { errores: validarProductor(b), avisos: {} };
       case 3: return { errores: b.complementaria_resumen ? {} : validarComplementaria(b), avisos: {} };
-      case 4: return { errores: validarParcela(b), avisos: {} };
+      case 4: return { errores: validarParcela(b, enLinea), avisos: {} };
       case 5: return { errores: validarSemillas(b), avisos: {} };
       case 6: return validarCultivo(b, superficie);
       case 7: return { errores: b.confirmacion ? {} : { confirmacion: 'Confirma que la información fue proporcionada por el productor' }, avisos: {} };
       default: return { errores: {}, avisos: {} };
     }
-  }, [b, paso, superficie]);
+  }, [b, paso, superficie, enLinea]);
 
   function irA(n: number) {
     setMostrar(false); setErrorEnvio(''); setErrorMapa('');
@@ -177,7 +177,7 @@ function Asistente({ inicial, curpInicial }: { inicial: Borrador; curpInicial?: 
         {paso === 1 && <Paso1Curp b={b} actualizar={actualizar} enLinea={enLinea} alAvanzar={n => irA(n)} curpInicial={curpInicial} />}
         {paso === 2 && <Paso2Productor b={b} actualizar={actualizar} errores={e} />}
         {paso === 3 && <Paso3Complementaria b={b} actualizar={actualizar} catalogos={catalogos} errores={e} />}
-        {paso === 4 && <Paso4Parcela b={b} actualizar={actualizar} catalogos={catalogos} estados={estados} zona={zona} errores={e} errorServidor={errorMapa} />}
+        {paso === 4 && <Paso4Parcela b={b} actualizar={actualizar} catalogos={catalogos} estados={estados} zona={zona} errores={e} errorServidor={errorMapa} enLinea={enLinea} />}
         {paso === 5 && <Paso5Semillas b={b} actualizar={actualizar} errores={e} />}
         {paso === 6 && <FormularioCultivo b={b} actualizar={actualizar} catalogos={catalogos} errores={e} avisos={avisos} superficie={superficie} />}
         {paso === 7 && <Paso7Revisar b={b} actualizar={actualizar} catalogos={catalogos} estados={estados} nombreMunicipio={nombreMunicipio} irAPaso={irA} errorEnvio={errorEnvio} enLinea={enLinea} />}

@@ -22,7 +22,8 @@ export type CodigoConsulta =
 export interface ParcelaExistente {
   up_id: number; up_name: string; numero_up: number | null; area_ha_calc: number | null; area_ha_real: number | null;
   state_id: string | null; state_name: string | null; municipality_id: string | null; municipality_name: string | null;
-  localidad: string | null; localidad_id: string | null; documento_propiedad: string | null; documento_propiedad_otro: string | null;
+  localidad: string | null; documento_propiedad: string | null; documento_propiedad_otro: string | null;
+  ubicacion_confirmada?: boolean;
   geom_geojson: { type: string; coordinates: unknown } | null; ciclos_frijol: string[]; tiene_frijol: boolean;
 }
 
@@ -48,6 +49,7 @@ export interface ParcelaBorrador {
   /** polígono cerrado [lat,lng] */
   poligono: [number, number][] | null;
   area_calc_ha: number | null; area_real_ha: string; motivo_diferencia: string;
+  capturada_sin_conexion?: boolean;
 }
 
 export interface Semillas { dedica: boolean | null; trabajo_prosebien: boolean | null; usara_prosebien: boolean | null }
@@ -69,6 +71,7 @@ export interface Borrador {
   curp: string;
   consulta: {
     codigo: CodigoConsulta; producer_id?: number; token_verificacion?: string;
+    fuente?: string;
     parcelas?: ParcelaExistente[]; tiene_cuenta?: boolean; telefono_original?: string;
     /** T10: datos personales que ya no se pueden cambiar directo (edición única usada, o teléfono con cuenta) */
     bloqueados?: string[];

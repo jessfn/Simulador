@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertTriangle, Loader2, Pencil, Plus, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Loader2, MapPin, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import { api } from '../../services/api';
 import MapaUP from '../../components/productor/MapaUP';
+import MapaPoligono from './MapaPoligono';
 import { PageHeaderTecnico } from '../../components/LayoutTecnico';
 import { Aviso, Campo, Tarjeta, Texto } from './ui';
 import { EtiquetaEstado } from './RegistrosPage';
@@ -48,6 +49,8 @@ export default function DetalleProductorFrijolPage() {
   const [mostrar, setMostrar] = useState(false);
   const [curpNueva, setCurpNueva] = useState('');
   const [errorCurp, setErrorCurp] = useState('');
+  const [parcelaUbicacion, setParcelaUbicacion] = useState<ParcelaExistente | null>(null);
+  const [errorUbicacion, setErrorUbicacion] = useState('');
 
   const cargar = useCallback(async () => {
     try { setD((await api.frijol.productor(id!)) as Detalle); setError(''); }
@@ -135,6 +138,25 @@ export default function DetalleProductorFrijolPage() {
     finally { setGuardando(false); }
   }
 
+  async function guardarUbicacion(poli: [number, number][], ha: number) {
+    if (!parcelaUbicacion) return;
+    setGuardando(true);
+    setErrorUbicacion('');
+    try {
+      await api.frijol.completarUbicacionParcela(parcelaUbicacion.up_id, {
+        poligono: poli,
+        area_real_ha: parcelaUbicacion.area_ha_real ?? (ha > 0 ? ha : null),
+      });
+      setMsg('Ubicación de la parcela guardada exitosamente.');
+      setParcelaUbicacion(null);
+      await cargar();
+    } catch (e: any) {
+      setErrorUbicacion(e.message || 'No se pudo guardar la ubicación de la parcela');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   if (error && !d) return <div><PageHeaderTecnico title="Productor" back="/frijol/tecnico/registros" /><div className="px-4 py-6"><Aviso tipo="rojo">{error}</Aviso></div></div>;
   if (!d) return <div className="flex justify-center py-24"><Loader2 className="animate-spin text-[#1A5C38]" size={28} /></div>;
 
@@ -170,6 +192,17 @@ export default function DetalleProductorFrijolPage() {
   const fp = d.frijol_productor;
   return (
     <div className="pb-8">
+      {parcelaUbicacion && (
+        <MapaPoligono
+          vertices={[]}
+          poligono={null}
+          propias={d.parcelas.filter(x => x.up_id !== parcelaUbicacion.up_id)}
+          mensajeServidor={errorUbicacion}
+          alBorrarTodo={() => {}}
+          alTerminar={(poli, ha) => void guardarUbicacion(poli, ha)}
+          alCerrar={() => { setParcelaUbicacion(null); setErrorUbicacion(''); }}
+        />
+      )}
       <PageHeaderTecnico title="Productor" back="/frijol/tecnico/registros" />
       <div className="px-4 pt-2 space-y-4">
         {msg && <Aviso tipo="verde">{msg}</Aviso>}
@@ -221,7 +254,26 @@ export default function DetalleProductorFrijolPage() {
             <Tarjeta key={p.up_id} titulo={`Parcela ${p.numero_up ?? ''}`.trim()}>
               <p className="text-[17px] font-bold text-slate-900">{p.up_name}</p>
               <p className="text-[13.5px] text-slate-500 mt-0.5 mb-3">ID {p.up_id} · {p.municipality_name}, {p.state_name} · {(p.area_ha_real ?? p.area_ha_calc) ? `${Number(p.area_ha_real ?? p.area_ha_calc).toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha` : ''}</p>
-              {a && <MapaUP lat={lat} lng={lng} locationConfirmed centroidSource="productor" height="160px" zoom={15} poligono={a} />}
+              {a ? (
+                <MapaUP lat={lat} lng={lng} locationConfirmed centroidSource="productor" height="160px" zoom={15} poligono={a} />
+              ) : (
+                <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3.5 mb-3 flex items-start gap-2.5">
+                  <AlertTriangle className="text-amber-700 flex-shrink-0 mt-0.5" size={18} />
+                  <div className="flex-1 text-[13.5px]">
+                    <p className="font-bold text-amber-900">Ubicación geográfica pendiente</p>
+                    <p className="text-amber-800 mt-0.5">Esta parcela se registró sin conexión y aún no cuenta con coordenadas.</p>
+                    {!validado && (
+                      <button
+                        type="button"
+                        onClick={() => { setErrorUbicacion(''); setParcelaUbicacion(p); }}
+                        className="mt-2.5 min-h-[44px] px-4 rounded-xl bg-[#1A5C38] text-white text-[13.5px] font-bold flex items-center gap-1.5 active:scale-95"
+                      >
+                        <MapPin size={16} /> Completar ubicación en el mapa
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="mt-4 space-y-3">
                 {cultivos.map(c => (
                   <div key={c.cycle_crop_id} className="rounded-2xl bg-slate-50 border border-slate-100 p-3.5">
