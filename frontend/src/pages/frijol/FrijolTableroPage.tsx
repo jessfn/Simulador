@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/auth';
 import IconoFrijol from '../../components/IconoFrijol';
 import { borrarBorrador, listarBorradores } from './almacen';
 import { useConexion } from './useConexion';
+import AvisoSinConexion from './AvisoSinConexion';
 import { ResumenSolicitudes } from '../../components/solicitudes/SolicitudesCambio';
 import { NOMBRES_PASOS } from './tipos';
 import type { Borrador } from './tipos';
@@ -50,6 +51,8 @@ export default function FrijolTableroPage() {
           <Plus size={21} /> Nuevo registro
         </button>
       </section>
+
+      <AvisoSinConexion enLinea={enLinea} />
 
       <ResumenSolicitudes ruta="/frijol/tecnico/solicitudes" />
 

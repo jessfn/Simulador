@@ -11,7 +11,7 @@ import { aplicarEdicionDirecta, ErrorEdicion, estadoDeCampos } from '../services
 import { generarAcuseFrijol } from '../services/acuseFrijol';
 import { consultaCurpLimiter } from '../middleware/rateLimiters';
 import { CURP_RE, extraerDatosCurp } from '../utils/curp';
-import { esClaveDeEstado, listarLocalidadesDeEstado } from '../services/localidades';
+import { esClaveDeEstado, listarLocalidadesDeEstado, listarMunicipiosDelPais } from '../services/localidades';
 
 // Módulo de registro de Frijol (técnicos ECA). Todo /api/frijol/* requiere sesión de técnico con el programa frijol_afb.
 // Aquí viven solo las rutas de frijol; maíz no se toca.
@@ -146,6 +146,13 @@ router.get('/municipios', async (req: AuthRequest, res: Response): Promise<void>
     const r = await pool.query('SELECT municipio_id, nombre FROM geo_municipio WHERE estado_id = $1 ORDER BY nombre', [stateId]);
     res.json({ municipios: r.rows });
   } catch (error) { responderError(res, error, 'GET /frijol/municipios'); }
+});
+
+// Para la descarga sin conexión del tablero: todo el país en una sola petición (unos 60 KB).
+router.get('/municipios-del-pais', async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    res.json({ municipios: await listarMunicipiosDelPais() });
+  } catch (error) { responderError(res, error, 'GET /frijol/municipios-del-pais'); }
 });
 
 // Por estado y no por municipio: el teléfono guarda la lista completa y la filtra sin señal.
