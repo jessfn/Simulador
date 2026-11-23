@@ -14,7 +14,7 @@ export interface ResultadoTraslape {
   /** Porcentaje de área del polígono nuevo cubierta por la parcela en conflicto (0-1). */
   pct: number;
   /** id de la parcela existente con la que se traslapa (si aplica). */
-  idConflicto?: number;
+  idConflicto?: number | string;
   /** true si la parcela en conflicto es una parcela PROPIA (no de otro productor). */
   esPropia?: boolean;
 }

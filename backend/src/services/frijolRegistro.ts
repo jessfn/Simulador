@@ -105,7 +105,7 @@ export function validarEstructura(b: any, esProductorNuevo: boolean): void {
     const pol = pa.poligono;
     const tienePoligono = Array.isArray(pol) && pol.length >= 3 && pol.every((v: any) => Array.isArray(v) && v.length >= 2 && esNum(v[0]) && esNum(v[1]));
     if (!tienePoligono) {
-      const traz = body.trazabilidad || {};
+      const traz = b?.trazabilidad || {};
       const fueOffline = Boolean(traz.capturado_sin_conexion || traz.hubo_desconexion || pa.sin_coordenadas);
       const fechaCaptura = fechaValida(traz.capturado_en);
       const fechaCoherente = fechaCaptura && fechaCaptura.getTime() <= Date.now() + 5 * 60 * 1000;
@@ -247,7 +247,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     const correo = p.correo ? String(p.correo).trim().toLowerCase() : null;
 
     if (prod) {
-      producerId = Number(prod.productor_id);
+      producerId = Number(prod.producer_id);
       // Validar que no se intente alterar la fecha de nacimiento ni el sexo de un productor preexistente en el registro de frijol
       const curpDatos = extraerDatosCurp(curp);
       if (prod.fn && p.fecha_nacimiento && fechaValida(p.fecha_nacimiento)) {

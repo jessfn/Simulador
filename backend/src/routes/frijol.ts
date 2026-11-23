@@ -14,6 +14,7 @@ import { generarAcuseFrijol } from '../services/acuseFrijol';
 import { consultaCurpLimiter } from '../middleware/rateLimiters';
 import { CURP_RE, extraerDatosCurp } from '../utils/curp';
 import { esClaveDeEstado, listarLocalidadesDeEstado, listarMunicipiosDelPais } from '../services/localidades';
+import { validarUbicacionDeParcelaExistente } from '../services/ubicacionParcelaFrijol';
 
 // Módulo de registro de Frijol (técnicos ECA). Todo /api/frijol/* requiere sesión de técnico con el programa frijol_afb.
 // Aquí viven solo las rutas de frijol; maíz no se toca.
@@ -456,7 +457,7 @@ router.patch('/productores/:producer_id/curp', async (req: AuthRequest, res: Res
     const dup = await client.query('SELECT 1 FROM productor WHERE UPPER(curp) = $1 AND productor_id <> $2', [curp, id]);
     if (dup.rows.length > 0) { res.status(409).json({ error: 'Esa CURP ya está registrada con otro productor', codigo: 'CURP_DUPLICADA' }); return; }
 
-    const ident = await verificarIdentidad(curp);
+    const ident = await consultarIdentidadFrijol(curp);
     if (ident.tipo === 'CURP_NO_VALIDA') { res.status(422).json({ error: 'Esta CURP tampoco existe en RENAPO. Revisa que esté bien escrita.', codigo: 'CURP_NO_VALIDA' }); return; }
     if (ident.tipo === 'CURP_FALLECIDO') { res.status(422).json({ error: 'La CURP corresponde a una persona fallecida.', codigo: 'CURP_FALLECIDO' }); return; }
 
@@ -564,7 +565,11 @@ router.put('/parcelas/:up_id/ubicacion', async (req: AuthRequest, res: Response)
       res.status(400).json({ error: 'ID de parcela inválido' });
       return;
     }
-    const upRow = await client.query('SELECT up_id, productor_id, nombre_up, ubicacion_confirmada FROM up WHERE up_id = $1', [upId]);
+    // Con alias explícitos la capa de compatibilidad no renombra las columnas
+    const upRow = await client.query(
+      'SELECT up_id, productor_id AS productor_id, nombre_up, ubicacion_confirmada, estado_id AS estado_elegido, nombre_estado AS nombre_estado_elegido FROM up WHERE up_id = $1',
+      [upId]
+    );
     if (upRow.rows.length === 0) {
       res.status(404).json({ error: 'Parcela no encontrada' });
       return;
@@ -582,6 +587,12 @@ router.put('/parcelas/:up_id/ubicacion', async (req: AuthRequest, res: Response)
     const postgis = await postgisDisponible();
     if (!postgis) {
       res.status(500).json({ error: 'El servicio geográfico no está disponible' });
+      return;
+    }
+
+    const errorUbicacion = await validarUbicacionDeParcelaExistente(client, poligono, req.body?.area_real_ha, up.estado_elegido, up.nombre_estado_elegido);
+    if (errorUbicacion) {
+      res.status(errorUbicacion.status).json({ error: errorUbicacion.mensaje, codigo: errorUbicacion.codigo, campo: 'poligono' });
       return;
     }
 

@@ -40,7 +40,8 @@ async function anotarDiscrepancias(producerId: number, p: Record<string, unknown
 
 export async function verificarPendientes(): Promise<ResumenVerificacion> {
   const lote = await pool.query(
-    `SELECT pp.productor_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo, to_char(p.fecha_nacimiento,'YYYY-MM-DD') AS fn
+    // Con el alias explícito la capa de compatibilidad no renombra la columna a producer_id
+    `SELECT pp.productor_id AS productor_id, p.curp, p.nombres, p.apellido_paterno, p.apellido_materno, p.sexo, to_char(p.fecha_nacimiento,'YYYY-MM-DD') AS fn
        FROM productor_programa pp JOIN productor p ON p.productor_id = pp.productor_id
       WHERE pp.programa = $1 AND pp.verificacion_identidad = 'pendiente'
       ORDER BY COALESCE(pp.verificacion_ultimo_intento, 'epoch'::timestamptz), pp.fecha_alta
