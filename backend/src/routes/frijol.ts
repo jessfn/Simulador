@@ -72,7 +72,7 @@ async function datosProductor(producerId: number) {
   const fp = await pool.query('SELECT * FROM frijol_productor WHERE productor_id = $1', [producerId]);
   const parcelas = await pool.query(
     `SELECT u.up_id::int AS up_id, u.nombre_up, u.numero_up, u.superficie_ha_calculada::float AS area_ha_calc, u.superficie_ha_real::float AS area_ha_real, u.estado_id, u.nombre_estado, u.municipio_id,
-            u.nombre_municipio, u.localidad, u.documento_propiedad, u.documento_propiedad_otro,
+            u.nombre_municipio, u.localidad, u.localidad_id, u.documento_propiedad, u.documento_propiedad_otro,
             u.ubicacion_confirmada,
             ST_AsGeoJSON(u.geometria)::json AS geom_geojson,
             COALESCE((SELECT json_agg(CASE c.tipo_ciclo
@@ -456,7 +456,7 @@ router.patch('/productores/:producer_id/curp', async (req: AuthRequest, res: Res
     const dup = await client.query('SELECT 1 FROM productor WHERE UPPER(curp) = $1 AND productor_id <> $2', [curp, id]);
     if (dup.rows.length > 0) { res.status(409).json({ error: 'Esa CURP ya está registrada con otro productor', codigo: 'CURP_DUPLICADA' }); return; }
 
-    const ident = await verificarIdentidad(curp);
+    const ident = await consultarIdentidadFrijol(curp);
     if (ident.tipo === 'CURP_NO_VALIDA') { res.status(422).json({ error: 'Esta CURP tampoco existe en RENAPO. Revisa que esté bien escrita.', codigo: 'CURP_NO_VALIDA' }); return; }
     if (ident.tipo === 'CURP_FALLECIDO') { res.status(422).json({ error: 'La CURP corresponde a una persona fallecida.', codigo: 'CURP_FALLECIDO' }); return; }
 

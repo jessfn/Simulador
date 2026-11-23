@@ -599,18 +599,19 @@ router.post('/auth/registro-nuevo', authLimiter, async (req, res): Promise<void>
            (usuario_id, curp, nombres, apellido_paterno, apellido_materno,
             telefono, sexo, tipo_registro, estado_validacion, programas_beneficiario, correo,
             aviso_privacidad_aceptado, aviso_privacidad_fecha, aviso_privacidad_latitud,
-            aviso_privacidad_longitud, aviso_privacidad_version, aviso_privacidad_foto_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'B','activo',$8,$9,$10,$11,$12,$13,$14)
+            aviso_privacidad_longitud, aviso_privacidad_version, aviso_privacidad_foto_url, fecha_nacimiento)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'B','activo',$8,$9,$10,$11,$12,$13,$14,$15,$16)
          RETURNING productor_id`,
         [
           u.rows[0].id, curpN, nombresN, apPaternoN, apMaternoN,
-          telefono, genero || null, programas_beneficiario || [], correo || null,
+          telefono, sexoFinal, programas_beneficiario || [], correo || null,
           true,
           aviso_privacidad_fecha || new Date().toISOString(),
           aviso_privacidad_lat || null,
           aviso_privacidad_lng || null,
           aviso_privacidad_version || '1.0',
           validarRutaGuardadaDeFoto(aviso_privacidad_foto_url),
+          fechaNacFinal,
         ]
       );
       const producerId = p.rows[0].producer_id;

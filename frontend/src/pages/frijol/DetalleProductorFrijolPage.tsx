@@ -51,6 +51,7 @@ export default function DetalleProductorFrijolPage() {
   const [errorCurp, setErrorCurp] = useState('');
   const [parcelaUbicacion, setParcelaUbicacion] = useState<ParcelaExistente | null>(null);
   const [errorUbicacion, setErrorUbicacion] = useState('');
+  const [verticesUbicacion, setVerticesUbicacion] = useState<[number, number][]>([]);
 
   const cargar = useCallback(async () => {
     try { setD((await api.frijol.productor(id!)) as Detalle); setError(''); }
@@ -194,13 +195,14 @@ export default function DetalleProductorFrijolPage() {
     <div className="pb-8">
       {parcelaUbicacion && (
         <MapaPoligono
-          vertices={[]}
+          vertices={verticesUbicacion}
+          alCambiarVertices={setVerticesUbicacion}
           poligono={null}
           propias={d.parcelas.filter(x => x.up_id !== parcelaUbicacion.up_id)}
           mensajeServidor={errorUbicacion}
-          alBorrarTodo={() => {}}
+          alBorrarTodo={() => setVerticesUbicacion([])}
           alTerminar={(poli, ha) => void guardarUbicacion(poli, ha)}
-          alCerrar={() => { setParcelaUbicacion(null); setErrorUbicacion(''); }}
+          alCerrar={() => { setParcelaUbicacion(null); setErrorUbicacion(''); setVerticesUbicacion([]); }}
         />
       )}
       <PageHeaderTecnico title="Productor" back="/frijol/tecnico/registros" />
