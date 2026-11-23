@@ -89,7 +89,7 @@ export default function FrijolPerfilPage() {
   return (
     <div className="pb-8">
       {!obligada && <PageHeaderTecnico title="Mi perfil" back="/frijol/tecnico" />}
-      <div className="px-4 pt-4 space-y-3.5">
+      <div className="px-4 pt-4 md:px-6 lg:px-8 lg:pt-6 space-y-3.5 lg:space-y-5">
         {obligada && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
             <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />

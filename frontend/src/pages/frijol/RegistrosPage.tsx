@@ -56,17 +56,19 @@ export default function RegistrosPage() {
   return (
     <div>
       <PageHeaderTecnico title="Mis registros" back="/frijol/tecnico" />
-      <div className="px-4 pt-2 pb-6 space-y-3.5">
-        <div className="relative">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nombre o CURP" aria-label="Buscar por nombre o CURP"
-            className="w-full min-h-[52px] bg-white border-2 border-slate-200 rounded-2xl pl-11 pr-4 text-[16px] outline-none focus:border-[#1A5C38]" />
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filtrar registros">
-          {FILTROS.map(f => (
-            <button key={f.clave} role="tab" aria-selected={filtro === f.clave} onClick={() => elegir(f.clave)}
-              className={`min-h-[44px] px-4 rounded-full text-[14px] font-bold border-2 whitespace-nowrap ${filtro === f.clave ? 'bg-[#1A5C38] border-[#1A5C38] text-white' : 'bg-white border-slate-200 text-slate-600'}`}>{f.texto}</button>
-          ))}
+      <div className="px-4 pt-3 pb-6 md:px-6 lg:px-8 lg:pt-6 space-y-3.5 lg:space-y-5">
+        <div className="md:flex md:items-center md:gap-4 space-y-3.5 md:space-y-0">
+          <div className="relative md:flex-1">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nombre o CURP" aria-label="Buscar por nombre o CURP"
+              className="w-full min-h-[52px] bg-white border-2 border-slate-200 rounded-2xl pl-11 pr-4 text-[16px] outline-none focus:border-[#1A5C38] transition-colors" />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0 md:flex-none" role="tablist" aria-label="Filtrar registros">
+            {FILTROS.map(f => (
+              <button key={f.clave} role="tab" aria-selected={filtro === f.clave} onClick={() => elegir(f.clave)}
+                className={`min-h-[44px] px-4 rounded-full text-[14px] font-bold border-2 whitespace-nowrap transition-colors ${filtro === f.clave ? 'bg-[#1A5C38] border-[#1A5C38] text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-[#1A5C38]/40'}`}>{f.texto}</button>
+            ))}
+          </div>
         </div>
 
         {error && <div className="rounded-2xl bg-red-50 border border-red-200 text-red-700 text-[14px] px-4 py-3">{error}</div>}
@@ -75,11 +77,11 @@ export default function RegistrosPage() {
         ) : filas.length === 0 ? (
           <div className="text-center py-14 text-slate-400"><ClipboardList className="mx-auto mb-3" size={34} /><p className="text-[15px] font-semibold text-slate-500">Sin registros</p><p className="text-[13px]">{q || filtro ? 'Ningún registro coincide con tu búsqueda.' : 'Aún no has registrado productores de frijol.'}</p></div>
         ) : (
-          <ul className="space-y-2.5">
+          <ul className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3 lg:gap-4">
             {filas.map(f => (
               <li key={f.producer_id}>
                 <button onClick={() => navigate(`/frijol/tecnico/productor/${f.producer_id}`)}
-                  className="w-full text-left bg-white rounded-3xl border border-slate-100 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
+                  className="w-full h-full text-left bg-white rounded-3xl border border-slate-100 shadow-sm p-4 lg:p-5 flex items-center gap-3 hover:border-[#1A5C38]/40 hover:shadow-md active:scale-[0.99] transition">
                   <div className="flex-1 min-w-0">
                     <p className="text-[16px] font-bold text-slate-900 break-words">{[f.nombres, f.apellido_paterno, f.apellido_materno].filter(Boolean).join(' ')}</p>
                     <p className="text-[13px] text-slate-500 mt-0.5 break-words">{f.municipio || '—'} · {f.parcelas_frijol} parcela{f.parcelas_frijol === 1 ? '' : 's'} · {Number(f.ha_frijol).toLocaleString('es-MX', { maximumFractionDigits: 2 })} ha de frijol</p>

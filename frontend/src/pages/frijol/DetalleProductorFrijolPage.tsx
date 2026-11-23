@@ -206,7 +206,7 @@ export default function DetalleProductorFrijolPage() {
         />
       )}
       <PageHeaderTecnico title="Productor" back="/frijol/tecnico/registros" />
-      <div className="px-4 pt-2 space-y-4">
+      <div className="px-4 pt-3 md:px-6 lg:px-8 lg:pt-6 space-y-4 lg:space-y-6">
         {msg && <Aviso tipo="verde">{msg}</Aviso>}
 
         {d.verificacion_identidad === 'no_valida' && (
@@ -220,6 +220,9 @@ export default function DetalleProductorFrijolPage() {
           </section>
         )}
 
+        <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-6 lg:items-start">
+        {/* Datos del productor */}
+        <div className="space-y-4 min-w-0">
         <Tarjeta>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -247,6 +250,10 @@ export default function DetalleProductorFrijolPage() {
           </Tarjeta>
         )}
 
+        </div>
+
+        {/* Parcelas y cultivos */}
+        <div className="space-y-4 min-w-0">
         {d.parcelas.map(p => {
           const cultivos = d.cultivos.filter(c => c.up_id === p.up_id);
           if (cultivos.length === 0 && !p.tiene_frijol) return null;
@@ -294,6 +301,8 @@ export default function DetalleProductorFrijolPage() {
 
         <button onClick={() => navigate('/frijol/tecnico/nuevo', { state: { curp: d.datos.curp, k: Date.now() } })}
           className="w-full min-h-[54px] rounded-2xl bg-[#1A5C38] text-white text-[16px] font-bold flex items-center justify-center gap-2 active:scale-[0.98]"><Plus size={19} /> Agregar otra parcela</button>
+        </div>
+        </div>
       </div>
     </div>
   );
