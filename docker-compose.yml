@@ -1,0 +1,26 @@
+# Base de datos local para DESARROLLO (PostgreSQL 14 + PostGIS 3, misma version
+# mayor que el servidor de pruebas). 
+services:
+  db:
+    image: postgis/postgis:14-3.4
+    container_name: simac-db
+    environment:
+      POSTGRES_USER: simac_dev
+      POSTGRES_PASSWORD: simac_dev
+      POSTGRES_DB: bodegas
+    ports:
+      - "5432:5432"
+    volumes:
+      - simac-db-data:/var/lib/postgresql/data
+    # La base se crea vacía: las extensiones de PostGIS las crea la primera migración
+    # (backend/db/migrations/0000_linea_base.sql), igual que en producción.
+    tmpfs:
+      - /docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U simac_dev -d bodegas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  simac-db-data:
