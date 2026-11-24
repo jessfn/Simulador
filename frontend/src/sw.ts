@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { clientsClaim } from 'workbox-core';
 
 declare const self: ServiceWorkerGlobalScope;
@@ -7,6 +8,8 @@ declare const self: ServiceWorkerGlobalScope;
 // ── Workbox precaching (inyectado automáticamente por VitePWA) ────────────
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
+// Sin señal, abrir o recargar cualquier pantalla de la app responde con la app guardada; la API y los archivos subidos nunca
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api\//, /^\/uploads\//] }));
 clientsClaim();
 self.skipWaiting();
 
