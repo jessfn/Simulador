@@ -150,6 +150,7 @@ export default function DetalleProductorFrijolPage() {
       });
       setMsg('Ubicación de la parcela guardada exitosamente.');
       setParcelaUbicacion(null);
+      setVerticesUbicacion([]);
       await cargar();
     } catch (e: any) {
       setErrorUbicacion(e.message || 'No se pudo guardar la ubicación de la parcela');

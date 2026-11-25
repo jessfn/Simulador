@@ -247,7 +247,7 @@ export async function guardarRegistro(client: PoolClient, tecnicoId: number, bod
     const correo = p.correo ? String(p.correo).trim().toLowerCase() : null;
 
     if (prod) {
-      producerId = Number(prod.productor_id);
+      producerId = Number(prod.producer_id);
       // Validar que no se intente alterar la fecha de nacimiento ni el sexo de un productor preexistente en el registro de frijol
       const curpDatos = extraerDatosCurp(curp);
       if (prod.fn && p.fecha_nacimiento && fechaValida(p.fecha_nacimiento)) {

@@ -62,16 +62,19 @@ export default function Paso4Parcela({ b, actualizar, catalogos, estados, zona, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.modo, zona.length]);
 
+  // Las parcelas de maíz no traen número: se propone el primero libre entre las que sí lo tienen
   const siguienteNumero = () => {
-    const usados = propias.map(x => x.numero_up || 0);
-    return Math.min(Math.max(1, ...usados) + (usados.length ? 1 : 0), b.complementaria.total_ups) || 1;
+    const numerosUsados = new Set(propias.map(parcela => parcela.numero_up).filter(Boolean));
+    const totalDeclarado = Math.max(1, b.complementaria.total_ups);
+    for (let numero = 1; numero <= totalDeclarado; numero++) if (!numerosUsados.has(numero)) return numero;
+    return totalDeclarado;
   };
 
   function elegirExistente(u: ParcelaExistente) {
     actualizar(prev => ({
       ...prev,
       parcela: {
-        ...vacioParcela(), modo: 'existente', up_id: u.up_id, nombre: u.up_name, numero_up: u.numero_up ?? null,
+        ...vacioParcela(), modo: 'existente', up_id: u.up_id, nombre: u.up_name, numero_up: u.numero_up ?? siguienteNumero(),
         state_id: u.state_id || '', municipality_id: u.municipality_id || '', localidad_id: u.localidad_id || '', localidad: u.localidad_id ? (u.localidad || '') : '',
         documento: u.documento_propiedad || '', documento_otro: u.documento_propiedad_otro || '',
         regimen: '',
